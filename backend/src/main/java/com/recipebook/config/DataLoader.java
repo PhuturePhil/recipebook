@@ -2,10 +2,15 @@ package com.recipebook.config;
 
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Ingredient;
+import com.recipebook.model.Role;
+import com.recipebook.model.User;
 import com.recipebook.repository.RecipeRepository;
+import com.recipebook.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -13,14 +18,28 @@ import java.util.List;
 public class DataLoader {
 
     @Bean
-    public CommandLineRunner loadData(RecipeRepository recipeRepository) {
+    public CommandLineRunner loadData(RecipeRepository recipeRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
+            if (userRepository.count() == 0) {
+                User admin = new User();
+                admin.setVorname("Philipp");
+                admin.setNachname("Pastoors");
+                admin.setEmail("philipp.pastoors@mail.de");
+                admin.setPassword(passwordEncoder.encode("buecher2305"));
+                admin.setRole(Role.ADMIN);
+                userRepository.save(admin);
+                
+                System.out.println("Admin-Benutzer erstellt: philipp.pastoors@mail.de");
+            }
+            
             if (recipeRepository.count() == 0) {
+                User admin = userRepository.findByEmail("philipp.pastoors@mail.de").orElse(null);
                 
                 Recipe carbonara = new Recipe();
                 carbonara.setTitle("Spaghetti Carbonara");
                 carbonara.setDescription("Klassisches italienisches Pastagericht mit Eiern, Käse und Speck");
                 carbonara.setBaseServings(4);
+                carbonara.setUser(admin);
                 carbonara.setInstructions(Arrays.asList(
                     "Nudeln nach Packungsanleitung al dente kochen",
                     "Speck in einer Pfanne knusprig braten",
@@ -43,6 +62,7 @@ public class DataLoader {
                 pancakes.setTitle("Fluffige Pfannkuchen");
                 pancakes.setDescription("Lockere und leckere Pfannkuchen für das Frühstück");
                 pancakes.setBaseServings(4);
+                pancakes.setUser(admin);
                 pancakes.setInstructions(Arrays.asList(
                     "Mehl, Zucker, Backpulver und eine Prise Salz vermischen",
                     "Milch, Eier und flüssige Butter hinzufügen",
@@ -66,6 +86,7 @@ public class DataLoader {
                 guacamole.setTitle("Guacamole");
                 guacamole.setDescription("Cremige Avocado-Dip mit frischem Gemüse");
                 guacamole.setBaseServings(4);
+                guacamole.setUser(admin);
                 guacamole.setInstructions(Arrays.asList(
                     "Avocados halbieren, Kern entfernen und Fruchtfleisch herauslöffeln",
                     "Zwiebel und Knoblauch fein hacken",

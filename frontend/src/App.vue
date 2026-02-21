@@ -1,6 +1,14 @@
 <script setup>
+import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 import NavBar from '@/components/NavBar.vue'
+
+const authStore = useAuthStore()
+
+onMounted(async () => {
+  await authStore.checkAuth()
+})
 </script>
 
 <template>

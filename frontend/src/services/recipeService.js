@@ -1,9 +1,16 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('token')
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
 class RecipeService {
   async getAll() {
     try {
-      const response = await fetch(`${API_BASE_URL}/recipes`)
+      const response = await fetch(`${API_BASE_URL}/recipes`, {
+        headers: { ...getAuthHeaders() }
+      })
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -16,7 +23,9 @@ class RecipeService {
 
   async getById(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/recipes/${id}`)
+      const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {
+        headers: { ...getAuthHeaders() }
+      })
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -32,7 +41,8 @@ class RecipeService {
       const response = await fetch(`${API_BASE_URL}/recipes`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
         },
         body: JSON.stringify(recipe)
       })
@@ -51,7 +61,8 @@ class RecipeService {
       const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
         },
         body: JSON.stringify(recipe)
       })
@@ -68,7 +79,8 @@ class RecipeService {
   async delete(id) {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() }
       })
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -81,7 +93,9 @@ class RecipeService {
 
   async search(query) {
     try {
-      const response = await fetch(`${API_BASE_URL}/recipes/search?q=${encodeURIComponent(query)}`)
+      const response = await fetch(`${API_BASE_URL}/recipes/search?q=${encodeURIComponent(query)}`, {
+        headers: { ...getAuthHeaders() }
+      })
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }

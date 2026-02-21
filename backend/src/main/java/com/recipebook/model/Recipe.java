@@ -31,6 +31,10 @@ public class Recipe {
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+    
     public Recipe() {}
     
     public Long getId() {
@@ -87,5 +91,13 @@ public class Recipe {
     
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+    
+    public User getUser() {
+        return user;
+    }
+    
+    public void setUser(User user) {
+        this.user = user;
     }
 }

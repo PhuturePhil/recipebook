@@ -3,16 +3,30 @@
     <div class="navbar__content">
       <router-link to="/" class="navbar__logo">
         <span class="navbar__title">Pastoors Familienrezepte</span>
-        <span class="navbar__heart">❤️</span>
       </router-link>
 
       <div class="navbar__actions">
-        <router-link v-if="showSearch" to="/recipe/new" class="navbar__btn navbar__btn--primary">
+        <router-link v-if="isAuthenticated && isAdmin" to="/admin/users" class="navbar__link">
+          Benutzer
+        </router-link>
+        
+        <router-link v-if="showSearch && isAuthenticated" to="/recipe/new" class="navbar__btn navbar__btn--primary">
           Rezept hinzufügen
         </router-link>
-        <div v-if="showSearch" class="navbar__search">
+        
+        <div v-if="showSearch && isAuthenticated" class="navbar__search">
           <SearchBar />
         </div>
+        
+        <template v-if="isAuthenticated">
+          <span class="navbar__user">{{ fullName }}</span>
+          <button @click="handleLogout" class="navbar__btn navbar__btn--secondary">
+            Logout
+          </button>
+        </template>
+        <router-link v-else to="/login" class="navbar__btn navbar__btn--primary">
+          Login
+        </router-link>
       </div>
     </div>
   </nav>
@@ -20,14 +34,26 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 import SearchBar from '@/components/SearchBar.vue'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isAdmin = computed(() => authStore.isAdmin)
+const fullName = computed(() => authStore.fullName)
 
 const showSearch = computed(() => {
   return route.path === '/'
 })
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
@@ -65,6 +91,27 @@ const showSearch = computed(() => {
 
 .navbar__heart {
   font-size: 1.25rem;
+}
+
+.navbar__heart {
+  font-size: 1.25rem;
+}
+
+.navbar__link {
+  padding: 10px 15px;
+  text-decoration: none;
+  color: var(--color-primary, #4a5568);
+  font-weight: 500;
+}
+
+.navbar__link:hover {
+  color: var(--color-primary-dark, #2d3748);
+}
+
+.navbar__user {
+  padding: 10px 15px;
+  color: #666;
+  font-size: 0.9rem;
 }
 
 .navbar__actions {
