@@ -19,6 +19,72 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
             cd /opt/recipebook
-            docker-compose down
-            docker-compose build
-            docker-compose up -d
+            
+            # Create network if not exists
+            docker network create recipebook_default 2>/dev/null || true
+            
+            # Create docker-compose.prod.yml
+            cat > docker-compose.prod.yml << 'EOF'
+            version: '3.8'
+
+            services:
+              postgres:
+                image: postgres:16-alpine
+                container_name: recipebook-db
+                hostname: postgres
+                networks:
+                  - recipebook_network
+                environment:
+                  POSTGRES_DB: recipebook
+                  POSTGRES_USER: postgres
+                  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                volumes:
+                  - postgres_data:/var/lib/postgresql/data
+                restart: unless-stopped
+
+              backend:
+                build: 
+                  context: ./backend
+                  dockerfile: Dockerfile
+                container_name: recipebook-backend
+                hostname: backend
+                networks:
+                  - recipebook_network
+                ports:
+                  - "8080:8080"
+                environment:
+                  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/recipebook
+                  SPRING_DATASOURCE_USERNAME: postgres
+                  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+                depends_on:
+                  - postgres
+                restart: unless-stopped
+
+              frontend:
+                build: 
+                  context: ./frontend
+                  dockerfile: Dockerfile
+                container_name: recipebook-frontend
+                hostname: frontend
+                networks:
+                  - recipebook_network
+                ports:
+                  - "80:80"
+                depends_on:
+                  - backend
+                restart: unless-stopped
+
+            networks:
+              recipebook_network:
+                driver: bridge
+
+            volumes:
+              postgres_data:
+            EOF
+            
+            # Remove old containers
+            docker rm -f recipebook-db recipebook-backend recipebook-frontend 2>/dev/null || true
+            
+            # Build and start
+            POSTGRES_PASSWORD=postgres docker-compose -f docker-compose.prod.yml build
+            POSTGRES_PASSWORD=postgres docker-compose -f docker-compose.prod.yml up -d
