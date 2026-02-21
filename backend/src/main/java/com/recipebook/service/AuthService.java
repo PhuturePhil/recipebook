@@ -50,13 +50,17 @@ public class AuthService {
         this.mailSender = mailSender;
     }
     
-    public String login(String email, String password) {
+    public record LoginResult(String token, CustomUserDetails userDetails) {}
+    
+    public LoginResult login(String email, String password) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
         );
         
         UserDetails user = loadUserByUsername(email);
-        return jwtService.generateToken(user);
+        String token = jwtService.generateToken(user);
+        CustomUserDetails customUser = (CustomUserDetails) user;
+        return new LoginResult(token, customUser);
     }
     
     public User register(String vorname, String nachname, String email, String password, Role role) {

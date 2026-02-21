@@ -24,9 +24,9 @@ public class AuthController {
     
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        String token = authService.login(request.getEmail(), request.getPassword());
+        AuthService.LoginResult result = authService.login(request.getEmail(), request.getPassword());
         
-        CustomUserDetails userDetails = authService.getCurrentUserDetails();
+        CustomUserDetails userDetails = result.userDetails();
         UserResponse userResponse = new UserResponse(
                 userDetails.getId(),
                 userDetails.getVorname(),
@@ -35,7 +35,7 @@ public class AuthController {
                 userDetails.getRole()
         );
         
-        return ResponseEntity.ok(new LoginResponse(token, userResponse));
+        return ResponseEntity.ok(new LoginResponse(result.token(), userResponse));
     }
     
     @PostMapping("/register")
