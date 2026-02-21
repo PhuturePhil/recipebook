@@ -1,0 +1,7 @@
+com\recipebook\model\Recipe.class
+com\recipebook\RecipeBookApplication.class
+com\recipebook\controller\RecipeController.class
+com\recipebook\repository\RecipeRepository.class
+com\recipebook\config\DataLoader.class
+com\recipebook\model\Ingredient.class
+com\recipebook\service\RecipeService.class
