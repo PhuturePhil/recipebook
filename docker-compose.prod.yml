@@ -4,6 +4,8 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: recipebook-db
+    networks:
+      - app-network
     environment:
       POSTGRES_DB: recipebook
       POSTGRES_USER: postgres
@@ -17,6 +19,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: recipebook-backend
+    networks:
+      - app-network
     ports:
       - "8080:8080"
     environment:
@@ -32,11 +36,17 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: recipebook-frontend
+    networks:
+      - app-network
     ports:
       - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:
