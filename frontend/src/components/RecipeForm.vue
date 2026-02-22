@@ -40,18 +40,6 @@
     </div>
 
     <div class="form-group">
-      <label for="servings">Personenanzahl</label>
-      <input
-        id="servings"
-        v-model.number="formData.baseServings"
-        type="number"
-        min="1"
-        max="100"
-        required
-      />
-    </div>
-
-    <div class="form-group">
       <label>Quelle</label>
       <div class="source-fields">
         <input
@@ -70,6 +58,18 @@
           placeholder="Seite (bei Büchern)"
         />
       </div>
+    </div>
+
+    <div class="form-group">
+      <label for="servings">Personenanzahl</label>
+      <input
+        id="servings"
+        v-model.number="formData.baseServings"
+        type="number"
+        min="1"
+        max="100"
+        required
+      />
     </div>
 
     <div class="form-group">

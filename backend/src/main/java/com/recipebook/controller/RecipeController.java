@@ -6,6 +6,7 @@ import com.recipebook.model.Role;
 import com.recipebook.model.User;
 import com.recipebook.service.AuthService;
 import com.recipebook.service.RecipeService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,6 +42,40 @@ public class RecipeController {
     @GetMapping("/search")
     public List<Recipe> searchRecipes(@RequestParam String q) {
         return recipeService.search(q);
+    }
+    
+    @PostMapping("/test-create")
+    public Recipe testCreate(@RequestBody Recipe recipe) {
+        System.out.println("=== RECEIVED RECIPE ===");
+        System.out.println("title: " + recipe.getTitle());
+        System.out.println("author: " + recipe.getAuthor());
+        System.out.println("source: " + recipe.getSource());
+        System.out.println("page: " + recipe.getPage());
+        System.out.println("======================");
+        return recipe;
+    }
+    
+    @PostMapping("/test-json")
+    public String testJson(@RequestBody String json) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        Recipe recipe = mapper.readValue(json, Recipe.class);
+        System.out.println("=== PARSED RECIPE ===");
+        System.out.println("title: " + recipe.getTitle());
+        System.out.println("author: " + recipe.getAuthor());
+        System.out.println("source: " + recipe.getSource());
+        System.out.println("page: " + recipe.getPage());
+        System.out.println("======================");
+        return mapper.writeValueAsString(recipe);
+    }
+    
+    @GetMapping("/test")
+    public String testRecipe() {
+        Recipe r = new Recipe();
+        r.setTitle("Test");
+        r.setAuthor("Test Author");
+        r.setSource("Test Source");
+        r.setPage("10");
+        return "title=" + r.getTitle() + ", author=" + r.getAuthor() + ", source=" + r.getSource() + ", page=" + r.getPage();
     }
     
     @PostMapping

@@ -23,11 +23,10 @@
         {{ recipe.description }}
       </p>
 
-      <div v-if="recipe.author || recipe.source" class="recipe-source">
-        <span class="source-label">Quelle:</span>
-        <span v-if="recipe.author" class="source-author">{{ recipe.author }}</span>
-        <span v-if="recipe.source" class="source-name">{{ recipe.source }}</span>
-        <span v-if="recipe.page" class="source-page">Seite {{ recipe.page }}</span>
+      <div v-if="recipe.source" class="recipe-source">
+        <template v-if="recipe.source">
+          {{ recipe.source }}<template v-if="recipe.author"> ({{ recipe.author }})</template><template v-if="recipe.page">, Seite {{ recipe.page }}</template>
+        </template>
       </div>
 
       <div class="servings-control">
@@ -215,11 +214,10 @@ const handleDelete = async () => {
 }
 
 .recipe-source {
-  margin-bottom: 24px;
-  padding: 12px 16px;
-  background: var(--color-bg-secondary, #f0f0f0);
-  border-radius: 8px;
+  margin-bottom: 16px;
   font-size: 0.875rem;
+  color: var(--color-text-muted, #999);
+  font-style: italic;
 }
 
 .source-label {

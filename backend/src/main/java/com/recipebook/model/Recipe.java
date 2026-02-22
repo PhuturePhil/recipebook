@@ -1,6 +1,7 @@
 package com.recipebook.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -32,10 +33,13 @@ public class Recipe {
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
     
+    @Column(name = "author")
     private String author;
     
+    @Column(name = "source")
     private String source;
     
+    @Column(name = "page")
     private String page;
     
     @ManyToOne(fetch = FetchType.LAZY)
