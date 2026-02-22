@@ -1,0 +1,23 @@
+# SSL Certificates (sensitive - keep local only)
+ssl-bundle/
+*.zip
+
+# Build outputs
+frontend/dist/
+backend/target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
