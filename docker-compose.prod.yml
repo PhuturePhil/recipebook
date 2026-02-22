@@ -29,6 +29,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/recipebook
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      APP_URL: https://pastoors.cloud
+      ALLOWED_ORIGIN: https://pastoors.cloud
     depends_on:
       - postgres
     restart: unless-stopped
