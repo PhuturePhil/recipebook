@@ -32,6 +32,12 @@ public class Recipe {
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
     
+    private String author;
+    
+    private String source;
+    
+    private String page;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @JsonIgnore
@@ -93,6 +99,30 @@ public class Recipe {
     
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+    
+    public String getAuthor() {
+        return author;
+    }
+    
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+    
+    public String getSource() {
+        return source;
+    }
+    
+    public void setSource(String source) {
+        this.source = source;
+    }
+    
+    public String getPage() {
+        return page;
+    }
+    
+    public void setPage(String page) {
+        this.page = page;
     }
     
     public User getUser() {

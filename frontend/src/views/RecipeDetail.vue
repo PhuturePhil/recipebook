@@ -23,6 +23,13 @@
         {{ recipe.description }}
       </p>
 
+      <div v-if="recipe.author || recipe.source" class="recipe-source">
+        <span class="source-label">Quelle:</span>
+        <span v-if="recipe.author" class="source-author">{{ recipe.author }}</span>
+        <span v-if="recipe.source" class="source-name">{{ recipe.source }}</span>
+        <span v-if="recipe.page" class="source-page">Seite {{ recipe.page }}</span>
+      </div>
+
       <div class="servings-control">
         <span class="servings-label">Personen:</span>
         <button class="servings-btn" @click="decreaseServings" :disabled="currentServings <= 1">-</button>
@@ -205,6 +212,37 @@ const handleDelete = async () => {
   color: var(--color-text-secondary, #666);
   line-height: 1.6;
   margin-bottom: 16px;
+}
+
+.recipe-source {
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: var(--color-bg-secondary, #f0f0f0);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.source-label {
+  font-weight: 600;
+  color: var(--color-text-primary, #333);
+  margin-right: 8px;
+}
+
+.source-author {
+  color: var(--color-text-primary, #333);
+}
+
+.source-author::after {
+  content: ' - ';
+}
+
+.source-name {
+  color: var(--color-text-secondary, #666);
+}
+
+.source-page {
+  color: var(--color-text-muted, #999);
+  margin-left: 8px;
 }
 
 .recipe-image {

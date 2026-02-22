@@ -52,6 +52,27 @@
     </div>
 
     <div class="form-group">
+      <label>Quelle</label>
+      <div class="source-fields">
+        <input
+          v-model="formData.author"
+          type="text"
+          placeholder="Autor"
+        />
+        <input
+          v-model="formData.source"
+          type="text"
+          placeholder="Buch oder Website"
+        />
+        <input
+          v-model="formData.page"
+          type="text"
+          placeholder="Seite (bei Büchern)"
+        />
+      </div>
+    </div>
+
+    <div class="form-group">
       <label>Zutaten</label>
       <div v-for="(ingredient, index) in formData.ingredients" :key="index" class="ingredient-row">
         <input
@@ -131,6 +152,9 @@ const formData = ref({
   description: '',
   baseServings: 4,
   imageUrl: '',
+  author: '',
+  source: '',
+  page: '',
   ingredients: [{ name: '', amount: '', unit: '' }],
   instructions: ['']
 })
@@ -145,6 +169,9 @@ watch(
         description: newRecipe.description || '',
         baseServings: newRecipe.baseServings || 4,
         imageUrl: newRecipe.imageUrl || '',
+        author: newRecipe.author || '',
+        source: newRecipe.source || '',
+        page: newRecipe.page || '',
         ingredients: newRecipe.ingredients?.length
           ? [...newRecipe.ingredients]
           : [{ name: '', amount: '', unit: '' }],
@@ -273,6 +300,21 @@ const handleCancel = () => {
   outline: none;
   border-color: var(--color-primary, #4a5568);
   box-shadow: 0 0 0 3px rgba(74, 85, 104, 0.1);
+}
+
+.source-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.source-fields input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  font-size: 1rem;
+  box-sizing: border-box;
 }
 
 .ingredient-row {
