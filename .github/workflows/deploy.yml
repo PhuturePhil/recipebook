@@ -20,9 +20,6 @@ jobs:
           script: |
             cd /opt/recipebook
             
-            # Create network if not exists
-            docker network create recipebook_default 2>/dev/null || true
-            
             # Create docker-compose.prod.yml
             cat > docker-compose.prod.yml << 'EOF'
             version: '3.8'
@@ -33,7 +30,7 @@ jobs:
                 container_name: recipebook-db
                 hostname: postgres
                 networks:
-                  - recipebook_network
+                  - recipebook_default
                 environment:
                   POSTGRES_DB: recipebook
                   POSTGRES_USER: postgres
@@ -49,7 +46,7 @@ jobs:
                 container_name: recipebook-backend
                 hostname: backend
                 networks:
-                  - recipebook_network
+                  - recipebook_default
                 ports:
                   - "8080:8080"
                 environment:
@@ -67,24 +64,33 @@ jobs:
                 container_name: recipebook-frontend
                 hostname: frontend
                 networks:
-                  - recipebook_network
+                  - recipebook_default
                 ports:
                   - "80:80"
+                  - "443:443"
+                volumes:
+                  - /opt/ssl/pastoors.cloud:/etc/ssl/certs:ro
                 depends_on:
                   - backend
                 restart: unless-stopped
 
             networks:
-              recipebook_network:
-                driver: bridge
+              recipebook_default:
+                external: true
 
             volumes:
               postgres_data:
             EOF
             
+            # Copy nginx SSL config
+            cp frontend/nginx-ssl.conf frontend/nginx.conf
+            
+            # Create network if not exists
+            docker network create recipebook_default 2>/dev/null || true
+            
             # Remove old containers
             docker rm -f recipebook-db recipebook-backend recipebook-frontend 2>/dev/null || true
             
             # Build and start
-            POSTGRES_PASSWORD=postgres docker-compose -f docker-compose.prod.yml build
-            POSTGRES_PASSWORD=postgres docker-compose -f docker-compose.prod.yml up -d
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} docker-compose -f docker-compose.prod.yml build
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} docker-compose -f docker-compose.prod.yml up -d

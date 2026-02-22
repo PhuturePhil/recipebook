@@ -296,12 +296,22 @@ async function fetchRecipes() {
 
 ## Development Workflow
 
-1. Create feature branch from `main`
-2. Make changes following code style guidelines
-3. Run linter: `npm run lint`
-4. Run tests: `npm run test`
-5. Commit with descriptive message
-6. Create pull request
+### Feature Branches
+
+Alle Änderungen werden über Feature-Branches entwickelt:
+- Branch-Naming: `feature/beschreibung` (z.B. `feature/user-auth`)
+- Lokal testen vor dem Pushen
+- PR erstellen und nach Review in `main` mergen
+
+### Workflow
+
+1. Feature-Branch erstellen: `git checkout -b feature/beschreibung`
+2. Änderungen implementieren
+3. **Lokal testen**: relevanten Teil neustarten (Backend: `./mvnw spring-boot:run`, Frontend: `npm run dev`, Docker: `docker-compose up -d`)
+4. Linter: `npm run lint` / `./mvnw verify`
+5. Branch pushen: `git push -u origin feature/beschreibung`
+6. Pull Request erstellen
+7. Nach Merge in `main` → automatischer Deploy via GitHub Actions
 
 ---
 
@@ -311,3 +321,10 @@ async function fetchRecipes() {
 - Run full test suite before submitting PRs
 - Keep API backwards compatible
 - Document any new dependencies added
+
+### Deployment Rules
+
+- **NIEMALS** Feature-Branches direkt auf Produktion deployen
+- Deployment **NUR** nach Merge in `main` via GitHub Actions
+- Vor Merge: PR erstellen und testen
+- Server manuell nur auf `main` branch wechseln (nach Merge)
