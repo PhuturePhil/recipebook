@@ -315,6 +315,17 @@ Alle Änderungen werden über Feature-Branches entwickelt:
 
 ---
 
+## Database Migration Rules
+
+- **IMMER** Flyway für Datenbankänderungen verwenden
+- **NIEMALS** manuelle Änderungen an der Datenbank vornehmen
+- Hibernate in Produktion auf `ddl-auto=validate` setzen (nur prüfen, nicht ändern)
+- Migrationen unter `backend/src/main/resources/db/migration/` ablegen
+- Naming-Konvention: `V1__description.sql`, `V2__description.sql`
+- Jede Schema-Änderung muss als Migration eingereicht werden
+
+---
+
 ## Notes
 
 - Always verify changes work with `npm run dev` before committing
