@@ -9,6 +9,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,7 +21,8 @@ class JwtServiceTest {
     @BeforeEach
     void setUp() {
         jwtService = new JwtService();
-        ReflectionTestUtils.setField(jwtService, "secretKey", "testSecretKeyForJwtTestingThatIsAtLeast32CharsLong!!");
+        String testSecret = UUID.randomUUID().toString() + UUID.randomUUID().toString();
+        ReflectionTestUtils.setField(jwtService, "secretKey", testSecret);
         ReflectionTestUtils.setField(jwtService, "expiration", 86400000L);
 
         testUserDetails = new User("test@test.de", "password", Collections.emptyList());
