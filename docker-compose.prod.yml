@@ -43,6 +43,13 @@ services:
       - recipebook_default
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      # SSL certificates - manually upload to server first
+      # Create folder /opt/ssl/pastoors.cloud/ on server and upload:
+      # - domain.cert.pem
+      # - private.key.pem
+      - /opt/ssl/pastoors.cloud:/etc/ssl/certs:ro
     depends_on:
       - backend
     restart: unless-stopped
