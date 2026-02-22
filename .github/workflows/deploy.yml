@@ -91,6 +91,6 @@ jobs:
             # Remove old containers
             docker rm -f recipebook-db recipebook-backend recipebook-frontend 2>/dev/null || true
             
-            # Build and start
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} docker-compose -f docker-compose.prod.yml build
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} docker-compose -f docker-compose.prod.yml up -d
+            # Build and start (use hardcoded password for now)
+            POSTGRES_PASSWORD=postgres docker-compose -f docker-compose.prod.yml build
+            POSTGRES_PASSWORD=postgres docker-compose -f docker-compose.prod.yml up -d
