@@ -76,13 +76,14 @@ export const useRecipeStore = defineStore('recipe', {
     async updateRecipe(id, recipe) {
       this.loading = true
       this.error = null
+      const numericId = Number(id)
       try {
         const data = await recipeService.update(id, recipe)
-        const index = this.recipes.findIndex((r) => r.id === id)
+        const index = this.recipes.findIndex((r) => r.id === numericId)
         if (index !== -1) {
           this.recipes[index] = data
         }
-        if (this.currentRecipe && this.currentRecipe.id === id) {
+        if (this.currentRecipe && this.currentRecipe.id === numericId) {
           this.currentRecipe = data
         }
         return data
@@ -98,10 +99,11 @@ export const useRecipeStore = defineStore('recipe', {
     async deleteRecipe(id) {
       this.loading = true
       this.error = null
+      const numericId = Number(id)
       try {
         await recipeService.delete(id)
-        this.recipes = this.recipes.filter((r) => r.id !== id)
-        if (this.currentRecipe && this.currentRecipe.id === id) {
+        this.recipes = this.recipes.filter((r) => r.id !== numericId)
+        if (this.currentRecipe && this.currentRecipe.id === numericId) {
           this.currentRecipe = null
         }
       } catch (error) {

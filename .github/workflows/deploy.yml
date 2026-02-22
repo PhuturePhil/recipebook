@@ -53,6 +53,9 @@ jobs:
                   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/recipebook
                   SPRING_DATASOURCE_USERNAME: postgres
                   SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+                  JWT_SECRET: ${JWT_SECRET}
+                  ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+                  APP_URL: https://pastoors.cloud
                 depends_on:
                   - postgres
                 restart: unless-stopped
@@ -92,5 +95,5 @@ jobs:
             docker rm -f recipebook-db recipebook-backend recipebook-frontend 2>/dev/null || true
             
             # Build and start
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} docker-compose -f docker-compose.prod.yml build
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} docker-compose -f docker-compose.prod.yml up -d
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} JWT_SECRET=${{ secrets.JWT_SECRET }} ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} docker-compose -f docker-compose.prod.yml build
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} JWT_SECRET=${{ secrets.JWT_SECRET }} ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} docker-compose -f docker-compose.prod.yml up -d

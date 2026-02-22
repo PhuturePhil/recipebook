@@ -6,6 +6,7 @@ import com.recipebook.model.Role;
 import com.recipebook.model.User;
 import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,9 @@ import java.util.List;
 @Configuration
 public class DataLoader {
 
+    @Value("${ADMIN_PASSWORD}")
+    private String adminPassword;
+
     @Bean
     public CommandLineRunner loadData(RecipeRepository recipeRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
@@ -25,7 +29,7 @@ public class DataLoader {
                 admin.setVorname("Philipp");
                 admin.setNachname("Pastoors");
                 admin.setEmail("philipp.pastoors@mail.de");
-                admin.setPassword(passwordEncoder.encode("buecher2305"));
+                admin.setPassword(passwordEncoder.encode(adminPassword));
                 admin.setRole(Role.ADMIN);
                 userRepository.save(admin);
                 
