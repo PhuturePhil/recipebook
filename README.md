@@ -2,31 +2,32 @@
 
 ## Live Demo
 
-**URL:** http://89.167.44.213
+**URL:** https://pastoors.cloud
 
 ## Schnellstart
 
-### Mit einem Klick starten
+**Voraussetzungen:**
+- Docker (für PostgreSQL)
+- Java 17+
+- Node.js 18+
 
-Doppelklick auf `start.bat` - das startet:
-1. PostgreSQL (Docker)
-2. Backend (SpringBoot)
-3. Frontend (Vue.js)
-
-**Oder manuell:**
+### Manuell starten
 
 ```bash
-# Docker starten
-docker-compose up -d
+# 1. PostgreSQL starten
+docker compose up -d
 
-# Backend starten
+# 2. Backend starten (neues Terminal)
 cd backend
-mvn spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 
-# Frontend starten (neues Terminal)
+# 3. Frontend starten (neues Terminal)
 cd frontend
+npm install
 npm run dev
 ```
+
+> Das Backend-Profil `local` lädt automatisch `application-local.properties` mit den nötigen Umgebungsvariablen (JWT_SECRET, ADMIN_PASSWORD etc.).
 
 ## URLs
 
@@ -45,5 +46,5 @@ npm run dev
 ## Technologie
 
 - Frontend: Vue 3 + Vite + Pinia + Vue Router
-- Backend: Java SpringBoot + JPA
+- Backend: Java SpringBoot + JPA + Flyway
 - Datenbank: PostgreSQL (Docker)
