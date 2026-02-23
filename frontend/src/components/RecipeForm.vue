@@ -1,5 +1,31 @@
 <template>
   <form class="recipe-form" @submit.prevent="handleSubmit">
+
+    <div class="scan-section">
+      <p class="scan-hint">Rezept aus Foto laden</p>
+      <div class="scan-upload">
+        <input
+          type="file"
+          accept="image/*"
+          @change="handleScanUpload"
+          id="scan-upload"
+        />
+        <label for="scan-upload" class="btn-scan" :class="{ loading: scanning }">
+          {{ scanning ? 'Wird analysiert...' : 'Rezeptfoto hochladen' }}
+        </label>
+      </div>
+      <div v-if="scanError" class="scan-error">
+        {{ scanError }}
+      </div>
+      <div v-if="unrecognizedText" class="unrecognized-text">
+        <label>Nicht erkannter Text (zum manuellen Übertragen):</label>
+        <textarea readonly :value="unrecognizedText" rows="4"></textarea>
+        <button type="button" class="btn-copy" @click="copyUnrecognizedText">
+          {{ copied ? 'Kopiert!' : 'Text kopieren' }}
+        </button>
+      </div>
+    </div>
+
     <div class="form-group">
       <label for="title">Titel</label>
       <input
@@ -134,6 +160,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { recipeService } from '@/services/recipeService'
 
 const props = defineProps({
   recipe: {
@@ -146,6 +173,10 @@ const emit = defineEmits(['submit', 'cancel'])
 
 const router = useRouter()
 const isEdit = ref(!!props.recipe)
+const scanning = ref(false)
+const scanError = ref('')
+const unrecognizedText = ref('')
+const copied = ref(false)
 
 const formData = ref({
   title: '',
@@ -183,6 +214,66 @@ watch(
   },
   { immediate: true }
 )
+
+const handleScanUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  scanning.value = true
+  scanError.value = ''
+  unrecognizedText.value = ''
+
+  try {
+    const base64 = await readFileAsBase64(file)
+    const mimeType = file.type || 'image/jpeg'
+    const result = await recipeService.scanRecipe(base64, mimeType)
+
+    formData.value.title = result.title || formData.value.title
+    formData.value.description = result.description || formData.value.description
+    formData.value.baseServings = result.baseServings || formData.value.baseServings
+    formData.value.author = result.author || formData.value.author
+    formData.value.source = result.source || formData.value.source
+    formData.value.page = result.page || formData.value.page
+
+    if (result.ingredients?.length) {
+      formData.value.ingredients = result.ingredients
+    }
+    if (result.instructions?.length) {
+      formData.value.instructions = result.instructions
+    }
+    if (result.unrecognizedText) {
+      unrecognizedText.value = result.unrecognizedText
+    }
+  } catch {
+    scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
+  } finally {
+    scanning.value = false
+    event.target.value = ''
+  }
+}
+
+const readFileAsBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target.result
+      const base64 = dataUrl.split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+const copyUnrecognizedText = async () => {
+  try {
+    await navigator.clipboard.writeText(unrecognizedText.value)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    scanError.value = 'Text konnte nicht kopiert werden.'
+  }
+}
 
 const addIngredient = () => {
   formData.value.ingredients.push({ name: '', amount: '', unit: '' })
@@ -239,6 +330,94 @@ const handleCancel = () => {
   margin: 0 auto;
 }
 
+.scan-section {
+  background: var(--color-bg-secondary, #f8f8f8);
+  border: 2px dashed var(--color-border, #ddd);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.scan-hint {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text-primary, #333);
+  margin: 0 0 12px 0;
+}
+
+.scan-upload input[type='file'] {
+  display: none;
+}
+
+.btn-scan {
+  display: inline-block;
+  padding: 10px 20px;
+  background: var(--color-primary, #4a5568);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease;
+}
+
+.btn-scan:hover {
+  background: var(--color-primary-dark, #2d3748);
+}
+
+.btn-scan.loading {
+  background: var(--color-text-muted, #999);
+  cursor: not-allowed;
+}
+
+.scan-error {
+  margin-top: 12px;
+  color: var(--color-error, #e53e3e);
+  font-size: 0.875rem;
+}
+
+.unrecognized-text {
+  margin-top: 16px;
+  text-align: left;
+}
+
+.unrecognized-text label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 6px;
+  color: var(--color-text-primary, #333);
+}
+
+.unrecognized-text textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  background: white;
+  resize: vertical;
+}
+
+.btn-copy {
+  margin-top: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-primary, #4a5568);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-primary, #4a5568);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.btn-copy:hover {
+  background: var(--color-primary, #4a5568);
+  color: white;
+}
+
 .form-group {
   margin-bottom: 24px;
 }
@@ -250,8 +429,8 @@ const handleCancel = () => {
   color: var(--color-text-primary, #333);
 }
 
-.form-group input[type="text"],
-.form-group input[type="number"],
+.form-group input[type='text'],
+.form-group input[type='number'],
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;

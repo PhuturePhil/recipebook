@@ -57,6 +57,7 @@ jobs:
                   ADMIN_PASSWORD: ${ADMIN_PASSWORD}
                   APP_URL: https://pastoors.cloud
                   ALLOWED_ORIGIN: https://pastoors.cloud
+                  OPENAI_API_KEY: ${OPENAI_API_KEY}
                 depends_on:
                   - postgres
                 restart: unless-stopped
@@ -97,5 +98,5 @@ jobs:
             
             # Build and start (using Docker Compose V2)
             # Use --no-cache to ensure fresh builds
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} JWT_SECRET=${{ secrets.JWT_SECRET }} ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} docker compose -f docker-compose.prod.yml build --no-cache
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} JWT_SECRET=${{ secrets.JWT_SECRET }} ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} docker compose -f docker-compose.prod.yml up -d
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} JWT_SECRET=${{ secrets.JWT_SECRET }} ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} docker compose -f docker-compose.prod.yml build --no-cache
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} JWT_SECRET=${{ secrets.JWT_SECRET }} ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} docker compose -f docker-compose.prod.yml up -d
