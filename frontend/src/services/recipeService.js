@@ -105,6 +105,26 @@ class RecipeService {
       throw error
     }
   }
+
+  async scanRecipe(imageData, mimeType) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/recipes/scan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ imageData, mimeType })
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Failed to scan recipe:', error)
+      throw error
+    }
+  }
 }
 
 export const recipeService = new RecipeService()
