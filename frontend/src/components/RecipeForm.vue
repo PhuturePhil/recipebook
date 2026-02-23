@@ -3,7 +3,7 @@
 
     <div class="scan-section">
       <p class="scan-hint">Rezept aus Foto laden</p>
-      <div class="scan-upload">
+      <div v-if="!scanned" class="scan-upload">
         <input
           type="file"
           accept="image/*"
@@ -174,6 +174,7 @@ const emit = defineEmits(['submit', 'cancel'])
 const router = useRouter()
 const isEdit = ref(!!props.recipe)
 const scanning = ref(false)
+const scanned = ref(false)
 const scanError = ref('')
 const unrecognizedText = ref('')
 const copied = ref(false)
@@ -244,6 +245,7 @@ const handleScanUpload = async (event) => {
     if (result.rawText) {
         unrecognizedText.value = result.rawText
       }
+    scanned.value = true
   } catch {
     scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
   } finally {
