@@ -31,7 +31,7 @@ public class RecipeScanService {
       Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
       {
         "title": "Rezeptname",
-        "description": "Kurze Beschreibung des Gerichts",
+        "description": "Den Einleitungs- oder Beschreibungstext des Rezepts WOERTLICH und VOLLSTAENDIG uebernehmen, exakt so wie er im Bild steht, NICHT zusammenfassen oder kuerzen",
         "baseServings": 4,
         "ingredients": [
           {"name": "Zutat", "amount": "200", "unit": "g"}
@@ -43,10 +43,11 @@ public class RecipeScanService {
         "author": "Autor falls erkennbar, sonst leer",
         "source": "Buch/Zeitschrift falls erkennbar, sonst leer",
         "page": "Seitenzahl falls erkennbar, sonst leer",
-        "unrecognizedText": "Textpassagen die nicht zugeordnet werden konnten, sonst leer"
+        "rawText": "Den vollstaendigen Text des Bildes exakt so wie er im Bild steht, alle Woerter lueckenlos"
       }
       Wichtig:
       - Behalte die Originalsprache des Rezepts bei
+      - Uebernimm Texte IMMER woertlich, fasse niemals zusammen
       - Falls Mengenangaben fehlen, lasse amount und unit leer
       - Falls baseServings nicht erkennbar, setze 4
       - Antworte ausschliesslich mit dem JSON, ohne Markdown-Codeblock
@@ -54,7 +55,7 @@ public class RecipeScanService {
 
     Map<String, Object> requestBody = Map.of(
       "model", "gpt-4.1",
-      "max_tokens", 2000,
+      "max_tokens", 4000,
       "messages", List.of(
         Map.of(
           "role", "user",
@@ -96,7 +97,7 @@ public class RecipeScanService {
       result.setAuthor(recipeJson.path("author").asText(""));
       result.setSource(recipeJson.path("source").asText(""));
       result.setPage(recipeJson.path("page").asText(""));
-      result.setUnrecognizedText(recipeJson.path("unrecognizedText").asText(""));
+      result.setRawText(recipeJson.path("rawText").asText(""));
 
       JsonNode ingredientsNode = recipeJson.path("ingredients");
       List<Map<String, String>> ingredients = objectMapper.convertValue(
@@ -128,7 +129,7 @@ public class RecipeScanService {
     private String author;
     private String source;
     private String page;
-    private String unrecognizedText;
+    private String rawText;
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -154,7 +155,7 @@ public class RecipeScanService {
     public String getPage() { return page; }
     public void setPage(String page) { this.page = page; }
 
-    public String getUnrecognizedText() { return unrecognizedText; }
-    public void setUnrecognizedText(String unrecognizedText) { this.unrecognizedText = unrecognizedText; }
+    public String getRawText() { return rawText; }
+    public void setRawText(String rawText) { this.rawText = rawText; }
   }
 }

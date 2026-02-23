@@ -18,7 +18,7 @@
         {{ scanError }}
       </div>
       <div v-if="unrecognizedText" class="unrecognized-text">
-        <label>Nicht erkannter Text (zum manuellen Übertragen):</label>
+        <label>Vollständiger erkannter Text (zur Kontrolle):</label>
         <textarea readonly :value="unrecognizedText" rows="4"></textarea>
         <button type="button" class="btn-copy" @click="copyUnrecognizedText">
           {{ copied ? 'Kopiert!' : 'Text kopieren' }}
@@ -241,9 +241,9 @@ const handleScanUpload = async (event) => {
     if (result.instructions?.length) {
       formData.value.instructions = result.instructions
     }
-    if (result.unrecognizedText) {
-      unrecognizedText.value = result.unrecognizedText
-    }
+    if (result.rawText) {
+        unrecognizedText.value = result.rawText
+      }
   } catch {
     scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
   } finally {
