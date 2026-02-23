@@ -19,6 +19,7 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
             cd /opt/recipebook
+            git pull origin main
             
             # Create docker-compose.prod.yml
             cat > docker-compose.prod.yml << 'EOF'
