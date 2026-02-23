@@ -19,7 +19,8 @@ docker compose up -d
 
 # 2. Backend starten (neues Terminal)
 cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local    # macOS/Linux/Git Bash
+mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local  # Windows PowerShell
 
 # 3. Frontend starten (neues Terminal)
 cd frontend
