@@ -86,14 +86,40 @@
     </div>
 
     <div class="form-group">
-      <label for="servings">Personenanzahl</label>
+      <label>Personenanzahl</label>
+      <div class="servings-fields">
+        <div class="servings-field">
+          <label for="servings-from" class="field-sublabel">Von</label>
+          <input
+            id="servings-from"
+            v-model.number="formData.baseServings"
+            type="number"
+            min="1"
+            max="100"
+            required
+          />
+        </div>
+        <div class="servings-field">
+          <label for="servings-to" class="field-sublabel">Bis (optional)</label>
+          <input
+            id="servings-to"
+            v-model.number="formData.servingsTo"
+            type="number"
+            min="1"
+            max="100"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="prep-time">Zubereitungszeit (Minuten)</label>
       <input
-        id="servings"
-        v-model.number="formData.baseServings"
+        id="prep-time"
+        v-model.number="formData.prepTimeMinutes"
         type="number"
         min="1"
-        max="100"
-        required
+        placeholder="z.B. 30"
       />
     </div>
 
@@ -120,6 +146,9 @@
 
     <div class="form-group">
       <label>Zutaten</label>
+      <datalist id="units-datalist">
+        <option v-for="unit in usedUnits" :key="unit" :value="unit" />
+      </datalist>
       <div v-for="(ingredient, index) in formData.ingredients" :key="index" class="ingredient-row">
         <input
           v-model="ingredient.name"
@@ -131,12 +160,12 @@
           v-model="ingredient.amount"
           type="text"
           placeholder="Menge"
-          required
         />
         <input
           v-model="ingredient.unit"
           type="text"
           placeholder="Einheit"
+          list="units-datalist"
         />
         <button type="button" class="btn-remove" @click="removeIngredient(index)">
           Entfernen
@@ -178,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipeService'
 
@@ -204,12 +233,21 @@ const formData = ref({
   title: '',
   description: '',
   baseServings: 4,
+  servingsTo: null,
+  prepTimeMinutes: null,
   imageUrl: '',
   author: '',
   source: '',
   page: '',
   ingredients: [{ name: '', amount: '', unit: '' }],
   instructions: ['']
+})
+
+const usedUnits = computed(() => {
+  const units = formData.value.ingredients
+    .map(i => i.unit?.trim())
+    .filter(u => u && u.length > 0)
+  return [...new Set(units)]
 })
 
 watch(
@@ -221,6 +259,8 @@ watch(
         title: newRecipe.title || '',
         description: newRecipe.description || '',
         baseServings: newRecipe.baseServings || 4,
+        servingsTo: newRecipe.servingsTo || null,
+        prepTimeMinutes: newRecipe.prepTimeMinutes || null,
         imageUrl: newRecipe.imageUrl || '',
         author: newRecipe.author || '',
         source: newRecipe.source || '',
@@ -272,6 +312,8 @@ const handleScan = async () => {
     formData.value.title = result.title || formData.value.title
     formData.value.description = result.description || formData.value.description
     formData.value.baseServings = result.baseServings || formData.value.baseServings
+    formData.value.servingsTo = result.servingsTo || null
+    formData.value.prepTimeMinutes = result.prepTimeMinutes || null
     formData.value.author = result.author || formData.value.author
     formData.value.source = result.source || formData.value.source
     formData.value.page = result.page || formData.value.page
@@ -539,7 +581,7 @@ const handleCancel = () => {
   margin-bottom: 24px;
 }
 
-.form-group label {
+.form-group > label {
   display: block;
   font-weight: 600;
   margin-bottom: 8px;
@@ -555,6 +597,33 @@ const handleCancel = () => {
   border-radius: 6px;
   font-size: 1rem;
   font-family: inherit;
+  box-sizing: border-box;
+}
+
+.servings-fields {
+  display: flex;
+  gap: 16px;
+}
+
+.servings-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-sublabel {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-text-secondary, #666);
+}
+
+.servings-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  font-size: 1rem;
   box-sizing: border-box;
 }
 
@@ -592,7 +661,8 @@ const handleCancel = () => {
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.servings-field input:focus {
   outline: none;
   border-color: var(--color-primary, #4a5568);
   box-shadow: 0 0 0 3px rgba(74, 85, 104, 0.1);
