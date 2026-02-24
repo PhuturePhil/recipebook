@@ -106,7 +106,7 @@ class RecipeService {
     }
   }
 
-  async scanRecipe(imageData, mimeType) {
+  async scanRecipe(images) {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes/scan`, {
         method: 'POST',
@@ -114,7 +114,7 @@ class RecipeService {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
-        body: JSON.stringify({ imageData, mimeType })
+        body: JSON.stringify(images)
       })
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

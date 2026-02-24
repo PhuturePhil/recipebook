@@ -4,6 +4,7 @@ import com.recipebook.service.RecipeScanService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -17,16 +18,19 @@ public class RecipeScanController {
   }
 
   @PostMapping
-  public ResponseEntity<?> scanRecipe(@RequestBody Map<String, String> request) {
-    String base64Image = request.get("imageData");
-    String mimeType = request.getOrDefault("mimeType", "image/jpeg");
+  public ResponseEntity<?> scanRecipe(@RequestBody List<Map<String, String>> images) {
+    if (images == null || images.isEmpty()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "Mindestens ein Bild ist erforderlich"));
+    }
 
-    if (base64Image == null || base64Image.isBlank()) {
-      return ResponseEntity.badRequest().body(Map.of("error", "imageData ist erforderlich"));
+    for (Map<String, String> image : images) {
+      if (image.get("imageData") == null || image.get("imageData").isBlank()) {
+        return ResponseEntity.badRequest().body(Map.of("error", "imageData ist erforderlich"));
+      }
     }
 
     try {
-      RecipeScanService.RecipeScanResult result = recipeScanService.scanImage(base64Image, mimeType);
+      RecipeScanService.RecipeScanResult result = recipeScanService.scanImages(images);
       return ResponseEntity.ok(result);
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
