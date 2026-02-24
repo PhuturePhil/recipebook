@@ -22,6 +22,7 @@ public class RecipeScanService {
   public RecipeScanService(ObjectMapper objectMapper) {
     this.webClient = WebClient.builder()
       .baseUrl("https://api.openai.com")
+      .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
       .build();
     this.objectMapper = objectMapper;
   }
