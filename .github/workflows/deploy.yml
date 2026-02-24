@@ -4,13 +4,12 @@ on:
   push:
     branches: [main]
 
-env:
-  IMAGE_BACKEND: ghcr.io/phutuurephil/recipebook-backend
-  IMAGE_FRONTEND: ghcr.io/phutuurephil/recipebook-frontend
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/recipebook-backend
+      IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/recipebook-frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,14 +26,14 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ${{ env.IMAGE_BACKEND }}:latest
+          tags: ghcr.io/${{ github.repository_owner }}/recipebook-backend:latest
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ${{ env.IMAGE_FRONTEND }}:latest
+          tags: ghcr.io/${{ github.repository_owner }}/recipebook-frontend:latest
 
   deploy:
     runs-on: ubuntu-latest
@@ -46,16 +45,19 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: GHCR_TOKEN,POSTGRES_PASSWORD,JWT_SECRET,ADMIN_PASSWORD,OPENAI_API_KEY,REPO_OWNER
           script: |
+            REPO_OWNER=$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+
             # Login to GitHub Container Registry
-            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u phutuurephil --password-stdin
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$REPO_OWNER" --password-stdin
 
             # Pull latest images
-            docker pull ghcr.io/phutuurephil/recipebook-backend:latest
-            docker pull ghcr.io/phutuurephil/recipebook-frontend:latest
+            docker pull ghcr.io/$REPO_OWNER/recipebook-backend:latest
+            docker pull ghcr.io/$REPO_OWNER/recipebook-frontend:latest
 
             # Create docker-compose.prod.yml
-            cat > /opt/recipebook/docker-compose.prod.yml << 'EOF'
+            cat > /opt/recipebook/docker-compose.prod.yml << EOF
             version: '3.8'
 
             services:
@@ -68,13 +70,13 @@ jobs:
                 environment:
                   POSTGRES_DB: recipebook
                   POSTGRES_USER: postgres
-                  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                  POSTGRES_PASSWORD: $POSTGRES_PASSWORD
                 volumes:
                   - postgres_data:/var/lib/postgresql/data
                 restart: unless-stopped
 
               backend:
-                image: ghcr.io/phutuurephil/recipebook-backend:latest
+                image: ghcr.io/$REPO_OWNER/recipebook-backend:latest
                 container_name: recipebook-backend
                 hostname: backend
                 networks:
@@ -84,18 +86,18 @@ jobs:
                 environment:
                   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/recipebook
                   SPRING_DATASOURCE_USERNAME: postgres
-                  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-                  JWT_SECRET: ${JWT_SECRET}
-                  ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+                  SPRING_DATASOURCE_PASSWORD: $POSTGRES_PASSWORD
+                  JWT_SECRET: $JWT_SECRET
+                  ADMIN_PASSWORD: $ADMIN_PASSWORD
                   APP_URL: https://pastoors.cloud
                   ALLOWED_ORIGIN: https://pastoors.cloud
-                  OPENAI_API_KEY: ${OPENAI_API_KEY}
+                  OPENAI_API_KEY: $OPENAI_API_KEY
                 depends_on:
                   - postgres
                 restart: unless-stopped
 
               frontend:
-                image: ghcr.io/phutuurephil/recipebook-frontend:latest
+                image: ghcr.io/$REPO_OWNER/recipebook-frontend:latest
                 container_name: recipebook-frontend
                 hostname: frontend
                 networks:
@@ -124,4 +126,11 @@ jobs:
             docker rm -f recipebook-db recipebook-backend recipebook-frontend 2>/dev/null || true
 
             # Start containers with new images
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} JWT_SECRET=${{ secrets.JWT_SECRET }} ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} docker compose -f /opt/recipebook/docker-compose.prod.yml up -d
+            docker compose -f /opt/recipebook/docker-compose.prod.yml up -d
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          REPO_OWNER: ${{ github.repository_owner }}
