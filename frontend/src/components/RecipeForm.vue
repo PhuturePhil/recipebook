@@ -7,12 +7,32 @@
         <input
           type="file"
           accept="image/*"
+          multiple
           @change="handleScanUpload"
           id="scan-upload"
         />
-        <label for="scan-upload" class="btn-scan" :class="{ loading: scanning }">
-          {{ scanning ? 'Wird analysiert...' : 'Rezeptfoto hochladen' }}
+        <label for="scan-upload" class="btn-scan">
+          {{ selectedImages.length > 0 ? 'Weitere Bilder hinzufügen' : 'Rezeptfotos auswählen' }}
         </label>
+        <div v-if="selectedImages.length > 0" class="selected-images">
+          <div v-for="(img, index) in selectedImages" :key="index" class="selected-image-item">
+            <img :src="img.previewUrl" :alt="img.fileName" />
+            <span class="image-name">{{ img.fileName }}</span>
+            <button type="button" class="btn-remove-scan-image" @click="removeScanImage(index)">
+              ✕
+            </button>
+          </div>
+        </div>
+        <button
+          v-if="selectedImages.length > 0"
+          type="button"
+          class="btn-analyze"
+          :class="{ loading: scanning }"
+          :disabled="scanning"
+          @click="handleScan"
+        >
+          {{ scanning ? 'Wird analysiert...' : `${selectedImages.length} ${selectedImages.length === 1 ? 'Bild' : 'Bilder'} analysieren` }}
+        </button>
       </div>
       <div v-if="scanError" class="scan-error">
         {{ scanError }}
@@ -178,6 +198,7 @@ const scanned = ref(false)
 const scanError = ref('')
 const unrecognizedText = ref('')
 const copied = ref(false)
+const selectedImages = ref([])
 
 const formData = ref({
   title: '',
@@ -217,17 +238,36 @@ watch(
 )
 
 const handleScanUpload = async (event) => {
-  const file = event.target.files[0]
-  if (!file) return
+  const files = Array.from(event.target.files)
+  if (!files.length) return
 
+  for (const file of files) {
+    const base64 = await readFileAsBase64(file)
+    const previewUrl = URL.createObjectURL(file)
+    selectedImages.value.push({
+      imageData: base64,
+      mimeType: file.type || 'image/jpeg',
+      fileName: file.name,
+      previewUrl
+    })
+  }
+
+  event.target.value = ''
+}
+
+const removeScanImage = (index) => {
+  URL.revokeObjectURL(selectedImages.value[index].previewUrl)
+  selectedImages.value.splice(index, 1)
+}
+
+const handleScan = async () => {
   scanning.value = true
   scanError.value = ''
   unrecognizedText.value = ''
 
   try {
-    const base64 = await readFileAsBase64(file)
-    const mimeType = file.type || 'image/jpeg'
-    const result = await recipeService.scanRecipe(base64, mimeType)
+    const payload = selectedImages.value.map(({ imageData, mimeType }) => ({ imageData, mimeType }))
+    const result = await recipeService.scanRecipe(payload)
 
     formData.value.title = result.title || formData.value.title
     formData.value.description = result.description || formData.value.description
@@ -243,14 +283,15 @@ const handleScanUpload = async (event) => {
       formData.value.instructions = result.instructions
     }
     if (result.rawText) {
-        unrecognizedText.value = result.rawText
-      }
+      unrecognizedText.value = result.rawText
+    }
+
+    selectedImages.value.forEach(img => URL.revokeObjectURL(img.previewUrl))
     scanned.value = true
   } catch {
     scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
   } finally {
     scanning.value = false
-    event.target.value = ''
   }
 }
 
@@ -367,7 +408,81 @@ const handleCancel = () => {
   background: var(--color-primary-dark, #2d3748);
 }
 
-.btn-scan.loading {
+.selected-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  justify-content: center;
+}
+
+.selected-image-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100px;
+}
+
+.selected-image-item img {
+  width: 100px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #ddd);
+}
+
+.image-name {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #999);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-remove-scan-image {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-error, #e53e3e);
+  color: white;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-remove-scan-image:hover {
+  background: #c53030;
+}
+
+.btn-analyze {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 10px 24px;
+  background: var(--color-success, #38a169);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease;
+}
+
+.btn-analyze:hover:not(:disabled) {
+  background: #2f855a;
+}
+
+.btn-analyze.loading,
+.btn-analyze:disabled {
   background: var(--color-text-muted, #999);
   cursor: not-allowed;
 }

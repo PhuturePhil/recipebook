@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -25,9 +26,10 @@ public class RecipeScanService {
     this.objectMapper = objectMapper;
   }
 
-  public RecipeScanResult scanImage(String base64Image, String mimeType) {
+  public RecipeScanResult scanImages(List<Map<String, String>> images) {
     String prompt = """
-      Analysiere dieses Rezeptbild und extrahiere alle Informationen.
+      Analysiere diese Rezeptbilder und extrahiere alle Informationen.
+      Es können mehrere Seiten desselben Rezepts sein - fasse alle Informationen zusammen.
       Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
       {
         "title": "Rezeptname",
@@ -43,7 +45,7 @@ public class RecipeScanService {
         "author": "Autor falls erkennbar, sonst leer",
         "source": "Buch/Zeitschrift falls erkennbar, sonst leer",
         "page": "Seitenzahl falls erkennbar, sonst leer",
-        "rawText": "Den vollstaendigen Text des Bildes exakt so wie er im Bild steht, alle Woerter lueckenlos"
+        "rawText": "Den vollstaendigen Text aller Bilder exakt so wie er steht, alle Woerter lueckenlos"
       }
       Wichtig:
       - Behalte die Originalsprache des Rezepts bei
@@ -53,20 +55,22 @@ public class RecipeScanService {
       - Antworte ausschliesslich mit dem JSON, ohne Markdown-Codeblock
       """;
 
+    List<Map<String, Object>> content = new ArrayList<>();
+    content.add(Map.of("type", "text", "text", prompt));
+    for (Map<String, String> image : images) {
+      String mimeType = image.getOrDefault("mimeType", "image/jpeg");
+      String base64Image = image.get("imageData");
+      content.add(Map.of(
+        "type", "image_url",
+        "image_url", Map.of("url", "data:" + mimeType + ";base64," + base64Image)
+      ));
+    }
+
     Map<String, Object> requestBody = Map.of(
       "model", "gpt-4.1",
       "max_tokens", 4000,
       "messages", List.of(
-        Map.of(
-          "role", "user",
-          "content", List.of(
-            Map.of("type", "text", "text", prompt),
-            Map.of(
-              "type", "image_url",
-              "image_url", Map.of("url", "data:" + mimeType + ";base64," + base64Image)
-            )
-          )
-        )
+        Map.of("role", "user", "content", content)
       )
     );
 
@@ -81,14 +85,14 @@ public class RecipeScanService {
         .block();
 
       JsonNode root = objectMapper.readTree(response);
-      String content = root
+      String responseContent = root
         .path("choices")
         .get(0)
         .path("message")
         .path("content")
         .asText();
 
-      JsonNode recipeJson = objectMapper.readTree(content);
+      JsonNode recipeJson = objectMapper.readTree(responseContent);
 
       RecipeScanResult result = new RecipeScanResult();
       result.setTitle(recipeJson.path("title").asText(""));
