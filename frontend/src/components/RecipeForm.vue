@@ -146,9 +146,6 @@
 
     <div class="form-group">
       <label>Zutaten</label>
-      <datalist id="units-datalist">
-        <option v-for="unit in usedUnits" :key="unit" :value="unit" />
-      </datalist>
       <div v-for="(ingredient, index) in formData.ingredients" :key="index" class="ingredient-row">
         <input
           v-model="ingredient.name"
@@ -161,12 +158,35 @@
           type="text"
           placeholder="Menge"
         />
-        <input
-          v-model="ingredient.unit"
-          type="text"
-          placeholder="Einheit"
-          list="units-datalist"
-        />
+        <div class="unit-input-wrapper">
+          <input
+            v-model="ingredient.unit"
+            type="text"
+            placeholder="Einheit"
+            autocomplete="off"
+            @focus="activeUnitIndex = index"
+            @blur="closeUnitDropdown"
+          />
+          <ul
+            v-if="activeUnitIndex === index && unitDropdownItems(index).length > 0"
+            class="unit-dropdown"
+          >
+            <li
+              v-for="unit in filteredKnownUnits(index)"
+              :key="unit"
+              @mousedown.prevent="selectUnit(index, unit)"
+            >
+              {{ unit }}
+            </li>
+            <li
+              v-if="showAddOption(index)"
+              class="unit-add"
+              @mousedown.prevent="selectUnit(index, ingredient.unit)"
+            >
+              {{ ingredient.unit }} <span class="unit-add-label">(hinzufügen)</span>
+            </li>
+          </ul>
+        </div>
         <button type="button" class="btn-remove" @click="removeIngredient(index)">
           Entfernen
         </button>
@@ -210,6 +230,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipeService'
+import { useRecipeStore } from '@/stores/recipeStore'
 
 const props = defineProps({
   recipe: {
@@ -221,6 +242,7 @@ const props = defineProps({
 const emit = defineEmits(['submit', 'cancel'])
 
 const router = useRouter()
+const store = useRecipeStore()
 const isEdit = ref(!!props.recipe)
 const scanning = ref(false)
 const scanned = ref(false)
@@ -243,12 +265,45 @@ const formData = ref({
   instructions: ['']
 })
 
-const usedUnits = computed(() => {
-  const units = formData.value.ingredients
+const activeUnitIndex = ref(null)
+
+const allKnownUnits = computed(() => {
+  const fromStore = store.recipes
+    .flatMap(r => r.ingredients ?? [])
     .map(i => i.unit?.trim())
     .filter(u => u && u.length > 0)
-  return [...new Set(units)]
+  const fromForm = formData.value.ingredients
+    .map(i => i.unit?.trim())
+    .filter(u => u && u.length > 0)
+  return [...new Set([...fromStore, ...fromForm])]
 })
+
+const filteredKnownUnits = (index) => {
+  const query = formData.value.ingredients[index]?.unit?.trim().toLowerCase() ?? ''
+  if (!query) return allKnownUnits.value
+  return allKnownUnits.value.filter(u => u.toLowerCase().includes(query))
+}
+
+const showAddOption = (index) => {
+  const val = formData.value.ingredients[index]?.unit?.trim()
+  if (!val) return false
+  return !allKnownUnits.value.some(u => u.toLowerCase() === val.toLowerCase())
+}
+
+const unitDropdownItems = (index) => {
+  return filteredKnownUnits(index).length > 0 || showAddOption(index)
+    ? [true]
+    : []
+}
+
+const selectUnit = (index, value) => {
+  formData.value.ingredients[index].unit = value
+  activeUnitIndex.value = null
+}
+
+const closeUnitDropdown = () => {
+  setTimeout(() => { activeUnitIndex.value = null }, 150)
+}
 
 watch(
   () => props.recipe,
@@ -777,5 +832,54 @@ const handleCancel = () => {
 
 .btn-submit:hover {
   background: var(--color-primary-dark, #2d3748);
+}
+
+.unit-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.unit-input-wrapper input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.unit-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: white;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  margin-top: 2px;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.unit-dropdown li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--color-text-primary, #333);
+}
+
+.unit-dropdown li:hover {
+  background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.unit-add {
+  border-top: 1px solid var(--color-border, #ddd);
+  color: var(--color-primary, #4a5568);
+}
+
+.unit-add-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #999);
+  margin-left: 4px;
 }
 </style>
