@@ -272,10 +272,7 @@ const allKnownUnits = computed(() => {
     .flatMap(r => r.ingredients ?? [])
     .map(i => i.unit?.trim())
     .filter(u => u && u.length > 0)
-  const fromForm = formData.value.ingredients
-    .map(i => i.unit?.trim())
-    .filter(u => u && u.length > 0)
-  return [...new Set([...fromStore, ...fromForm])]
+  return [...new Set(fromStore)]
 })
 
 const filteredKnownUnits = (index) => {
