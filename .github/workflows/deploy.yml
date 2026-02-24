@@ -7,12 +7,13 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    env:
-      IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/recipebook-backend
-      IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/recipebook-frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set lowercase owner
+        id: owner
+        run: echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -26,14 +27,14 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/recipebook-backend:latest
+          tags: ghcr.io/${{ steps.owner.outputs.value }}/recipebook-backend:latest
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/recipebook-frontend:latest
+          tags: ghcr.io/${{ steps.owner.outputs.value }}/recipebook-frontend:latest
 
   deploy:
     runs-on: ubuntu-latest
