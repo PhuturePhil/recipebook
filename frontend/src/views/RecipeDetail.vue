@@ -23,6 +23,15 @@
         {{ recipe.description }}
       </p>
 
+      <div class="recipe-meta">
+        <span v-if="recipe.prepTimeMinutes" class="meta-item">
+          {{ formatPrepTime(recipe.prepTimeMinutes) }}
+        </span>
+        <span v-if="recipe.baseServings" class="meta-item">
+          {{ recipe.baseServings }}{{ recipe.servingsTo ? `–${recipe.servingsTo}` : '' }} Personen
+        </span>
+      </div>
+
       <div v-if="recipe.author || recipe.source" class="recipe-source">
         <span class="source-label">Quelle:</span>
         <span v-if="recipe.author" class="source-author">{{ recipe.author }}</span>
@@ -113,6 +122,14 @@ const scaledIngredients = computed(() => {
     }
   })
 })
+
+const formatPrepTime = (minutes) => {
+  if (!minutes) return ''
+  if (minutes < 60) return `${minutes} Min.`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h} Std. ${m} Min.` : `${h} Std.`
+}
 
 const handleDelete = async () => {
   if (confirm('Möchtest du dieses Rezept wirklich löschen?')) {
@@ -205,6 +222,22 @@ const handleDelete = async () => {
 
 .btn-back:hover {
   background: var(--color-border, #ddd);
+}
+
+.recipe-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.meta-item {
+  padding: 4px 10px;
+  background: var(--color-bg-secondary, #f0f0f0);
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .recipe-description {

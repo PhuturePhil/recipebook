@@ -36,6 +36,8 @@ public class RecipeScanService {
         "title": "Rezeptname",
         "description": "Den Einleitungs- oder Beschreibungstext des Rezepts WOERTLICH und VOLLSTAENDIG uebernehmen, exakt so wie er im Bild steht, NICHT zusammenfassen oder kuerzen",
         "baseServings": 4,
+        "servingsTo": null,
+        "prepTimeMinutes": null,
         "ingredients": [
           {"name": "Zutat", "amount": "200", "unit": "g"}
         ],
@@ -53,6 +55,8 @@ public class RecipeScanService {
       - Uebernimm Texte IMMER woertlich, fasse niemals zusammen
       - Falls Mengenangaben fehlen, lasse amount und unit leer
       - Falls baseServings nicht erkennbar, setze 4
+      - servingsTo ist die obere Grenze der Personenanzahl, falls angegeben (z.B. "4-6 Personen" -> baseServings=4, servingsTo=6), sonst null
+      - prepTimeMinutes ist die Zubereitungszeit in Minuten als ganze Zahl, sonst null. Stunden in Minuten umrechnen (z.B. 1,5 Stunden = 90)
       - Antworte ausschliesslich mit dem JSON, ohne Markdown-Codeblock
       """;
 
@@ -99,6 +103,12 @@ public class RecipeScanService {
       result.setTitle(recipeJson.path("title").asText(""));
       result.setDescription(recipeJson.path("description").asText(""));
       result.setBaseServings(recipeJson.path("baseServings").asInt(4));
+      if (!recipeJson.path("servingsTo").isNull() && recipeJson.path("servingsTo").isInt()) {
+        result.setServingsTo(recipeJson.path("servingsTo").asInt());
+      }
+      if (!recipeJson.path("prepTimeMinutes").isNull() && recipeJson.path("prepTimeMinutes").isInt()) {
+        result.setPrepTimeMinutes(recipeJson.path("prepTimeMinutes").asInt());
+      }
       result.setAuthor(recipeJson.path("author").asText(""));
       result.setSource(recipeJson.path("source").asText(""));
       result.setPage(recipeJson.path("page").asText(""));
@@ -129,6 +139,8 @@ public class RecipeScanService {
     private String title;
     private String description;
     private int baseServings;
+    private Integer servingsTo;
+    private Integer prepTimeMinutes;
     private List<Map<String, String>> ingredients;
     private List<String> instructions;
     private String author;
@@ -144,6 +156,12 @@ public class RecipeScanService {
 
     public int getBaseServings() { return baseServings; }
     public void setBaseServings(int baseServings) { this.baseServings = baseServings; }
+
+    public Integer getServingsTo() { return servingsTo; }
+    public void setServingsTo(Integer servingsTo) { this.servingsTo = servingsTo; }
+
+    public Integer getPrepTimeMinutes() { return prepTimeMinutes; }
+    public void setPrepTimeMinutes(Integer prepTimeMinutes) { this.prepTimeMinutes = prepTimeMinutes; }
 
     public List<Map<String, String>> getIngredients() { return ingredients; }
     public void setIngredients(List<Map<String, String>> ingredients) { this.ingredients = ingredients; }

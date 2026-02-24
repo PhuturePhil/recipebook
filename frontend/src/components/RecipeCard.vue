@@ -7,6 +7,9 @@
       <h3 class="recipe-card__title">{{ recipe.title }}</h3>
       <p class="recipe-card__description">{{ recipe.description }}</p>
       <div class="recipe-card__meta">
+        <span v-if="recipe.prepTimeMinutes" class="recipe-card__count">
+          {{ formatPrepTime(recipe.prepTimeMinutes) }}
+        </span>
         <span v-if="recipe.ingredients" class="recipe-card__count">
           {{ recipe.ingredients.length }} Zutaten
         </span>
@@ -31,6 +34,14 @@ const props = defineProps({
 const router = useRouter()
 
 const getFoodImage = (id) => `https://loremflickr.com/400/300/food?random=${id}`
+
+const formatPrepTime = (minutes) => {
+  if (!minutes) return ''
+  if (minutes < 60) return `${minutes} Min.`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h} Std. ${m} Min.` : `${h} Std.`
+}
 
 const navigateToDetail = () => {
   router.push(`/recipe/${props.recipe.id}`)

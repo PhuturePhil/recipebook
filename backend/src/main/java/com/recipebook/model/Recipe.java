@@ -37,7 +37,11 @@ public class Recipe {
     private String source;
     
     private String page;
-    
+
+    private Integer prepTimeMinutes;
+
+    private Integer servingsTo;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @JsonIgnore
@@ -124,7 +128,23 @@ public class Recipe {
     public void setPage(String page) {
         this.page = page;
     }
-    
+
+    public Integer getPrepTimeMinutes() {
+        return prepTimeMinutes;
+    }
+
+    public void setPrepTimeMinutes(Integer prepTimeMinutes) {
+        this.prepTimeMinutes = prepTimeMinutes;
+    }
+
+    public Integer getServingsTo() {
+        return servingsTo;
+    }
+
+    public void setServingsTo(Integer servingsTo) {
+        this.servingsTo = servingsTo;
+    }
+
     public User getUser() {
         return user;
     }
