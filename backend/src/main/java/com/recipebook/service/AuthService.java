@@ -8,7 +8,6 @@ import com.recipebook.model.Role;
 import com.recipebook.model.User;
 import com.recipebook.repository.PasswordResetTokenRepository;
 import com.recipebook.repository.UserRepository;
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -155,10 +154,10 @@ public class AuthService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
 
-        if (request.getVorname() != null) {
+        if (request.getVorname() != null && !request.getVorname().isBlank()) {
             user.setVorname(request.getVorname());
         }
-        if (request.getNachname() != null) {
+        if (request.getNachname() != null && !request.getNachname().isBlank()) {
             user.setNachname(request.getNachname());
         }
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
@@ -238,9 +237,11 @@ public class AuthService {
 
     private void sendPasswordResetEmail(String email, String token) {
         String link = appUrl + "/reset-password?token=" + token;
-        String text = "um dein Passwort zurueckzusetzen, klicke auf folgenden Link:\n\n"
+        String text = "Hallo,\n\n"
+                + "du hast ein Zuruecksetzen deines Passworts angefordert.\n"
+                + "Klicke bitte auf folgenden Link, um ein neues Passwort zu setzen:\n\n"
                 + link + "\n\n"
-                + "Du hast 1 Stunde Zeit, um dein Passwort zurueckzusetzen.\n\n"
+                + "Der Link ist 1 Stunde gueltig.\n\n"
                 + "Falls du diese Anfrage nicht gestellt hast, kannst du diese E-Mail ignorieren.\n\n"
                 + "Herzliche Gruesse\n"
                 + "Dein RecipeBook Team";
@@ -257,7 +258,7 @@ public class AuthService {
             helper.setSubject(subject);
             helper.setText(text, false);
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             System.err.println("Failed to send email to " + to + ": " + e.getMessage());
         }
     }

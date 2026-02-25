@@ -127,7 +127,7 @@ async function handleSubmit() {
     await authStore.updateProfile(payload)
     emit('close')
   } catch (err) {
-    error.value = 'Fehler beim Speichern. Bitte versuche es erneut.'
+    error.value = err.message || 'Fehler beim Speichern. Bitte versuche es erneut.'
   } finally {
     loading.value = false
   }
