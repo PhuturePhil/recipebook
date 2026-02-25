@@ -12,15 +12,16 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@Transactional
 public class RecipeService {
     
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final UnsplashService unsplashService;
 
-    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository) {
+    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, UnsplashService unsplashService) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
+        this.unsplashService = unsplashService;
     }
     
     public List<Recipe> findAll() {
@@ -35,6 +36,7 @@ public class RecipeService {
         return recipeRepository.searchByTitleOrDescription(query);
     }
     
+    @Transactional
     public Recipe save(Recipe recipe, User user) {
         if (recipe.getIngredients() != null) {
             for (Ingredient ingredient : recipe.getIngredients()) {
@@ -45,6 +47,7 @@ public class RecipeService {
         return recipeRepository.save(recipe);
     }
     
+    @Transactional
     public void deleteById(Long id) {
         recipeRepository.deleteById(id);
     }
@@ -53,6 +56,10 @@ public class RecipeService {
         User user = userDetails != null
             ? userRepository.findById(userDetails.getId()).orElse(null)
             : null;
+        if (recipe.getId() == null && (recipe.getImageUrl() == null || recipe.getImageUrl().isBlank())) {
+            String imageUrl = unsplashService.findImageUrl(recipe.getTitle());
+            if (imageUrl != null) recipe.setImageUrl(imageUrl);
+        }
         return save(recipe, user);
     }
 
