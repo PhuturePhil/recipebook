@@ -21,6 +21,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -60,6 +61,7 @@ public class AuthService {
 
     public record LoginResult(String token, User user) {}
 
+    @Transactional
     public LoginResult login(String email, String password) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
@@ -71,6 +73,7 @@ public class AuthService {
         return new LoginResult(token, user);
     }
 
+    @Transactional
     public User register(String vorname, String nachname, String email, String password, Role role) {
         if (userRepository.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Diese E-Mail-Adresse ist bereits vergeben.");
@@ -90,24 +93,24 @@ public class AuthService {
             user.setMustChangePassword(false);
         }
 
-        userRepository.save(user);
+        return userRepository.save(user);
+    }
 
+    public User createUser(String vorname, String nachname, String email, String password, Role role) {
+        User user = register(vorname, nachname, email, password, role);
         if (user.isMustChangePassword()) {
             String resetToken = createPasswordResetToken(user, 48);
             sendWelcomeEmail(user, resetToken);
         }
-
         return user;
     }
 
-    public User createUser(String vorname, String nachname, String email, String password, Role role) {
-        return register(vorname, nachname, email, password, role);
-    }
-
+    @Transactional(readOnly = true)
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
@@ -126,6 +129,7 @@ public class AuthService {
         return null;
     }
 
+    @Transactional
     public User updateProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
@@ -150,6 +154,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
+    @Transactional
     public User updateUser(Long id, UpdateUserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
@@ -173,6 +178,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
+    @Transactional
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
@@ -180,6 +186,7 @@ public class AuthService {
         userRepository.delete(user);
     }
 
+    @Transactional
     public void requestPasswordReset(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
@@ -189,6 +196,7 @@ public class AuthService {
         sendPasswordResetEmail(user.getEmail(), token);
     }
 
+    @Transactional
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Der Link ist ungueltig oder abgelaufen."));
