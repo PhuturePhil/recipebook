@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@Transactional
 public class RecipeService {
     
     private final RecipeRepository recipeRepository;
@@ -37,6 +36,7 @@ public class RecipeService {
         return recipeRepository.searchByTitleOrDescription(query);
     }
     
+    @Transactional
     public Recipe save(Recipe recipe, User user) {
         if (recipe.getIngredients() != null) {
             for (Ingredient ingredient : recipe.getIngredients()) {
@@ -47,6 +47,7 @@ public class RecipeService {
         return recipeRepository.save(recipe);
     }
     
+    @Transactional
     public void deleteById(Long id) {
         recipeRepository.deleteById(id);
     }

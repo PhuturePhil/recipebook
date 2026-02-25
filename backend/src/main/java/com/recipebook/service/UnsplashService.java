@@ -2,12 +2,17 @@ package com.recipebook.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 @Service
 public class UnsplashService {
+
+  private static final Logger log = LoggerFactory.getLogger(UnsplashService.class);
 
   @Value("${unsplash.api-key:}")
   private String apiKey;
@@ -30,14 +35,19 @@ public class UnsplashService {
         .header("Authorization", "Client-ID " + apiKey)
         .retrieve()
         .bodyToMono(String.class)
-        .onErrorReturn(null)
-        .block();
+        .onErrorResume(e -> {
+          log.warn("Unsplash error: {}", e.getMessage());
+          return Mono.empty();
+        })
+        .blockOptional()
+        .orElse(null);
       if (response == null) return null;
       JsonNode root = objectMapper.readTree(response);
       JsonNode first = root.path("results").get(0);
       if (first == null) return null;
       return first.path("urls").path("regular").asText(null);
     } catch (Exception e) {
+      log.warn("Unsplash error: {}", e.getMessage());
       return null;
     }
   }
