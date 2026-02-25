@@ -93,6 +93,7 @@ jobs:
                   APP_URL: https://pastoors.cloud
                   ALLOWED_ORIGIN: https://pastoors.cloud
                   OPENAI_API_KEY: ${OPENAI_API_KEY}
+                  UNSPLASH_API_KEY: ${UNSPLASH_API_KEY}
                   SPRING_MAIL_HOST: ${MAIL_HOST}
                   SPRING_MAIL_PORT: ${MAIL_PORT}
                   SPRING_MAIL_USERNAME: ${MAIL_USERNAME}

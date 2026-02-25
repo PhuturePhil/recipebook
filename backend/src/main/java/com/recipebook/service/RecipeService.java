@@ -17,10 +17,12 @@ public class RecipeService {
     
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final UnsplashService unsplashService;
 
-    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository) {
+    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, UnsplashService unsplashService) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
+        this.unsplashService = unsplashService;
     }
     
     public List<Recipe> findAll() {
@@ -53,6 +55,10 @@ public class RecipeService {
         User user = userDetails != null
             ? userRepository.findById(userDetails.getId()).orElse(null)
             : null;
+        if (recipe.getId() == null && (recipe.getImageUrl() == null || recipe.getImageUrl().isBlank())) {
+            String imageUrl = unsplashService.findImageUrl(recipe.getTitle());
+            if (imageUrl != null) recipe.setImageUrl(imageUrl);
+        }
         return save(recipe, user);
     }
 
