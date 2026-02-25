@@ -11,10 +11,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column
     private String vorname;
     
-    @Column(nullable = false)
+    @Column
     private String nachname;
     
     @Column(nullable = false, unique = true)
@@ -29,6 +29,9 @@ public class User {
     
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(nullable = false)
+    private boolean mustChangePassword = false;
     
     public User() {}
     
@@ -94,5 +97,13 @@ public class User {
     
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 }
