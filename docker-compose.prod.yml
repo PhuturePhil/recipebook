@@ -33,8 +33,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       APP_URL: https://pastoors.cloud
       ALLOWED_ORIGIN: https://pastoors.cloud
-      SPRING_MAIL_HOST: smtp.mail.de
-      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_HOST: ${MAIL_HOST}
+      SPRING_MAIL_PORT: ${MAIL_PORT}
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
       SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
