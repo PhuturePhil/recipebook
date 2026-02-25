@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/views/ResetPasswordView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('@/views/AdminUsersView.vue'),

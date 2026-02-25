@@ -9,17 +9,19 @@
         <router-link v-if="isAuthenticated && isAdmin" to="/admin/users" class="navbar__link">
           Benutzer
         </router-link>
-        
+
         <router-link v-if="showSearch && isAuthenticated" to="/recipe/new" class="navbar__btn navbar__btn--primary">
           Rezept hinzufügen
         </router-link>
-        
+
         <div v-if="showSearch && isAuthenticated" class="navbar__search">
           <SearchBar />
         </div>
-        
+
         <template v-if="isAuthenticated">
-          <span class="navbar__user">{{ fullName }}</span>
+          <button @click="showProfileModal = true" class="navbar__user navbar__user--btn">
+            {{ fullName }}
+          </button>
           <button @click="handleLogout" class="navbar__btn navbar__btn--secondary">
             Logout
           </button>
@@ -30,13 +32,16 @@
       </div>
     </div>
   </nav>
+
+  <ProfileModal v-if="showProfileModal" @close="showProfileModal = false" />
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import SearchBar from '@/components/SearchBar.vue'
+import ProfileModal from '@/components/ProfileModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -49,6 +54,8 @@ const fullName = computed(() => authStore.fullName)
 const showSearch = computed(() => {
   return route.path === '/'
 })
+
+const showProfileModal = ref(false)
 
 function handleLogout() {
   authStore.logout()
@@ -89,14 +96,6 @@ function handleLogout() {
   font-weight: 600;
 }
 
-.navbar__heart {
-  font-size: 1.25rem;
-}
-
-.navbar__heart {
-  font-size: 1.25rem;
-}
-
 .navbar__link {
   padding: 10px 15px;
   text-decoration: none;
@@ -112,6 +111,18 @@ function handleLogout() {
   padding: 10px 15px;
   color: #666;
   font-size: 0.9rem;
+}
+
+.navbar__user--btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.navbar__user--btn:hover {
+  color: var(--color-primary, #4a5568);
 }
 
 .navbar__actions {

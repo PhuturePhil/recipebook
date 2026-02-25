@@ -1,19 +1,25 @@
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import NavBar from '@/components/NavBar.vue'
+import ProfileModal from '@/components/ProfileModal.vue'
 
 const authStore = useAuthStore()
+const showProfileSetup = ref(false)
 
 onMounted(async () => {
   await authStore.checkAuth()
+  if (authStore.isAuthenticated && authStore.needsProfileSetup) {
+    showProfileSetup.value = true
+  }
 })
 </script>
 
 <template>
   <NavBar />
   <RouterView />
+  <ProfileModal v-if="showProfileSetup" @close="showProfileSetup = false" />
 </template>
 
 <style>
