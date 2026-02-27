@@ -46,6 +46,12 @@ const router = createRouter({
       name: 'recipe-edit',
       component: () => import('@/views/RecipeEdit.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/changelog',
+      name: 'changelog',
+      component: () => import('@/views/ChangelogView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
