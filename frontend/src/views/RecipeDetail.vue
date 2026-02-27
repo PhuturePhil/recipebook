@@ -47,13 +47,57 @@
       </div>
 
       <section v-if="recipe.ingredients?.length" class="recipe-section">
-        <h2>Zutaten</h2>
-        <ul class="ingredients-list">
+        <div class="section-header">
+          <h2>Zutaten</h2>
+          <div v-if="recipe.nutritionKcal != null" class="tab-toggle">
+            <button :class="['tab-btn', { active: activeTab === 'ingredients' }]" @click="activeTab = 'ingredients'">Zutaten</button>
+            <button :class="['tab-btn', { active: activeTab === 'nutrition' }]" @click="activeTab = 'nutrition'">Nährwerte</button>
+          </div>
+        </div>
+
+        <ul v-if="activeTab === 'ingredients'" class="ingredients-list">
           <li v-for="(ingredient, index) in scaledIngredients" :key="index">
             <span class="ingredient-amount">{{ ingredient.amount }} {{ ingredient.unit }}</span>
             <span class="ingredient-name">{{ ingredient.name }}</span>
           </li>
         </ul>
+
+        <table v-if="activeTab === 'nutrition'" class="nutrition-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>pro Portion</th>
+              <th>gesamt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Energie</td>
+              <td>{{ formatNutrition(recipe.nutritionKcal / recipe.baseServings) }} kcal</td>
+              <td>{{ formatNutrition(recipe.nutritionKcal / recipe.baseServings * currentServings) }} kcal</td>
+            </tr>
+            <tr>
+              <td>Fett</td>
+              <td>{{ formatNutrition(recipe.nutritionFat / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFat / recipe.baseServings * currentServings) }} g</td>
+            </tr>
+            <tr>
+              <td>Eiweiß</td>
+              <td>{{ formatNutrition(recipe.nutritionProtein / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionProtein / recipe.baseServings * currentServings) }} g</td>
+            </tr>
+            <tr>
+              <td>Kohlenhydrate</td>
+              <td>{{ formatNutrition(recipe.nutritionCarbs / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionCarbs / recipe.baseServings * currentServings) }} g</td>
+            </tr>
+            <tr>
+              <td>Ballaststoffe</td>
+              <td>{{ formatNutrition(recipe.nutritionFiber / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFiber / recipe.baseServings * currentServings) }} g</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <section v-if="recipe.instructions?.length" class="recipe-section">
@@ -86,11 +130,13 @@ const getFoodImage = (id) => `https://loremflickr.com/800/400/food?random=${id}`
 
 const recipe = computed(() => store.currentRecipe)
 const currentServings = ref(1)
+const activeTab = ref('ingredients')
 
 onMounted(async () => {
+  activeTab.value = 'ingredients'
   await store.fetchRecipeById(route.params.id)
   if (recipe.value) {
-    currentServings.value = recipe.value.baseServings || 4
+    currentServings.value = recipe.value.baseServings
   }
 })
 
@@ -107,7 +153,7 @@ const decreaseServings = () => {
 const scaledIngredients = computed(() => {
   if (!recipe.value?.ingredients) return []
   
-  const baseServings = recipe.value.baseServings || 4
+  const baseServings = recipe.value.baseServings
   
   return recipe.value.ingredients.map(ingredient => {
     const amount = parseFloat(ingredient.amount)
@@ -122,6 +168,11 @@ const scaledIngredients = computed(() => {
     }
   })
 })
+
+const formatNutrition = (value) => {
+  if (value == null) return '–'
+  return Math.round(value * 10) / 10
+}
 
 const formatPrepTime = (minutes) => {
   if (!minutes) return ''
@@ -393,5 +444,79 @@ const handleDelete = async () => {
 .instructions-list li::marker {
   color: var(--color-primary, #4a5568);
   font-weight: 600;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-border, #ddd);
+}
+
+.section-header h2 {
+  font-size: 1.5rem;
+  color: var(--color-text-primary, #333);
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.tab-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.tab-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  background: var(--color-bg-secondary, #f0f0f0);
+  color: var(--color-text-secondary, #666);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+  background: var(--color-primary, #4a5568);
+  color: white;
+  border-color: var(--color-primary, #4a5568);
+}
+
+.nutrition-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.nutrition-table th,
+.nutrition-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-light, #eee);
+}
+
+.nutrition-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary, #666);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nutrition-table td:first-child {
+  color: var(--color-text-primary, #333);
+  font-weight: 500;
+}
+
+.nutrition-table td:not(:first-child) {
+  color: var(--color-primary, #4a5568);
+  font-weight: 600;
+}
+
+.nutrition-table tr:last-child td {
+  border-bottom: none;
 }
 </style>

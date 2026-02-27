@@ -310,7 +310,7 @@ watch(
       formData.value = {
         title: newRecipe.title || '',
         description: newRecipe.description || '',
-        baseServings: newRecipe.baseServings || 4,
+        baseServings: newRecipe.baseServings,
         servingsTo: newRecipe.servingsTo || null,
         prepTimeMinutes: newRecipe.prepTimeMinutes || null,
         imageUrl: newRecipe.imageUrl || '',

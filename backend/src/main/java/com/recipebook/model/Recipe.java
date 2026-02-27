@@ -46,6 +46,12 @@ public class Recipe {
     @JoinColumn(name = "user_id")
     @JsonIgnore
     private User user;
+
+    private Double nutritionKcal;
+    private Double nutritionFat;
+    private Double nutritionProtein;
+    private Double nutritionCarbs;
+    private Double nutritionFiber;
     
     public Recipe() {}
     
@@ -151,5 +157,45 @@ public class Recipe {
     
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public Double getNutritionKcal() {
+        return nutritionKcal;
+    }
+
+    public void setNutritionKcal(Double nutritionKcal) {
+        this.nutritionKcal = nutritionKcal;
+    }
+
+    public Double getNutritionFat() {
+        return nutritionFat;
+    }
+
+    public void setNutritionFat(Double nutritionFat) {
+        this.nutritionFat = nutritionFat;
+    }
+
+    public Double getNutritionProtein() {
+        return nutritionProtein;
+    }
+
+    public void setNutritionProtein(Double nutritionProtein) {
+        this.nutritionProtein = nutritionProtein;
+    }
+
+    public Double getNutritionCarbs() {
+        return nutritionCarbs;
+    }
+
+    public void setNutritionCarbs(Double nutritionCarbs) {
+        this.nutritionCarbs = nutritionCarbs;
+    }
+
+    public Double getNutritionFiber() {
+        return nutritionFiber;
+    }
+
+    public void setNutritionFiber(Double nutritionFiber) {
+        this.nutritionFiber = nutritionFiber;
     }
 }

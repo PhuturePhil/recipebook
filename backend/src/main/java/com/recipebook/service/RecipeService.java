@@ -17,11 +17,13 @@ public class RecipeService {
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
     private final UnsplashService unsplashService;
+    private final NutritionService nutritionService;
 
-    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, UnsplashService unsplashService) {
+    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, UnsplashService unsplashService, NutritionService nutritionService) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.unsplashService = unsplashService;
+        this.nutritionService = nutritionService;
     }
     
     public List<Recipe> findAll() {
@@ -59,6 +61,16 @@ public class RecipeService {
         if (recipe.getId() == null && (recipe.getImageUrl() == null || recipe.getImageUrl().isBlank())) {
             String imageUrl = unsplashService.findImageUrl(recipe.getTitle());
             if (imageUrl != null) recipe.setImageUrl(imageUrl);
+        }
+        if (recipe.getIngredients() != null && !recipe.getIngredients().isEmpty()) {
+            NutritionService.NutritionResult nutrition = nutritionService.calculateNutrition(recipe.getIngredients());
+            if (nutrition != null) {
+                recipe.setNutritionKcal(nutrition.getKcal());
+                recipe.setNutritionFat(nutrition.getFat());
+                recipe.setNutritionProtein(nutrition.getProtein());
+                recipe.setNutritionCarbs(nutrition.getCarbs());
+                recipe.setNutritionFiber(nutrition.getFiber());
+            }
         }
         return save(recipe, user);
     }
