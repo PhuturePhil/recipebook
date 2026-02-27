@@ -10,6 +10,10 @@
           Benutzer
         </router-link>
 
+        <router-link v-if="isAuthenticated" to="/changelog" class="navbar__link">
+          Updates
+        </router-link>
+
         <router-link v-if="showSearch && isAuthenticated" to="/recipe/new" class="navbar__btn navbar__btn--primary">
           Rezept hinzufügen
         </router-link>
