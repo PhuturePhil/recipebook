@@ -73,27 +73,27 @@
           <tbody>
             <tr>
               <td>Energie</td>
-              <td>{{ formatNutrition(recipe.nutritionKcal / currentServings) }} kcal</td>
+              <td>{{ formatNutrition(recipe.nutritionKcal / (recipe.baseServings || 4)) }} kcal</td>
               <td>{{ formatNutrition(recipe.nutritionKcal) }} kcal</td>
             </tr>
             <tr>
               <td>Fett</td>
-              <td>{{ formatNutrition(recipe.nutritionFat / currentServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFat / (recipe.baseServings || 4)) }} g</td>
               <td>{{ formatNutrition(recipe.nutritionFat) }} g</td>
             </tr>
             <tr>
               <td>Eiweiß</td>
-              <td>{{ formatNutrition(recipe.nutritionProtein / currentServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionProtein / (recipe.baseServings || 4)) }} g</td>
               <td>{{ formatNutrition(recipe.nutritionProtein) }} g</td>
             </tr>
             <tr>
               <td>Kohlenhydrate</td>
-              <td>{{ formatNutrition(recipe.nutritionCarbs / currentServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionCarbs / (recipe.baseServings || 4)) }} g</td>
               <td>{{ formatNutrition(recipe.nutritionCarbs) }} g</td>
             </tr>
             <tr>
               <td>Ballaststoffe</td>
-              <td>{{ formatNutrition(recipe.nutritionFiber / currentServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFiber / (recipe.baseServings || 4)) }} g</td>
               <td>{{ formatNutrition(recipe.nutritionFiber) }} g</td>
             </tr>
           </tbody>
@@ -133,6 +133,7 @@ const currentServings = ref(1)
 const activeTab = ref('ingredients')
 
 onMounted(async () => {
+  activeTab.value = 'ingredients'
   await store.fetchRecipeById(route.params.id)
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings || 4

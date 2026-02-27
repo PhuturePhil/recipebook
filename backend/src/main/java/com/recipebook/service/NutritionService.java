@@ -73,16 +73,17 @@ public class NutritionService {
       if (response == null) return null;
 
       JsonNode root = objectMapper.readTree(response);
-      String content = root.path("choices").get(0).path("message").path("content").asText();
-      JsonNode json = objectMapper.readTree(content);
+      JsonNode choicesNode = root.path("choices").path(0).path("message").path("content");
+      if (choicesNode.isMissingNode()) return null;
+      JsonNode json = objectMapper.readTree(choicesNode.asText());
 
-      NutritionResult result = new NutritionResult();
-      result.kcal = json.path("kcal").asDouble(0);
-      result.fat = json.path("fat").asDouble(0);
-      result.protein = json.path("protein").asDouble(0);
-      result.carbs = json.path("carbs").asDouble(0);
-      result.fiber = json.path("fiber").asDouble(0);
-      return result;
+      return new NutritionResult(
+        json.path("kcal").asDouble(0),
+        json.path("fat").asDouble(0),
+        json.path("protein").asDouble(0),
+        json.path("carbs").asDouble(0),
+        json.path("fiber").asDouble(0)
+      );
     } catch (Exception e) {
       log.warn("NutritionService error: {}", e.getMessage());
       return null;
@@ -90,11 +91,19 @@ public class NutritionService {
   }
 
   public static class NutritionResult {
-    private double kcal;
-    private double fat;
-    private double protein;
-    private double carbs;
-    private double fiber;
+    private final double kcal;
+    private final double fat;
+    private final double protein;
+    private final double carbs;
+    private final double fiber;
+
+    public NutritionResult(double kcal, double fat, double protein, double carbs, double fiber) {
+      this.kcal = kcal;
+      this.fat = fat;
+      this.protein = protein;
+      this.carbs = carbs;
+      this.fiber = fiber;
+    }
 
     public double getKcal() { return kcal; }
     public double getFat() { return fat; }
