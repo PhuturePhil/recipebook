@@ -73,28 +73,28 @@
           <tbody>
             <tr>
               <td>Energie</td>
-              <td>{{ formatNutrition(recipe.nutritionKcal / (recipe.baseServings || 4)) }} kcal</td>
-              <td>{{ formatNutrition(recipe.nutritionKcal) }} kcal</td>
+              <td>{{ formatNutrition(recipe.nutritionKcal / recipe.baseServings) }} kcal</td>
+              <td>{{ formatNutrition(recipe.nutritionKcal / recipe.baseServings * currentServings) }} kcal</td>
             </tr>
             <tr>
               <td>Fett</td>
-              <td>{{ formatNutrition(recipe.nutritionFat / (recipe.baseServings || 4)) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionFat) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFat / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFat / recipe.baseServings * currentServings) }} g</td>
             </tr>
             <tr>
               <td>Eiweiß</td>
-              <td>{{ formatNutrition(recipe.nutritionProtein / (recipe.baseServings || 4)) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionProtein) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionProtein / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionProtein / recipe.baseServings * currentServings) }} g</td>
             </tr>
             <tr>
               <td>Kohlenhydrate</td>
-              <td>{{ formatNutrition(recipe.nutritionCarbs / (recipe.baseServings || 4)) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionCarbs) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionCarbs / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionCarbs / recipe.baseServings * currentServings) }} g</td>
             </tr>
             <tr>
               <td>Ballaststoffe</td>
-              <td>{{ formatNutrition(recipe.nutritionFiber / (recipe.baseServings || 4)) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionFiber) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFiber / recipe.baseServings) }} g</td>
+              <td>{{ formatNutrition(recipe.nutritionFiber / recipe.baseServings * currentServings) }} g</td>
             </tr>
           </tbody>
         </table>
@@ -136,7 +136,7 @@ onMounted(async () => {
   activeTab.value = 'ingredients'
   await store.fetchRecipeById(route.params.id)
   if (recipe.value) {
-    currentServings.value = recipe.value.baseServings || 4
+    currentServings.value = recipe.value.baseServings
   }
 })
 
@@ -153,7 +153,7 @@ const decreaseServings = () => {
 const scaledIngredients = computed(() => {
   if (!recipe.value?.ingredients) return []
   
-  const baseServings = recipe.value.baseServings || 4
+  const baseServings = recipe.value.baseServings
   
   return recipe.value.ingredients.map(ingredient => {
     const amount = parseFloat(ingredient.amount)
