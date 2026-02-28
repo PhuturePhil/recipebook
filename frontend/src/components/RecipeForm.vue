@@ -256,7 +256,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['submit', 'cancel'])
+const emit = defineEmits(['submit', 'cancel', 'titleChange'])
 
 const router = useRouter()
 const store = useRecipeStore()
@@ -334,6 +334,10 @@ const selectUnit = (index, value) => {
 const closeUnitDropdown = () => {
   setTimeout(() => { activeUnitIndex.value = null }, 150)
 }
+
+watch(() => formData.value.title, (title) => {
+  emit('titleChange', title)
+})
 
 watch(
   () => props.recipe,
@@ -788,25 +792,31 @@ const handleCancel = () => {
 }
 
 .ingredient-row .ingredient-name {
-  flex: 2;
+  flex: 1;
   min-width: 0;
+  order: 1;
 }
 
 .ingredient-secondary {
   display: flex;
   gap: 8px;
-  flex: 2;
+  flex: 1;
   min-width: 0;
+  order: 2;
 }
 
 .ingredient-secondary .ingredient-amount-input {
-  flex: 1;
+  flex: 0 0 28%;
   min-width: 0;
 }
 
 .ingredient-secondary .unit-input-wrapper {
   flex: 1;
   min-width: 0;
+}
+
+.ingredient-row .btn-remove-icon {
+  order: 3;
 }
 
 .btn-remove-icon {
@@ -834,10 +844,16 @@ const handleCancel = () => {
 
   .ingredient-row .ingredient-name {
     flex: 1 1 calc(100% - 44px);
+    order: 1;
+  }
+
+  .ingredient-row .btn-remove-icon {
+    order: 2;
   }
 
   .ingredient-secondary {
     flex: 1 1 100%;
+    order: 3;
   }
 }
 
