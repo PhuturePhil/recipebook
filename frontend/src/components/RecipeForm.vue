@@ -135,8 +135,8 @@
             placeholder="Autor"
             autocomplete="off"
             @focus="activeSourceField = 'author'"
-            @blur="onSourceFieldBlur('author')"
-            @keydown="onSourceFieldKeydown($event, 'author')"
+            @blur="onSourceFieldBlur"
+            @keydown="onSourceFieldKeydown"
           />
           <button
             v-if="formData.author"
@@ -162,8 +162,8 @@
             placeholder="Buch oder Website"
             autocomplete="off"
             @focus="activeSourceField = 'source'"
-            @blur="onSourceFieldBlur('source')"
-            @keydown="onSourceFieldKeydown($event, 'source')"
+            @blur="onSourceFieldBlur"
+            @keydown="onSourceFieldKeydown"
           />
           <button
             v-if="formData.source"
@@ -368,18 +368,18 @@ const unitDropdownItems = (index) => {
 
 const filteredSources = computed(() => {
   const query = formData.value.source?.trim().toLowerCase() ?? ''
-  if (!query) return knownSources.value
-  return knownSources.value.filter(s => s.source.toLowerCase().includes(query))
+  const currentAuthor = formData.value.author?.trim().toLowerCase() ?? ''
+  const list = currentAuthor
+    ? knownSources.value.filter(s => s.author?.toLowerCase() === currentAuthor)
+    : knownSources.value
+  if (!query) return list
+  return list.filter(s => s.source.toLowerCase().includes(query))
 })
 
 const filteredAuthors = computed(() => {
   const query = formData.value.author?.trim().toLowerCase() ?? ''
-  const currentSource = formData.value.source?.trim().toLowerCase() ?? ''
-  const relevant = currentSource
-    ? knownSources.value.filter(s => s.source.toLowerCase().includes(currentSource))
-    : knownSources.value
   const uniqueAuthors = [...new Map(
-    relevant
+    knownSources.value
       .filter(s => s.author)
       .map(s => [s.author, s])
   ).values()]
@@ -397,29 +397,21 @@ const selectSource = (item) => {
 
 const selectAuthor = (item) => {
   formData.value.author = item.author
-  if (!formData.value.source && item.source) {
-    formData.value.source = item.source
+  const booksOfAuthor = knownSources.value.filter(s => s.author === item.author && s.source)
+  if (booksOfAuthor.length === 1) {
+    formData.value.source = booksOfAuthor[0].source
   }
   activeSourceField.value = null
 }
 
-const onSourceFieldBlur = (field) => {
+const onSourceFieldBlur = () => {
   setTimeout(() => {
-    if (sourceEscPressed.value) {
-      sourceEscPressed.value = false
-      activeSourceField.value = null
-      return
-    }
-    const list = field === 'source' ? filteredSources.value : filteredAuthors.value
-    if (list.length > 0) {
-      if (field === 'source') selectSource(list[0])
-      else selectAuthor(list[0])
-    }
+    sourceEscPressed.value = false
     activeSourceField.value = null
   }, 150)
 }
 
-const onSourceFieldKeydown = (event, field) => {
+const onSourceFieldKeydown = (event) => {
   if (event.key === 'Escape') {
     sourceEscPressed.value = true
     activeSourceField.value = null
