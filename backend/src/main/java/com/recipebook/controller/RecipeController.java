@@ -1,5 +1,6 @@
 package com.recipebook.controller;
 
+import com.recipebook.dto.RecipeSummaryDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
@@ -21,8 +22,8 @@ public class RecipeController {
     }
 
     @GetMapping
-    public List<Recipe> getAllRecipes() {
-        return recipeService.findAll();
+    public List<RecipeSummaryDto> getAllRecipes() {
+        return recipeService.findAllSummaries();
     }
 
     @GetMapping("/{id}")

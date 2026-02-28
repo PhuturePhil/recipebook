@@ -24,14 +24,26 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 import RecipeCard from '@/components/RecipeCard.vue'
 
 const store = useRecipeStore()
 
+const onVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    store.invalidateRecipes()
+    store.fetchRecipes()
+  }
+}
+
 onMounted(() => {
   store.fetchRecipes()
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 

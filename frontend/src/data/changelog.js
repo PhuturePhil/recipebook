@@ -1,6 +1,16 @@
 export const changelog = [
   {
     date: '28.02.2026',
+    title: 'Schnelleres Laden der Übersicht',
+    changes: [
+      'Die Übersichtsseite lädt deutlich schneller, weil jetzt nur noch die für die Karten benötigten Daten übertragen werden',
+      'Bilder werden erst geladen, wenn sie auf dem Bildschirm sichtbar werden — nicht alle auf einmal',
+      'Wechselt man zwischen Seiten hin und her, werden die Rezepte nicht unnötig neu geladen',
+      'Kehrt man zur App zurück (z.B. nach dem Wechsel in eine andere App), werden die Rezepte automatisch aktualisiert',
+    ]
+  },
+  {
+    date: '28.02.2026',
     title: 'Mobile Optimierung',
     changes: [
       'Der Rezepttitel erscheint in der Navigationsleiste, sobald er beim Scrollen nicht mehr sichtbar ist — auf der Anzeige- und der Bearbeitungsseite',

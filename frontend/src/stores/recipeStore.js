@@ -1,6 +1,17 @@
 import { defineStore } from 'pinia'
 import { recipeService } from '@/services/recipeService'
 
+const toSummary = (recipe) => ({
+  id: recipe.id,
+  title: recipe.title,
+  description: recipe.description,
+  imageUrl: recipe.imageUrl,
+  prepTimeMinutes: recipe.prepTimeMinutes,
+  baseServings: recipe.baseServings,
+  servingsTo: recipe.servingsTo,
+  ingredientCount: recipe.ingredientCount ?? recipe.ingredients?.length ?? 0,
+})
+
 export const useRecipeStore = defineStore('recipe', {
   state: () => ({
     recipes: [],
@@ -17,7 +28,7 @@ export const useRecipeStore = defineStore('recipe', {
       return state.recipes.filter(
         (recipe) =>
           recipe.title.toLowerCase().includes(query) ||
-          recipe.description.toLowerCase().includes(query)
+          (recipe.description || '').toLowerCase().includes(query)
       )
     },
 
@@ -28,6 +39,8 @@ export const useRecipeStore = defineStore('recipe', {
 
   actions: {
     async fetchRecipes() {
+      if (this.recipes.length > 0 && !this._forceRefresh) return
+      this._forceRefresh = false
       this.loading = true
       this.error = null
       try {
@@ -39,6 +52,10 @@ export const useRecipeStore = defineStore('recipe', {
       } finally {
         this.loading = false
       }
+    },
+
+    invalidateRecipes() {
+      this._forceRefresh = true
     },
 
     async fetchRecipeById(id) {
@@ -62,7 +79,7 @@ export const useRecipeStore = defineStore('recipe', {
       this.error = null
       try {
         const data = await recipeService.create(recipe)
-        this.recipes.push(data)
+        this.recipes.unshift(toSummary(data))
         return data
       } catch (error) {
         this.error = error.message
@@ -81,7 +98,7 @@ export const useRecipeStore = defineStore('recipe', {
         const data = await recipeService.update(id, recipe)
         const index = this.recipes.findIndex((r) => r.id === numericId)
         if (index !== -1) {
-          this.recipes[index] = data
+          this.recipes[index] = toSummary(data)
         }
         if (this.currentRecipe && this.currentRecipe.id === numericId) {
           this.currentRecipe = data

@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.dto.RecipeSummaryDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Ingredient;
@@ -26,6 +27,10 @@ public class RecipeService {
         this.nutritionService = nutritionService;
     }
     
+    public List<RecipeSummaryDto> findAllSummaries() {
+        return recipeRepository.findAllSummaries();
+    }
+
     public List<Recipe> findAll() {
         return recipeRepository.findAll();
     }
