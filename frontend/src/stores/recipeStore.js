@@ -18,7 +18,8 @@ export const useRecipeStore = defineStore('recipe', {
     currentRecipe: null,
     loading: false,
     error: null,
-    searchQuery: ''
+    searchQuery: '',
+    _lastFetched: null,
   }),
 
   getters: {
@@ -38,14 +39,16 @@ export const useRecipeStore = defineStore('recipe', {
   },
 
   actions: {
-    async fetchRecipes() {
-      if (this.recipes.length > 0 && !this._forceRefresh) return
+    async fetchRecipes({ background = false } = {}) {
+      const stale = !this._lastFetched || Date.now() - this._lastFetched > 2 * 60 * 1000
+      if (this.recipes.length > 0 && !stale && !this._forceRefresh) return
       this._forceRefresh = false
-      this.loading = true
+      if (!background) this.loading = true
       this.error = null
       try {
         const data = await recipeService.getAll()
         this.recipes = data
+        this._lastFetched = Date.now()
       } catch (error) {
         this.error = error.message
         console.error('Failed to fetch recipes:', error)
