@@ -62,8 +62,10 @@
       <textarea
         id="description"
         v-model="formData.description"
-        rows="3"
+        rows="1"
         placeholder="Kurze Beschreibung eingeben"
+        @input="autoResize"
+        ref="descriptionRef"
       ></textarea>
     </div>
 
@@ -151,12 +153,23 @@
           v-model="ingredient.name"
           type="text"
           placeholder="Zutat"
+          class="ingredient-name"
           required
         />
+        <button type="button" class="btn-remove-icon" @click="removeIngredient(index)" title="Zutat entfernen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+        <div class="ingredient-secondary">
         <input
           v-model="ingredient.amount"
           type="text"
           placeholder="Menge"
+          class="ingredient-amount-input"
         />
         <div class="unit-input-wrapper">
           <input
@@ -187,9 +200,7 @@
             </li>
           </ul>
         </div>
-        <button type="button" class="btn-remove" @click="removeIngredient(index)">
-          Entfernen
-        </button>
+        </div>
       </div>
       <button type="button" class="btn-add" @click="addIngredient">
         + Zutat hinzufügen
@@ -202,12 +213,18 @@
         <span class="step-number">{{ index + 1 }}.</span>
         <textarea
           v-model="formData.instructions[index]"
-          rows="2"
+          rows="1"
           placeholder="Arbeitsschritt eingeben"
           required
+          @input="autoResize"
         ></textarea>
-        <button type="button" class="btn-remove" @click="removeInstruction(index)">
-          Entfernen
+        <button type="button" class="btn-remove-icon" @click="removeInstruction(index)" title="Schritt entfernen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
         </button>
       </div>
       <button type="button" class="btn-add" @click="addInstruction">
@@ -227,7 +244,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipeService'
 import { useRecipeStore } from '@/stores/recipeStore'
@@ -266,6 +283,22 @@ const formData = ref({
 })
 
 const activeUnitIndex = ref(null)
+const descriptionRef = ref(null)
+
+function autoResize(event) {
+  const el = event.target
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
+function resizeAllTextareas() {
+  nextTick(() => {
+    document.querySelectorAll('.recipe-form textarea:not([readonly])').forEach(el => {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    })
+  })
+}
 
 const allKnownUnits = computed(() => {
   const fromStore = store.recipes
@@ -324,6 +357,7 @@ watch(
           ? [...newRecipe.instructions]
           : ['']
       }
+      resizeAllTextareas()
     }
   },
   { immediate: true }
@@ -652,6 +686,12 @@ const handleCancel = () => {
   box-sizing: border-box;
 }
 
+.form-group textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 44px;
+}
+
 .servings-fields {
   display: flex;
   gap: 16px;
@@ -742,12 +782,58 @@ const handleCancel = () => {
   align-items: center;
 }
 
-.ingredient-row input {
-  flex: 1;
+.ingredient-row .ingredient-name {
+  flex: 2;
+  min-width: 0;
 }
 
-.ingredient-row input:first-child {
+.ingredient-secondary {
+  display: flex;
+  gap: 8px;
   flex: 2;
+  min-width: 0;
+}
+
+.ingredient-secondary .ingredient-amount-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ingredient-secondary .unit-input-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-remove-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-error, #e53e3e);
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.btn-remove-icon:hover {
+  background: rgba(229, 62, 62, 0.1);
+}
+
+@media (max-width: 600px) {
+  .ingredient-row {
+    flex-wrap: wrap;
+  }
+
+  .ingredient-row .ingredient-name {
+    flex: 1 1 calc(100% - 44px);
+  }
+
+  .ingredient-secondary {
+    flex: 1 1 100%;
+  }
 }
 
 .instruction-row {
