@@ -3,8 +3,10 @@
     <div class="navbar__content">
       <router-link to="/" class="navbar__logo">
         <img src="/icon.svg" alt="" class="navbar__icon" />
-        <span class="navbar__title">Pastoors Familienrezepte</span>
+        <span class="navbar__title" :class="{ 'navbar__title--hidden-mobile': uiStore.navTitle }">Pastoors Familienrezepte</span>
       </router-link>
+
+      <span v-if="uiStore.navTitle" class="navbar__nav-title">{{ uiStore.navTitle }}</span>
 
       <div class="navbar__actions">
         <router-link v-if="showSearch && isAuthenticated" to="/recipe/new" class="navbar__btn navbar__btn--primary">
@@ -47,12 +49,14 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useUiStore } from '@/stores/uiStore'
 import SearchBar from '@/components/SearchBar.vue'
 import ProfileModal from '@/components/ProfileModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const uiStore = useUiStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
@@ -129,6 +133,16 @@ onUnmounted(() => {
 .navbar__title {
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.navbar__nav-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #333);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .navbar__actions {
@@ -240,6 +254,8 @@ onUnmounted(() => {
     min-width: unset;
   }
 
-
+  .navbar__title--hidden-mobile {
+    display: none;
+  }
 }
 </style>

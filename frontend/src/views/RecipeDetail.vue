@@ -6,6 +6,7 @@
 
     <div v-else-if="recipe" class="recipe-content">
       <header class="recipe-header">
+        <button class="btn-back" @click="goBack">&#8592; Zurück</button>
         <h1>{{ recipe.title }}</h1>
         <div class="recipe-actions">
           <router-link :to="`/recipe/${recipe.id}/edit`" class="btn-edit">
@@ -118,13 +119,15 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
+import { useUiStore } from '@/stores/uiStore'
 
 const route = useRoute()
 const router = useRouter()
 const store = useRecipeStore()
+const uiStore = useUiStore()
 
 const getFoodImage = (id) => `https://loremflickr.com/800/400/food?random=${id}`
 
@@ -139,6 +142,22 @@ onMounted(async () => {
     currentServings.value = recipe.value.baseServings
   }
 })
+
+watch(recipe, (r) => {
+  if (r?.title) uiStore.setNavTitle(r.title)
+})
+
+onUnmounted(() => {
+  uiStore.clearNavTitle()
+})
+
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
 
 const increaseServings = () => {
   currentServings.value++
@@ -216,16 +235,17 @@ const handleDelete = async () => {
 .recipe-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 24px;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
 }
 
 .recipe-header h1 {
   margin: 0;
   font-size: 2rem;
   color: var(--color-text-primary, #333);
+  flex: 1;
 }
 
 .recipe-actions {
@@ -236,13 +256,14 @@ const handleDelete = async () => {
 .btn-edit,
 .btn-delete,
 .btn-back {
-  padding: 10px 20px;
+  padding: 8px 14px;
   border: none;
   border-radius: 6px;
   font-size: 0.875rem;
   cursor: pointer;
   text-decoration: none;
   transition: background-color 0.2s ease;
+  white-space: nowrap;
 }
 
 .btn-edit {
@@ -266,7 +287,6 @@ const handleDelete = async () => {
 
 .btn-back {
   display: inline-block;
-  margin-top: 16px;
   background: var(--color-bg-secondary, #f0f0f0);
   color: var(--color-text-primary, #333);
 }

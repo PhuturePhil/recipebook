@@ -801,6 +801,11 @@ const handleCancel = () => {
   gap: 12px;
   justify-content: flex-end;
   margin-top: 32px;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg, #f9fafb);
+  padding: 12px 0;
+  border-top: 1px solid var(--color-border, #e2e8f0);
 }
 
 .btn-cancel,

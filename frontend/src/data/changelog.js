@@ -1,6 +1,16 @@
 export const changelog = [
   {
     date: '28.02.2026',
+    title: 'Mobile Optimierung',
+    changes: [
+      'Auf der Rezept- und Bearbeitungsseite wird der Rezepttitel in der Navigationsleiste angezeigt',
+      'Auf dem Smartphone wird dabei der Website-Name ausgeblendet, damit der Titel besser lesbar ist',
+      'Die Speichern- und Abbrechen-Buttons bleiben beim Scrollen immer am unteren Bildschirmrand sichtbar',
+      'Auf der Rezeptseite gibt es jetzt einen Zurück-Button',
+    ]
+  },
+  {
+    date: '28.02.2026',
     title: 'App-Icon',
     changes: [
       'Neues App-Icon mit "PR"-Monogramm und Buchsymbol für Browser-Tab und Homescreen',

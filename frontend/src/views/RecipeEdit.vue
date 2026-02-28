@@ -13,14 +13,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
+import { useUiStore } from '@/stores/uiStore'
 import RecipeForm from '@/components/RecipeForm.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useRecipeStore()
+const uiStore = useUiStore()
 
 const isEdit = computed(() => !!route.params.id)
 const recipe = computed(() => {
@@ -33,7 +35,17 @@ const recipe = computed(() => {
 onMounted(async () => {
   if (isEdit.value) {
     await store.fetchRecipeById(route.params.id)
+  } else {
+    uiStore.setNavTitle('Neues Rezept')
   }
+})
+
+watch(recipe, (r) => {
+  if (r?.title) uiStore.setNavTitle(r.title)
+})
+
+onUnmounted(() => {
+  uiStore.clearNavTitle()
 })
 
 const handleSubmit = async (recipeData) => {
