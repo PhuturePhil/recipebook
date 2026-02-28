@@ -6,6 +6,7 @@
         <span class="navbar__title" :class="{ 'navbar__title--hidden-mobile': uiStore.navTitle }">Pastoors Familienrezepte</span>
       </router-link>
 
+      <span v-if="uiStore.navTitle" class="navbar__separator">·</span>
       <span v-if="uiStore.navTitle" class="navbar__nav-title">{{ uiStore.navTitle }}</span>
 
       <div class="navbar__actions">
@@ -133,6 +134,12 @@ onUnmounted(() => {
 .navbar__title {
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.navbar__separator {
+  color: var(--color-text-muted, #a0aec0);
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .navbar__nav-title {

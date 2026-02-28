@@ -3,10 +3,10 @@ export const changelog = [
     date: '28.02.2026',
     title: 'Mobile Optimierung',
     changes: [
-      'Auf der Rezept- und Bearbeitungsseite wird der Rezepttitel in der Navigationsleiste angezeigt',
+      'Der Rezepttitel erscheint in der Navigationsleiste, sobald er beim Scrollen nicht mehr sichtbar ist',
       'Auf dem Smartphone wird dabei der Website-Name ausgeblendet, damit der Titel besser lesbar ist',
-      'Die Speichern- und Abbrechen-Buttons bleiben beim Scrollen immer am unteren Bildschirmrand sichtbar',
-      'Auf der Rezeptseite gibt es jetzt einen Zurück-Button',
+      'Die Aktions-Buttons bleiben beim Scrollen immer am unteren Bildschirmrand sichtbar',
+      'Auf der Rezeptseite gibt es jetzt Abbrechen-, Löschen- und Bearbeiten-Buttons am unteren Rand',
     ]
   },
   {

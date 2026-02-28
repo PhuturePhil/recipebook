@@ -6,14 +6,7 @@
 
     <div v-else-if="recipe" class="recipe-content">
       <header class="recipe-header">
-        <button class="btn-back" @click="goBack">&#8592; Zurück</button>
-        <h1>{{ recipe.title }}</h1>
-        <div class="recipe-actions">
-          <router-link :to="`/recipe/${recipe.id}/edit`" class="btn-edit">
-            Bearbeiten
-          </router-link>
-          <button class="btn-delete" @click="handleDelete">Löschen</button>
-        </div>
+        <h1 ref="titleRef">{{ recipe.title }}</h1>
       </header>
 
       <div class="recipe-image">
@@ -109,17 +102,25 @@
           </li>
         </ol>
       </section>
+
+      <div class="detail-actions">
+        <button class="btn-cancel" @click="goBack">Abbrechen</button>
+        <button class="btn-delete" @click="handleDelete">Löschen</button>
+        <router-link :to="`/recipe/${recipe.id}/edit`" class="btn-edit">
+          Bearbeiten
+        </router-link>
+      </div>
     </div>
 
     <div v-else class="not-found">
       <p>Rezept nicht gefunden</p>
-      <router-link to="/" class="btn-back">Zurück zur Übersicht</router-link>
+      <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -134,6 +135,8 @@ const getFoodImage = (id) => `https://loremflickr.com/800/400/food?random=${id}`
 const recipe = computed(() => store.currentRecipe)
 const currentServings = ref(1)
 const activeTab = ref('ingredients')
+const titleRef = ref(null)
+let titleObserver = null
 
 onMounted(async () => {
   activeTab.value = 'ingredients'
@@ -141,13 +144,24 @@ onMounted(async () => {
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings
   }
-})
 
-watch(recipe, (r) => {
-  if (r?.title) uiStore.setNavTitle(r.title)
+  if (titleRef.value) {
+    titleObserver = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting && recipe.value?.title) {
+          uiStore.setNavTitle(recipe.value.title)
+        } else {
+          uiStore.clearNavTitle()
+        }
+      },
+      { threshold: 0 }
+    )
+    titleObserver.observe(titleRef.value)
+  }
 })
 
 onUnmounted(() => {
+  titleObserver?.disconnect()
   uiStore.clearNavTitle()
 })
 
@@ -233,29 +247,34 @@ const handleDelete = async () => {
 }
 
 .recipe-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 12px;
 }
 
 .recipe-header h1 {
   margin: 0;
   font-size: 2rem;
   color: var(--color-text-primary, #333);
-  flex: 1;
 }
 
-.recipe-actions {
+.detail-actions {
   display: flex;
   gap: 12px;
+  justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg, #f9fafb);
+  padding: 12px 0;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  margin-top: 32px;
+}
+
+.detail-actions .btn-cancel {
+  margin-right: auto;
 }
 
 .btn-edit,
 .btn-delete,
-.btn-back {
+.btn-cancel {
   padding: 8px 14px;
   border: none;
   border-radius: 6px;
@@ -285,13 +304,12 @@ const handleDelete = async () => {
   background: rgba(229, 62, 62, 0.1);
 }
 
-.btn-back {
-  display: inline-block;
+.btn-cancel {
   background: var(--color-bg-secondary, #f0f0f0);
   color: var(--color-text-primary, #333);
 }
 
-.btn-back:hover {
+.btn-cancel:hover {
   background: var(--color-border, #ddd);
 }
 
