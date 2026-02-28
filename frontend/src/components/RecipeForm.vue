@@ -778,8 +778,13 @@ const handleCancel = () => {
 .ingredient-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 8px;
   align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border-light, #edf2f7);
+}
+
+.ingredient-row:last-of-type {
+  border-bottom: none;
 }
 
 .ingredient-row .ingredient-name {
@@ -840,14 +845,13 @@ const handleCancel = () => {
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .step-number {
   font-weight: 600;
   color: var(--color-text-muted, #999);
   min-width: 24px;
-  padding-top: 10px;
 }
 
 .instruction-row textarea {
