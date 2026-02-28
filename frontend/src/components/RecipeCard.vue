@@ -1,7 +1,7 @@
 <template>
   <div class="recipe-card" @click="navigateToDetail">
     <div class="recipe-card__image">
-      <img :src="recipe.imageUrl || getFoodImage(recipe.id)" :alt="recipe.title" />
+      <img :src="recipe.imageUrl || getFoodImage(recipe.id)" :alt="recipe.title" loading="lazy" />
     </div>
     <div class="recipe-card__content">
       <h3 class="recipe-card__title">{{ recipe.title }}</h3>
@@ -10,11 +10,8 @@
         <span v-if="recipe.prepTimeMinutes" class="recipe-card__count">
           {{ formatPrepTime(recipe.prepTimeMinutes) }}
         </span>
-        <span v-if="recipe.ingredients" class="recipe-card__count">
-          {{ recipe.ingredients.length }} Zutaten
-        </span>
-        <span v-if="recipe.instructions" class="recipe-card__count">
-          {{ recipe.instructions.length }} Schritte
+        <span v-if="recipe.ingredientCount" class="recipe-card__count">
+          {{ recipe.ingredientCount }} Zutaten
         </span>
       </div>
     </div>
