@@ -3,8 +3,11 @@
     <div class="navbar__content">
       <router-link to="/" class="navbar__logo">
         <img src="/icon.svg" alt="" class="navbar__icon" />
-        <span class="navbar__title">Pastoors Familienrezepte</span>
+        <span class="navbar__title" :class="{ 'navbar__title--hidden-mobile': uiStore.navTitle }">Pastoors Familienrezepte</span>
       </router-link>
+
+      <span v-if="uiStore.navTitle" class="navbar__separator">·</span>
+      <span v-if="uiStore.navTitle" class="navbar__nav-title">{{ uiStore.navTitle }}</span>
 
       <div class="navbar__actions">
         <router-link v-if="showSearch && isAuthenticated" to="/recipe/new" class="navbar__btn navbar__btn--primary">
@@ -18,23 +21,23 @@
         <router-link v-if="!isAuthenticated" to="/login" class="navbar__btn navbar__btn--primary">
           Login
         </router-link>
+      </div>
 
-        <div v-if="isAuthenticated" class="navbar__menu">
-          <button @click.stop="toggleMenu" class="navbar__burger">&#9776;</button>
-          <div v-if="showMenu" class="navbar__dropdown">
-            <router-link to="/changelog" class="navbar__dropdown-item" @click="showMenu = false">
-              Neuerungen anzeigen
-            </router-link>
-            <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
-              Benutzerverwaltung öffnen
-            </router-link>
-            <button class="navbar__dropdown-item" @click="openProfile">
-              Persönliche Daten ändern
-            </button>
-            <button class="navbar__dropdown-item navbar__dropdown-item--logout" @click="handleLogout">
-              Ausloggen
-            </button>
-          </div>
+      <div v-if="isAuthenticated" class="navbar__menu">
+        <button @click.stop="toggleMenu" class="navbar__burger">&#9776;</button>
+        <div v-if="showMenu" class="navbar__dropdown">
+          <router-link to="/changelog" class="navbar__dropdown-item" @click="showMenu = false">
+            Neuerungen anzeigen
+          </router-link>
+          <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
+            Benutzerverwaltung öffnen
+          </router-link>
+          <button class="navbar__dropdown-item" @click="openProfile">
+            Persönliche Daten ändern
+          </button>
+          <button class="navbar__dropdown-item navbar__dropdown-item--logout" @click="handleLogout">
+            Ausloggen
+          </button>
         </div>
       </div>
     </div>
@@ -47,12 +50,14 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useUiStore } from '@/stores/uiStore'
 import SearchBar from '@/components/SearchBar.vue'
 import ProfileModal from '@/components/ProfileModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const uiStore = useUiStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
@@ -118,6 +123,7 @@ onUnmounted(() => {
   gap: 8px;
   text-decoration: none;
   color: var(--color-text-primary, #333);
+  flex-shrink: 0;
 }
 
 .navbar__icon {
@@ -131,10 +137,28 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+.navbar__separator {
+  color: var(--color-text-muted, #a0aec0);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.navbar__nav-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #333);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .navbar__actions {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .navbar__menu {
@@ -232,7 +256,25 @@ onUnmounted(() => {
   }
 
   .navbar__actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
     flex-wrap: wrap;
+    order: 3;
+  }
+
+  .navbar__menu {
+    order: 2;
+    flex-shrink: 0;
+  }
+
+  .navbar__logo {
+    order: 1;
+    flex: 1;
+  }
+
+  .navbar__separator,
+  .navbar__nav-title {
+    order: 1;
   }
 
   .navbar__search {
@@ -240,6 +282,8 @@ onUnmounted(() => {
     min-width: unset;
   }
 
-
+  .navbar__title--hidden-mobile {
+    display: none;
+  }
 }
 </style>
