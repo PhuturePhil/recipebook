@@ -135,7 +135,7 @@
             placeholder="Autor"
             autocomplete="off"
             @focus="activeSourceField = 'author'"
-            @blur="onSourceFieldBlur"
+            @blur="onSourceFieldBlur('author')"
             @keydown="onSourceFieldKeydown"
           />
           <button
@@ -162,7 +162,7 @@
             placeholder="Buch oder Website"
             autocomplete="off"
             @focus="activeSourceField = 'source'"
-            @blur="onSourceFieldBlur"
+            @blur="onSourceFieldBlur('source')"
             @keydown="onSourceFieldKeydown"
           />
           <button
@@ -404,10 +404,12 @@ const selectAuthor = (item) => {
   activeSourceField.value = null
 }
 
-const onSourceFieldBlur = () => {
+const onSourceFieldBlur = (field) => {
   setTimeout(() => {
     sourceEscPressed.value = false
-    activeSourceField.value = null
+    if (activeSourceField.value === field) {
+      activeSourceField.value = null
+    }
   }, 150)
 }
 
