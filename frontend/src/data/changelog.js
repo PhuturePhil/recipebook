@@ -1,5 +1,12 @@
 export const changelog = [
   {
+    date: '28.02.2026',
+    title: 'Navigation',
+    changes: [
+      'Neues Burger-Menü in der Navigation für Neuerungen, Benutzerverwaltung, persönliche Daten und Ausloggen',
+    ]
+  },
+  {
     date: '27.02.2026',
     title: 'Nährwerte',
     changes: [
