@@ -2,6 +2,7 @@
   <nav class="navbar">
     <div class="navbar__content">
       <router-link to="/" class="navbar__logo">
+        <img src="/icon.svg" alt="" class="navbar__icon" />
         <span class="navbar__title">Pastoors Familienrezepte</span>
       </router-link>
 
@@ -117,6 +118,12 @@ onUnmounted(() => {
   gap: 8px;
   text-decoration: none;
   color: var(--color-text-primary, #333);
+}
+
+.navbar__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
 }
 
 .navbar__title {
