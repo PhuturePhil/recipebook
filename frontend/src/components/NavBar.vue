@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import SearchBar from '@/components/SearchBar.vue'
@@ -78,6 +78,10 @@ function handleLogout() {
 function closeMenu() {
   showMenu.value = false
 }
+
+watch(() => route.path, () => {
+  showMenu.value = false
+})
 
 onMounted(() => {
   document.addEventListener('click', closeMenu)
