@@ -313,6 +313,26 @@ Alle Änderungen werden über Feature-Branches entwickelt:
 6. Pull Request erstellen
 7. Nach Merge in `main` → automatischer Deploy via GitHub Actions
 
+### Changelog-Pflege
+
+**Jeder PR muss `frontend/src/data/changelog.js` aktualisieren.** Neuen Eintrag oben einfügen:
+
+- Aktuelles Datum im Format `TT.MM.JJJJ`
+- Titel: kurze, prägnante Beschreibung des Features
+- Änderungen in natürlicher, nutzerverständlicher Sprache — kein technisches Jargon, keine Commit-Nachrichten, keine Entwicklerbegriffe
+- Richtet sich an alle Nutzer ohne technisches Verständnis
+
+```js
+{
+  date: '27.02.2026',
+  title: 'Nährwerte',
+  changes: [
+    'Automatische Nährwertberechnung beim Anlegen von Rezepten',
+    'Nährwerttabelle in der Rezeptansicht',
+  ]
+}
+```
+
 ---
 
 ## Database Migration Rules
