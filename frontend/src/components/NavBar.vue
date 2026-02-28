@@ -6,14 +6,6 @@
       </router-link>
 
       <div class="navbar__actions">
-        <router-link v-if="isAuthenticated && isAdmin" to="/admin/users" class="navbar__link">
-          Benutzer
-        </router-link>
-
-        <router-link v-if="isAuthenticated" to="/changelog" class="navbar__link">
-          Updates
-        </router-link>
-
         <router-link v-if="showSearch && isAuthenticated" to="/recipe/new" class="navbar__btn navbar__btn--primary">
           Rezept hinzufügen
         </router-link>
@@ -22,17 +14,27 @@
           <SearchBar />
         </div>
 
-        <template v-if="isAuthenticated">
-          <button @click="showProfileModal = true" class="navbar__user navbar__user--btn">
-            {{ fullName }}
-          </button>
-          <button @click="handleLogout" class="navbar__btn navbar__btn--secondary">
-            Logout
-          </button>
-        </template>
-        <router-link v-else to="/login" class="navbar__btn navbar__btn--primary">
+        <router-link v-if="!isAuthenticated" to="/login" class="navbar__btn navbar__btn--primary">
           Login
         </router-link>
+
+        <div v-if="isAuthenticated" class="navbar__menu">
+          <button @click.stop="toggleMenu" class="navbar__burger">&#9776;</button>
+          <div v-if="showMenu" class="navbar__dropdown">
+            <router-link to="/changelog" class="navbar__dropdown-item" @click="showMenu = false">
+              Neuerungen anzeigen
+            </router-link>
+            <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
+              Benutzerverwaltung öffnen
+            </router-link>
+            <button class="navbar__dropdown-item" @click="openProfile">
+              Persönliche Daten ändern
+            </button>
+            <button class="navbar__dropdown-item navbar__dropdown-item--logout" @click="handleLogout">
+              Ausloggen
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -41,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import SearchBar from '@/components/SearchBar.vue'
@@ -53,18 +55,41 @@ const authStore = useAuthStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
-const fullName = computed(() => authStore.fullName)
 
-const showSearch = computed(() => {
-  return route.path === '/'
-})
-
+const showSearch = computed(() => route.path === '/')
+const showMenu = ref(false)
 const showProfileModal = ref(false)
 
+function toggleMenu() {
+  showMenu.value = !showMenu.value
+}
+
+function openProfile() {
+  showMenu.value = false
+  showProfileModal.value = true
+}
+
 function handleLogout() {
+  showMenu.value = false
   authStore.logout()
   router.push('/login')
 }
+
+function closeMenu() {
+  showMenu.value = false
+}
+
+watch(() => route.path, () => {
+  showMenu.value = false
+})
+
+onMounted(() => {
+  document.addEventListener('click', closeMenu)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeMenu)
+})
 </script>
 
 <style scoped>
@@ -83,7 +108,6 @@ function handleLogout() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 16px;
 }
 
@@ -100,39 +124,70 @@ function handleLogout() {
   font-weight: 600;
 }
 
-.navbar__link {
-  padding: 10px 15px;
-  text-decoration: none;
-  color: var(--color-primary, #4a5568);
-  font-weight: 500;
-}
-
-.navbar__link:hover {
-  color: var(--color-primary-dark, #2d3748);
-}
-
-.navbar__user {
-  padding: 10px 15px;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.navbar__user--btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.navbar__user--btn:hover {
-  color: var(--color-primary, #4a5568);
-}
-
 .navbar__actions {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.navbar__menu {
+  position: relative;
+}
+
+.navbar__burger {
+  background: none;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: var(--color-text-primary, #333);
+  line-height: 1;
+  transition: background-color 0.2s ease;
+}
+
+.navbar__burger:hover {
+  background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.navbar__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: var(--color-bg-card, #fff);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 200;
+}
+
+.navbar__dropdown-item {
+  padding: 12px 16px;
+  text-decoration: none;
+  color: var(--color-text-primary, #333);
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid var(--color-border-light, #eee);
+}
+
+.navbar__dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.navbar__dropdown-item:hover {
+  background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.navbar__dropdown-item--logout {
+  color: var(--color-error, #e53e3e);
 }
 
 .navbar__btn {
@@ -166,17 +221,10 @@ function handleLogout() {
 
 @media (max-width: 600px) {
   .navbar__content {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .navbar__title {
-    font-size: 1.1rem;
+    flex-wrap: wrap;
   }
 
   .navbar__actions {
-    width: 100%;
-    justify-content: center;
     flex-wrap: wrap;
   }
 
@@ -184,5 +232,7 @@ function handleLogout() {
     width: 100%;
     min-width: unset;
   }
+
+
 }
 </style>
