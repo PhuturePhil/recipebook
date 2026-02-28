@@ -6,24 +6,6 @@
       </router-link>
 
       <div class="navbar__actions">
-        <div v-if="isAuthenticated" class="navbar__menu">
-          <button @click.stop="toggleMenu" class="navbar__burger">&#9776;</button>
-          <div v-if="showMenu" class="navbar__dropdown">
-            <router-link to="/changelog" class="navbar__dropdown-item" @click="showMenu = false">
-              Neuerungen
-            </router-link>
-            <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
-              Benutzerverwaltung
-            </router-link>
-            <button class="navbar__dropdown-item" @click="openProfile">
-              Persönliche Daten ändern
-            </button>
-            <button class="navbar__dropdown-item navbar__dropdown-item--logout" @click="handleLogout">
-              Ausloggen
-            </button>
-          </div>
-        </div>
-
         <router-link v-if="showSearch && isAuthenticated" to="/recipe/new" class="navbar__btn navbar__btn--primary">
           Rezept hinzufügen
         </router-link>
@@ -35,6 +17,24 @@
         <router-link v-if="!isAuthenticated" to="/login" class="navbar__btn navbar__btn--primary">
           Login
         </router-link>
+
+        <div v-if="isAuthenticated" class="navbar__menu">
+          <button @click.stop="toggleMenu" class="navbar__burger">&#9776;</button>
+          <div v-if="showMenu" class="navbar__dropdown">
+            <router-link to="/changelog" class="navbar__dropdown-item" @click="showMenu = false">
+              Neuerungen anzeigen
+            </router-link>
+            <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
+              Benutzerverwaltung öffnen
+            </router-link>
+            <button class="navbar__dropdown-item" @click="openProfile">
+              Persönliche Daten ändern
+            </button>
+            <button class="navbar__dropdown-item navbar__dropdown-item--logout" @click="handleLogout">
+              Ausloggen
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -153,7 +153,7 @@ onUnmounted(() => {
 .navbar__dropdown {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   min-width: 220px;
   background: var(--color-bg-card, #fff);
   border: 1px solid var(--color-border, #ddd);
@@ -233,9 +233,6 @@ onUnmounted(() => {
     min-width: unset;
   }
 
-  .navbar__dropdown {
-    left: auto;
-    right: 0;
-  }
+
 }
 </style>
