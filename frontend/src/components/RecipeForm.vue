@@ -291,12 +291,12 @@ function autoResize(event) {
   el.style.height = el.scrollHeight + 'px'
 }
 
-function resizeAllTextareas() {
-  nextTick(() => {
-    document.querySelectorAll('.recipe-form textarea:not([readonly])').forEach(el => {
-      el.style.height = 'auto'
-      el.style.height = el.scrollHeight + 'px'
-    })
+async function resizeAllTextareas() {
+  await nextTick()
+  await nextTick()
+  document.querySelectorAll('.recipe-form textarea:not([readonly])').forEach(el => {
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
   })
 }
 
@@ -420,6 +420,7 @@ const handleScan = async () => {
 
     selectedImages.value.forEach(img => URL.revokeObjectURL(img.previewUrl))
     scanned.value = true
+    await resizeAllTextareas()
   } catch {
     scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
   } finally {
