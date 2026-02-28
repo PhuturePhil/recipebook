@@ -21,23 +21,23 @@
         <router-link v-if="!isAuthenticated" to="/login" class="navbar__btn navbar__btn--primary">
           Login
         </router-link>
+      </div>
 
-        <div v-if="isAuthenticated" class="navbar__menu">
-          <button @click.stop="toggleMenu" class="navbar__burger">&#9776;</button>
-          <div v-if="showMenu" class="navbar__dropdown">
-            <router-link to="/changelog" class="navbar__dropdown-item" @click="showMenu = false">
-              Neuerungen anzeigen
-            </router-link>
-            <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
-              Benutzerverwaltung öffnen
-            </router-link>
-            <button class="navbar__dropdown-item" @click="openProfile">
-              Persönliche Daten ändern
-            </button>
-            <button class="navbar__dropdown-item navbar__dropdown-item--logout" @click="handleLogout">
-              Ausloggen
-            </button>
-          </div>
+      <div v-if="isAuthenticated" class="navbar__menu">
+        <button @click.stop="toggleMenu" class="navbar__burger">&#9776;</button>
+        <div v-if="showMenu" class="navbar__dropdown">
+          <router-link to="/changelog" class="navbar__dropdown-item" @click="showMenu = false">
+            Neuerungen anzeigen
+          </router-link>
+          <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
+            Benutzerverwaltung öffnen
+          </router-link>
+          <button class="navbar__dropdown-item" @click="openProfile">
+            Persönliche Daten ändern
+          </button>
+          <button class="navbar__dropdown-item navbar__dropdown-item--logout" @click="handleLogout">
+            Ausloggen
+          </button>
         </div>
       </div>
     </div>
@@ -123,6 +123,7 @@ onUnmounted(() => {
   gap: 8px;
   text-decoration: none;
   color: var(--color-text-primary, #333);
+  flex-shrink: 0;
 }
 
 .navbar__icon {
@@ -156,6 +157,8 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .navbar__menu {
@@ -253,7 +256,25 @@ onUnmounted(() => {
   }
 
   .navbar__actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
     flex-wrap: wrap;
+    order: 3;
+  }
+
+  .navbar__menu {
+    order: 2;
+    flex-shrink: 0;
+  }
+
+  .navbar__logo {
+    order: 1;
+    flex: 1;
+  }
+
+  .navbar__separator,
+  .navbar__nav-title {
+    order: 1;
   }
 
   .navbar__search {
