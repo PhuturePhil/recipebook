@@ -1,6 +1,7 @@
 package com.recipebook.service;
 
 import com.recipebook.dto.RecipeSummaryDto;
+import com.recipebook.dto.SourceAuthorDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Ingredient;
@@ -29,6 +30,14 @@ public class RecipeService {
     
     public List<RecipeSummaryDto> findAllSummaries() {
         return recipeRepository.findAllSummaries();
+    }
+
+    public List<SourceAuthorDto> findDistinctSourceAuthorPairs() {
+        return recipeRepository.findDistinctSourceAuthorPairs();
+    }
+
+    public List<String> findDistinctUnits() {
+        return recipeRepository.findDistinctUnits();
     }
 
     public List<Recipe> findAll() {

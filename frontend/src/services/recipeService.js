@@ -106,6 +106,36 @@ class RecipeService {
     }
   }
 
+  async getSources() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/recipes/sources`, {
+        headers: { ...getAuthHeaders() }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Failed to fetch sources:', error)
+      throw error
+    }
+  }
+
+  async getUnits() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/recipes/units`, {
+        headers: { ...getAuthHeaders() }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Failed to fetch units:', error)
+      throw error
+    }
+  }
+
   async scanRecipe(images) {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes/scan`, {

@@ -128,16 +128,60 @@
     <div class="form-group">
       <label>Quelle</label>
       <div class="source-fields">
-        <input
-          v-model="formData.author"
-          type="text"
-          placeholder="Autor"
-        />
-        <input
-          v-model="formData.source"
-          type="text"
-          placeholder="Buch oder Website"
-        />
+        <div class="source-input-wrapper">
+          <input
+            v-model="formData.author"
+            type="text"
+            placeholder="Autor"
+            autocomplete="off"
+            @focus="activeSourceField = 'author'"
+            @blur="onSourceFieldBlur('author')"
+            @keydown="onSourceFieldKeydown($event, 'author')"
+          />
+          <button
+            v-if="formData.author"
+            type="button"
+            class="source-clear-btn"
+            @mousedown.prevent="formData.author = ''"
+          >✕</button>
+          <ul
+            v-if="activeSourceField === 'author' && filteredAuthors.length > 0"
+            class="source-dropdown"
+          >
+            <li
+              v-for="item in filteredAuthors"
+              :key="item.author"
+              @mousedown.prevent="selectAuthor(item)"
+            >{{ item.author }}</li>
+          </ul>
+        </div>
+        <div class="source-input-wrapper">
+          <input
+            v-model="formData.source"
+            type="text"
+            placeholder="Buch oder Website"
+            autocomplete="off"
+            @focus="activeSourceField = 'source'"
+            @blur="onSourceFieldBlur('source')"
+            @keydown="onSourceFieldKeydown($event, 'source')"
+          />
+          <button
+            v-if="formData.source"
+            type="button"
+            class="source-clear-btn"
+            @mousedown.prevent="formData.source = ''"
+          >✕</button>
+          <ul
+            v-if="activeSourceField === 'source' && filteredSources.length > 0"
+            class="source-dropdown"
+          >
+            <li
+              v-for="item in filteredSources"
+              :key="item.source"
+              @mousedown.prevent="selectSource(item)"
+            >{{ item.source }}</li>
+          </ul>
+        </div>
         <input
           v-model="formData.page"
           type="text"
@@ -244,7 +288,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipeService'
 import { useRecipeStore } from '@/stores/recipeStore'
@@ -284,6 +328,10 @@ const formData = ref({
 
 const activeUnitIndex = ref(null)
 const descriptionRef = ref(null)
+const knownUnits = ref([])
+const knownSources = ref([])
+const activeSourceField = ref(null)
+const sourceEscPressed = ref(false)
 
 function autoResize(event) {
   const el = event.target
@@ -300,30 +348,82 @@ function resizeAllTextareas() {
   })
 }
 
-const allKnownUnits = computed(() => {
-  const fromStore = store.recipes
-    .flatMap(r => r.ingredients ?? [])
-    .map(i => i.unit?.trim())
-    .filter(u => u && u.length > 0)
-  return [...new Set(fromStore)]
-})
-
 const filteredKnownUnits = (index) => {
   const query = formData.value.ingredients[index]?.unit?.trim().toLowerCase() ?? ''
-  if (!query) return allKnownUnits.value
-  return allKnownUnits.value.filter(u => u.toLowerCase().includes(query))
+  if (!query) return knownUnits.value
+  return knownUnits.value.filter(u => u.toLowerCase().includes(query))
 }
 
 const showAddOption = (index) => {
   const val = formData.value.ingredients[index]?.unit?.trim()
   if (!val) return false
-  return !allKnownUnits.value.some(u => u.toLowerCase() === val.toLowerCase())
+  return !knownUnits.value.some(u => u.toLowerCase() === val.toLowerCase())
 }
 
 const unitDropdownItems = (index) => {
   return filteredKnownUnits(index).length > 0 || showAddOption(index)
     ? [true]
     : []
+}
+
+const filteredSources = computed(() => {
+  const query = formData.value.source?.trim().toLowerCase() ?? ''
+  if (!query) return knownSources.value
+  return knownSources.value.filter(s => s.source.toLowerCase().includes(query))
+})
+
+const filteredAuthors = computed(() => {
+  const query = formData.value.author?.trim().toLowerCase() ?? ''
+  const currentSource = formData.value.source?.trim().toLowerCase() ?? ''
+  const relevant = currentSource
+    ? knownSources.value.filter(s => s.source.toLowerCase().includes(currentSource))
+    : knownSources.value
+  const uniqueAuthors = [...new Map(
+    relevant
+      .filter(s => s.author)
+      .map(s => [s.author, s])
+  ).values()]
+  if (!query) return uniqueAuthors
+  return uniqueAuthors.filter(s => s.author.toLowerCase().includes(query))
+})
+
+const selectSource = (item) => {
+  formData.value.source = item.source
+  if (!formData.value.author && item.author) {
+    formData.value.author = item.author
+  }
+  activeSourceField.value = null
+}
+
+const selectAuthor = (item) => {
+  formData.value.author = item.author
+  if (!formData.value.source && item.source) {
+    formData.value.source = item.source
+  }
+  activeSourceField.value = null
+}
+
+const onSourceFieldBlur = (field) => {
+  setTimeout(() => {
+    if (sourceEscPressed.value) {
+      sourceEscPressed.value = false
+      activeSourceField.value = null
+      return
+    }
+    const list = field === 'source' ? filteredSources.value : filteredAuthors.value
+    if (list.length > 0) {
+      if (field === 'source') selectSource(list[0])
+      else selectAuthor(list[0])
+    }
+    activeSourceField.value = null
+  }, 150)
+}
+
+const onSourceFieldKeydown = (event, field) => {
+  if (event.key === 'Escape') {
+    sourceEscPressed.value = true
+    activeSourceField.value = null
+  }
 }
 
 const selectUnit = (index, value) => {
@@ -334,6 +434,19 @@ const selectUnit = (index, value) => {
 const closeUnitDropdown = () => {
   setTimeout(() => { activeUnitIndex.value = null }, 150)
 }
+
+onMounted(async () => {
+  try {
+    const [units, sources] = await Promise.all([
+      recipeService.getUnits(),
+      recipeService.getSources(),
+    ])
+    knownUnits.value = units
+    knownSources.value = sources
+  } catch {
+    // Vorschläge nicht verfügbar — kein kritischer Fehler
+  }
+})
 
 watch(() => formData.value.title, (title) => {
   emit('titleChange', title)
@@ -989,5 +1102,64 @@ const handleCancel = () => {
   font-size: 0.8rem;
   color: var(--color-text-muted, #999);
   margin-left: 4px;
+}
+
+.source-input-wrapper {
+  position: relative;
+}
+
+.source-input-wrapper input {
+  width: 100%;
+  padding-right: 32px;
+  box-sizing: border-box;
+}
+
+.source-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-error, #e53e3e);
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.source-clear-btn:hover {
+  color: #c53030;
+}
+
+.source-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: white;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  margin-top: 2px;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.source-dropdown li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--color-text-primary, #333);
+}
+
+.source-dropdown li:hover {
+  background: var(--color-bg-secondary, #f0f0f0);
 }
 </style>

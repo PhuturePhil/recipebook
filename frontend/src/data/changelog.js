@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '28.02.2026',
+    title: 'Kochbuch-Vorschläge',
+    changes: [
+      'Beim Eingeben eines Autors oder Buches werden passende Vorschläge aus vorhandenen Rezepten angezeigt',
+      'Wird ein Buch ausgewählt, wird der dazugehörige Autor automatisch eingetragen — und umgekehrt',
+      'Ein kleines rotes × im Feld löscht den Eintrag mit einem Klick',
+    ]
+  },
+  {
+    date: '28.02.2026',
     title: 'Schnelleres Laden der Übersicht',
     changes: [
       'Die Übersichtsseite lädt deutlich schneller, weil jetzt nur noch die für die Karten benötigten Daten übertragen werden',
