@@ -1,6 +1,7 @@
 package com.recipebook.controller;
 
 import com.recipebook.dto.RecipeSummaryDto;
+import com.recipebook.dto.SourceAuthorDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
@@ -31,6 +32,16 @@ public class RecipeController {
         return recipeService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/sources")
+    public List<SourceAuthorDto> getSources() {
+        return recipeService.findDistinctSourceAuthorPairs();
+    }
+
+    @GetMapping("/units")
+    public List<String> getUnits() {
+        return recipeService.findDistinctUnits();
     }
 
     @GetMapping("/search")
