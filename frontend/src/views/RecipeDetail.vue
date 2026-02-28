@@ -42,11 +42,11 @@
 
       <section v-if="recipe.ingredients?.length" class="recipe-section">
         <div class="section-header">
-          <h2>Zutaten</h2>
           <div v-if="recipe.nutritionKcal != null" class="tab-toggle">
             <button :class="['tab-btn', { active: activeTab === 'ingredients' }]" @click="activeTab = 'ingredients'">Zutaten</button>
             <button :class="['tab-btn', { active: activeTab === 'nutrition' }]" @click="activeTab = 'nutrition'">Nährwerte</button>
           </div>
+          <h2 v-else>Zutaten</h2>
         </div>
 
         <ul v-if="activeTab === 'ingredients'" class="ingredients-list">
@@ -486,10 +486,8 @@ const handleDelete = async () => {
 
 .section-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-end;
   margin-bottom: 16px;
-  padding-bottom: 8px;
   border-bottom: 2px solid var(--color-border, #ddd);
 }
 
@@ -497,30 +495,36 @@ const handleDelete = async () => {
   font-size: 1.5rem;
   color: var(--color-text-primary, #333);
   margin: 0;
+  padding-bottom: 8px;
   border-bottom: none;
-  padding-bottom: 0;
 }
 
 .tab-toggle {
   display: flex;
-  gap: 4px;
+  gap: 0;
 }
 
 .tab-btn {
-  padding: 6px 14px;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
-  background: var(--color-bg-secondary, #f0f0f0);
-  color: var(--color-text-secondary, #666);
-  font-size: 0.875rem;
+  padding: 0 20px 10px 0;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--color-text-muted, #a0aec0);
+  font-size: 1.5rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  margin-bottom: -2px;
+  font-family: inherit;
 }
 
 .tab-btn.active {
-  background: var(--color-primary, #4a5568);
-  color: white;
-  border-color: var(--color-primary, #4a5568);
+  color: var(--color-text-primary, #333);
+  border-bottom-color: var(--color-primary, #4a5568);
+}
+
+.tab-btn:not(.active):hover {
+  color: var(--color-text-secondary, #4a5568);
 }
 
 .nutrition-table {
