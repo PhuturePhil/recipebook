@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#4a5568"/>
+
+  <!-- Monogram "PR" -->
+  <!-- P -->
+  <text
+    x="108"
+    y="310"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+    font-size="220"
+    font-weight="700"
+    fill="white"
+    letter-spacing="-8"
+  >PR</text>
+
+  <!-- Stylized open book below the monogram -->
+  <!-- Book spine (center line) -->
+  <line x1="256" y1="348" x2="256" y2="406" stroke="white" stroke-width="10" stroke-linecap="round"/>
+  <!-- Left page -->
+  <path d="M256 352 Q190 344 124 358 L124 402 Q190 390 256 400 Z" fill="white" opacity="0.9"/>
+  <!-- Right page -->
+  <path d="M256 352 Q322 344 388 358 L388 402 Q322 390 256 400 Z" fill="white" opacity="0.9"/>
+</svg>

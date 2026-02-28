@@ -1,6 +1,14 @@
 export const changelog = [
   {
     date: '28.02.2026',
+    title: 'App-Icon',
+    changes: [
+      'Neues App-Icon mit "PR"-Monogramm und Buchsymbol für Browser-Tab und Homescreen',
+      'Die App kann jetzt auf dem iPhone-Homescreen installiert werden und zeigt das eigene Icon an',
+    ]
+  },
+  {
+    date: '28.02.2026',
     title: 'Navigation',
     changes: [
       'Neues Burger-Menü in der Navigation für Neuerungen, Benutzerverwaltung, persönliche Daten und Ausloggen',
