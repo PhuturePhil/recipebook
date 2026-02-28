@@ -3,10 +3,17 @@ export const changelog = [
     date: '28.02.2026',
     title: 'Mobile Optimierung',
     changes: [
-      'Der Rezepttitel erscheint in der Navigationsleiste, sobald er beim Scrollen nicht mehr sichtbar ist',
+      'Der Rezepttitel erscheint in der Navigationsleiste, sobald er beim Scrollen nicht mehr sichtbar ist — auf der Anzeige- und der Bearbeitungsseite',
+      'Beim Erstellen eines Rezepts wird der eingetippte Titel sofort in der Navigationsleiste angezeigt',
       'Auf dem Smartphone wird dabei der Website-Name ausgeblendet, damit der Titel besser lesbar ist',
-      'Die Aktions-Buttons bleiben beim Scrollen immer am unteren Bildschirmrand sichtbar',
+      'Die Aktions-Buttons bleiben beim Scrollen immer am unteren Bildschirmrand sichtbar — auf der Anzeige- und der Bearbeitungsseite',
       'Auf der Rezeptseite gibt es jetzt Abbrechen-, Löschen- und Bearbeiten-Buttons am unteren Rand',
+      'Das Burger-Menü ist auf dem Smartphone jetzt immer oben rechts sichtbar — auch auf der Übersichtsseite',
+      'Zutaten und Nährwerte sind jetzt als klickbare Überschriften dargestellt statt als separate Buttons',
+      'In der Bearbeitungsmaske heben sich die Zutaten durch Trennlinien besser voneinander ab',
+      'Auf dem Smartphone werden Zutat, Menge und Einheit übersichtlicher untereinander angezeigt',
+      'Löschen-Buttons bei Zutaten und Arbeitsschritten sind jetzt als rotes Mülleimer-Symbol dargestellt',
+      'Textfelder für Beschreibung und Arbeitsschritte passen ihre Höhe automatisch an den Inhalt an',
     ]
   },
   {
