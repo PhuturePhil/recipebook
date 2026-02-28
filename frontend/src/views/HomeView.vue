@@ -32,8 +32,7 @@ const store = useRecipeStore()
 
 const onVisibilityChange = () => {
   if (document.visibilityState === 'visible') {
-    store.invalidateRecipes()
-    store.fetchRecipes()
+    store.fetchRecipes({ background: true })
   }
 }
 
