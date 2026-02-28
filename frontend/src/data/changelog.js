@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '28.02.2026',
+    title: 'Fehlerbehebungen',
+    changes: [
+      'Bei gescannten Rezepten passen sich die Textfelder jetzt korrekt an die Länge des Inhalts an',
+      'Hat ein Autor mehrere Bücher, werden beim Auswählen des Autors jetzt nur noch seine Bücher vorgeschlagen',
+      'Die Vorschlagsliste beim Autor- und Buchfeld bleibt beim Wechsel zwischen den Feldern geöffnet',
+    ]
+  },
+  {
+    date: '28.02.2026',
     title: 'Kochbuch-Vorschläge',
     changes: [
       'Beim Eingeben eines Autors oder Buches werden passende Vorschläge aus vorhandenen Rezepten angezeigt',
