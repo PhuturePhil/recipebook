@@ -1,7 +1,7 @@
 <template>
   <div class="recipe-card" @click="navigateToDetail">
-    <div class="recipe-card__image">
-      <img :src="recipe.imageUrl || getFoodImage(recipe.id)" :alt="recipe.title" loading="lazy" />
+    <div v-if="recipe.imageUrl" class="recipe-card__image">
+      <img :src="recipe.imageUrl" :alt="recipe.title" loading="lazy" />
     </div>
     <div class="recipe-card__content">
       <h3 class="recipe-card__title">{{ recipe.title }}</h3>
@@ -30,7 +30,7 @@ const props = defineProps({
 
 const router = useRouter()
 
-const getFoodImage = (id) => `https://loremflickr.com/400/300/food?random=${id}`
+
 
 const formatPrepTime = (minutes) => {
   if (!minutes) return ''

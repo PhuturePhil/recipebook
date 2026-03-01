@@ -1,6 +1,13 @@
 export const changelog = [
   {
     date: '01.03.2026',
+    title: 'Schnellere Ladezeiten',
+    changes: [
+      'Rezepte ohne Bild laden jetzt schneller — externe Platzhalterbilder werden nicht mehr nachgeladen',
+    ]
+  },
+  {
+    date: '01.03.2026',
     title: 'Einladungslink',
     changes: [
       'Admins können in der Benutzerverwaltung einen Einladungslink generieren',
