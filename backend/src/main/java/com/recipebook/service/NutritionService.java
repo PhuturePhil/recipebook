@@ -3,15 +3,20 @@ package com.recipebook.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recipebook.model.Ingredient;
+import com.recipebook.model.IngredientCatalog;
+import com.recipebook.repository.IngredientCatalogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,18 +29,69 @@ public class NutritionService {
 
   private final WebClient webClient;
   private final ObjectMapper objectMapper;
+  private final IngredientCatalogRepository catalogRepository;
 
-  public NutritionService(ObjectMapper objectMapper) {
+  public NutritionService(ObjectMapper objectMapper, IngredientCatalogRepository catalogRepository) {
     this.webClient = WebClient.builder()
       .baseUrl("https://api.openai.com")
       .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
       .build();
     this.objectMapper = objectMapper;
+    this.catalogRepository = catalogRepository;
   }
 
+  @Transactional
   public NutritionResult calculateNutrition(List<Ingredient> ingredients) {
-    if (apiKey == null || apiKey.isBlank()) return null;
     if (ingredients == null || ingredients.isEmpty()) return null;
+
+    double totalKcal = 0, totalFat = 0, totalProtein = 0, totalCarbs = 0, totalFiber = 0;
+    boolean hasAnyValue = false;
+    List<Ingredient> missing = new ArrayList<>();
+
+    for (Ingredient ingredient : ingredients) {
+      String name = ingredient.getName();
+      String unit = ingredient.getUnit();
+      String amountStr = ingredient.getAmount();
+
+      if (name == null || name.isBlank()) continue;
+      if (unit == null || unit.isBlank()) continue;
+
+      Double amount = parseAmount(amountStr);
+      if (amount == null) continue;
+
+      String normalizedUnit = unit.trim();
+      Optional<IngredientCatalog> catalogEntry = catalogRepository.findByNameIgnoreCaseAndUnit(name.trim(), normalizedUnit);
+
+      if (catalogEntry.isPresent()) {
+        IngredientCatalog entry = catalogEntry.get();
+        if (entry.getNutritionKcal() != null) { totalKcal += entry.getNutritionKcal() * amount; hasAnyValue = true; }
+        if (entry.getNutritionFat() != null) { totalFat += entry.getNutritionFat() * amount; hasAnyValue = true; }
+        if (entry.getNutritionProtein() != null) { totalProtein += entry.getNutritionProtein() * amount; hasAnyValue = true; }
+        if (entry.getNutritionCarbs() != null) { totalCarbs += entry.getNutritionCarbs() * amount; hasAnyValue = true; }
+        if (entry.getNutritionFiber() != null) { totalFiber += entry.getNutritionFiber() * amount; hasAnyValue = true; }
+      } else {
+        missing.add(ingredient);
+      }
+    }
+
+    if (!missing.isEmpty() && apiKey != null && !apiKey.isBlank()) {
+      NutritionResult fromAi = fetchFromOpenAi(missing);
+      if (fromAi != null) {
+        totalKcal += fromAi.getKcal();
+        totalFat += fromAi.getFat();
+        totalProtein += fromAi.getProtein();
+        totalCarbs += fromAi.getCarbs();
+        totalFiber += fromAi.getFiber();
+        hasAnyValue = true;
+        saveMissingToCalog(missing, fromAi);
+      }
+    }
+
+    if (!hasAnyValue && missing.isEmpty()) return null;
+    return new NutritionResult(totalKcal, totalFat, totalProtein, totalCarbs, totalFiber);
+  }
+
+  private NutritionResult fetchFromOpenAi(List<Ingredient> ingredients) {
     try {
       String ingredientList = ingredients.stream()
         .map(i -> i.getAmount() + " " + i.getUnit() + " " + i.getName())
@@ -50,10 +106,8 @@ public class NutritionService {
 
       Map<String, Object> requestBody = Map.of(
         "model", "gpt-4.1",
-        "max_tokens", 100,
-        "messages", List.of(
-          Map.of("role", "user", "content", prompt)
-        )
+        "max_tokens", 200,
+        "messages", List.of(Map.of("role", "user", "content", prompt))
       );
 
       String response = webClient.post()
@@ -73,9 +127,9 @@ public class NutritionService {
       if (response == null) return null;
 
       JsonNode root = objectMapper.readTree(response);
-      JsonNode choicesNode = root.path("choices").path(0).path("message").path("content");
-      if (choicesNode.isMissingNode()) return null;
-      JsonNode json = objectMapper.readTree(choicesNode.asText());
+      JsonNode content = root.path("choices").path(0).path("message").path("content");
+      if (content.isMissingNode()) return null;
+      JsonNode json = objectMapper.readTree(content.asText());
 
       return new NutritionResult(
         json.path("kcal").asDouble(0),
@@ -85,7 +139,54 @@ public class NutritionService {
         json.path("fiber").asDouble(0)
       );
     } catch (Exception e) {
-      log.warn("NutritionService error: {}", e.getMessage());
+      log.warn("NutritionService OpenAI error: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  private void saveMissingToCalog(List<Ingredient> missing, NutritionResult total) {
+    if (missing.isEmpty()) return;
+    int count = missing.size();
+    for (Ingredient ingredient : missing) {
+      String name = ingredient.getName() != null ? ingredient.getName().trim() : "";
+      String unit = ingredient.getUnit() != null ? ingredient.getUnit().trim() : "";
+      Double amount = parseAmount(ingredient.getAmount());
+      if (name.isBlank() || unit.isBlank() || amount == null || amount == 0) continue;
+      try {
+        catalogRepository.insertIfAbsent(
+          name, unit,
+          total.getKcal() / count / amount,
+          total.getFat() / count / amount,
+          total.getProtein() / count / amount,
+          total.getCarbs() / count / amount,
+          total.getFiber() / count / amount
+        );
+      } catch (Exception e) {
+        log.warn("Could not save ingredient to catalog: {} {}: {}", name, unit, e.getMessage());
+      }
+    }
+  }
+
+  private Double parseAmount(String amount) {
+    if (amount == null || amount.isBlank()) return null;
+    String s = amount.trim().replace(",", ".");
+    if (s.contains("/")) {
+      String[] parts = s.split("/");
+      if (parts.length == 2) {
+        try {
+          double numerator = Double.parseDouble(parts[0].trim());
+          double denominator = Double.parseDouble(parts[1].trim());
+          if (denominator == 0) return null;
+          return numerator / denominator;
+        } catch (NumberFormatException e) {
+          return null;
+        }
+      }
+      return null;
+    }
+    try {
+      return Double.parseDouble(s);
+    } catch (NumberFormatException e) {
       return null;
     }
   }
