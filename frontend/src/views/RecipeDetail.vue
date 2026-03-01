@@ -9,8 +9,8 @@
         <h1 ref="titleRef">{{ recipe.title }}</h1>
       </header>
 
-      <div class="recipe-image">
-        <img :src="recipe.imageUrl || getFoodImage(recipe.id)" :alt="recipe.title" />
+      <div v-if="recipe.imageUrl" class="recipe-image">
+        <img :src="recipe.imageUrl" :alt="recipe.title" />
       </div>
 
       <p v-if="recipe.description" class="recipe-description">
@@ -130,7 +130,7 @@ const router = useRouter()
 const store = useRecipeStore()
 const uiStore = useUiStore()
 
-const getFoodImage = (id) => `https://loremflickr.com/800/400/food?random=${id}`
+
 
 const recipe = computed(() => store.currentRecipe)
 const currentServings = ref(1)
