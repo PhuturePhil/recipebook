@@ -75,15 +75,20 @@ public class NutritionService {
     }
 
     if (!missing.isEmpty() && apiKey != null && !apiKey.isBlank()) {
-      NutritionResult fromAi = fetchFromOpenAi(missing);
-      if (fromAi != null) {
-        totalKcal += fromAi.getKcal();
-        totalFat += fromAi.getFat();
-        totalProtein += fromAi.getProtein();
-        totalCarbs += fromAi.getCarbs();
-        totalFiber += fromAi.getFiber();
-        hasAnyValue = true;
-        saveMissingToCalog(missing, fromAi);
+      List<IngredientCatalog> aiEntries = fetchFromOpenAi(missing);
+      for (IngredientCatalog aiEntry : aiEntries) {
+        Ingredient matched = missing.stream()
+          .filter(i -> i.getName().trim().equalsIgnoreCase(aiEntry.getName())
+            && i.getUnit().trim().equalsIgnoreCase(aiEntry.getUnit()))
+          .findFirst().orElse(null);
+        Double amount = matched != null ? parseAmount(matched.getAmount()) : null;
+        if (amount == null) continue;
+        if (aiEntry.getNutritionKcal() != null) { totalKcal += aiEntry.getNutritionKcal() * amount; hasAnyValue = true; }
+        if (aiEntry.getNutritionFat() != null) { totalFat += aiEntry.getNutritionFat() * amount; hasAnyValue = true; }
+        if (aiEntry.getNutritionProtein() != null) { totalProtein += aiEntry.getNutritionProtein() * amount; hasAnyValue = true; }
+        if (aiEntry.getNutritionCarbs() != null) { totalCarbs += aiEntry.getNutritionCarbs() * amount; hasAnyValue = true; }
+        if (aiEntry.getNutritionFiber() != null) { totalFiber += aiEntry.getNutritionFiber() * amount; hasAnyValue = true; }
+        saveToCatalog(aiEntry);
       }
     }
 
@@ -91,22 +96,24 @@ public class NutritionService {
     return new NutritionResult(totalKcal, totalFat, totalProtein, totalCarbs, totalFiber);
   }
 
-  private NutritionResult fetchFromOpenAi(List<Ingredient> ingredients) {
+  private List<IngredientCatalog> fetchFromOpenAi(List<Ingredient> ingredients) {
     try {
       String ingredientList = ingredients.stream()
         .map(i -> i.getAmount() + " " + i.getUnit() + " " + i.getName())
         .collect(Collectors.joining(", "));
 
       String prompt = """
-        Berechne die Gesamtnährwerte für diese Zutatenliste eines Rezepts.
-        Antworte NUR mit einem validen JSON-Objekt ohne Markdown-Codeblock:
-        {"kcal": 0.0, "fat": 0.0, "protein": 0.0, "carbs": 0.0, "fiber": 0.0}
-        Alle Werte in Gramm außer kcal. Zutaten: %s
+        Gib die Nährwerte pro 1 Einheit für jede der folgenden Zutaten zurück.
+        Antworte NUR mit einem validen JSON-Array ohne Markdown-Codeblock:
+        [{"name": "Mehl", "unit": "g", "kcal": 3.4, "fat": 0.01, "protein": 0.1, "carbs": 0.72, "fiber": 0.03}]
+        Alle Werte pro 1 Einheit (nicht pro Gesamtmenge), in Gramm außer kcal.
+        Zutaten: %s
         """.formatted(ingredientList);
 
       Map<String, Object> requestBody = Map.of(
         "model", "gpt-4.1",
-        "max_tokens", 200,
+        "temperature", 0,
+        "max_tokens", 500,
         "messages", List.of(Map.of("role", "user", "content", prompt))
       );
 
@@ -124,46 +131,45 @@ public class NutritionService {
         .blockOptional()
         .orElse(null);
 
-      if (response == null) return null;
+      if (response == null) return List.of();
 
       JsonNode root = objectMapper.readTree(response);
       JsonNode content = root.path("choices").path(0).path("message").path("content");
-      if (content.isMissingNode()) return null;
-      JsonNode json = objectMapper.readTree(content.asText());
+      if (content.isMissingNode()) return List.of();
+      JsonNode array = objectMapper.readTree(content.asText());
+      if (!array.isArray()) return List.of();
 
-      return new NutritionResult(
-        json.path("kcal").asDouble(0),
-        json.path("fat").asDouble(0),
-        json.path("protein").asDouble(0),
-        json.path("carbs").asDouble(0),
-        json.path("fiber").asDouble(0)
-      );
+      List<IngredientCatalog> result = new ArrayList<>();
+      for (JsonNode node : array) {
+        IngredientCatalog entry = new IngredientCatalog();
+        entry.setName(node.path("name").asText(null));
+        entry.setUnit(node.path("unit").asText(null));
+        entry.setNutritionKcal(node.path("kcal").isNull() ? null : node.path("kcal").asDouble());
+        entry.setNutritionFat(node.path("fat").isNull() ? null : node.path("fat").asDouble());
+        entry.setNutritionProtein(node.path("protein").isNull() ? null : node.path("protein").asDouble());
+        entry.setNutritionCarbs(node.path("carbs").isNull() ? null : node.path("carbs").asDouble());
+        entry.setNutritionFiber(node.path("fiber").isNull() ? null : node.path("fiber").asDouble());
+        if (entry.getName() != null && entry.getUnit() != null) result.add(entry);
+      }
+      return result;
     } catch (Exception e) {
       log.warn("NutritionService OpenAI error: {}", e.getMessage());
-      return null;
+      return List.of();
     }
   }
 
-  private void saveMissingToCalog(List<Ingredient> missing, NutritionResult total) {
-    if (missing.isEmpty()) return;
-    int count = missing.size();
-    for (Ingredient ingredient : missing) {
-      String name = ingredient.getName() != null ? ingredient.getName().trim() : "";
-      String unit = ingredient.getUnit() != null ? ingredient.getUnit().trim() : "";
-      Double amount = parseAmount(ingredient.getAmount());
-      if (name.isBlank() || unit.isBlank() || amount == null || amount == 0) continue;
-      try {
-        catalogRepository.insertIfAbsent(
-          name, unit,
-          total.getKcal() / count / amount,
-          total.getFat() / count / amount,
-          total.getProtein() / count / amount,
-          total.getCarbs() / count / amount,
-          total.getFiber() / count / amount
-        );
-      } catch (Exception e) {
-        log.warn("Could not save ingredient to catalog: {} {}: {}", name, unit, e.getMessage());
-      }
+  private void saveToCatalog(IngredientCatalog entry) {
+    try {
+      catalogRepository.insertIfAbsent(
+        entry.getName(), entry.getUnit(),
+        entry.getNutritionKcal(),
+        entry.getNutritionFat(),
+        entry.getNutritionProtein(),
+        entry.getNutritionCarbs(),
+        entry.getNutritionFiber()
+      );
+    } catch (Exception e) {
+      log.warn("Could not save ingredient to catalog: {} {}: {}", entry.getName(), entry.getUnit(), e.getMessage());
     }
   }
 
