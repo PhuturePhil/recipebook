@@ -46,6 +46,7 @@
           <td>{{ fmt(entry.nutritionCarbs) }}</td>
           <td>{{ fmt(entry.nutritionFiber) }}</td>
           <td v-if="isAdmin" class="actions-cell" @click.stop>
+            <button @click="openEditModal(entry)" class="btn-edit">Bearbeiten</button>
             <button @click="openDeleteConfirm(entry)" class="btn-delete">Löschen</button>
           </td>
         </tr>
@@ -56,7 +57,7 @@
       <div class="modal-content">
         <h3>{{ selectedEntry.name }} <span class="unit-label">pro 1 {{ selectedEntry.unit || 'Einheit' }}</span></h3>
 
-        <table v-if="!editMode" class="detail-table">
+        <table class="detail-table">
           <tbody>
             <tr>
               <td>Energie</td>
@@ -81,7 +82,16 @@
           </tbody>
         </table>
 
-        <form v-else @submit.prevent="saveEdit">
+        <div class="modal-actions">
+          <button @click="closeDetailModal" class="btn-secondary">Schließen</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
+      <div class="modal-content">
+        <h3>Zutat bearbeiten</h3>
+        <form @submit.prevent="saveEdit">
           <div class="form-group">
             <label>Name</label>
             <input v-model="editForm.name" type="text" required />
@@ -113,16 +123,13 @@
             </div>
           </div>
           <div v-if="modalError" class="error-message">{{ modalError }}</div>
+          <div class="modal-actions">
+            <button type="button" @click="showEditModal = false" class="btn-secondary">Abbrechen</button>
+            <button type="submit" :disabled="saving" class="btn-primary">
+              {{ saving ? 'Speichern...' : 'Speichern' }}
+            </button>
+          </div>
         </form>
-
-        <div class="modal-actions">
-          <button v-if="isAdmin && !editMode" @click="startEdit" class="btn-secondary">Bearbeiten</button>
-          <button v-if="editMode" @click="editMode = false" class="btn-secondary">Abbrechen</button>
-          <button v-if="editMode" @click="saveEdit" :disabled="saving" class="btn-primary">
-            {{ saving ? 'Speichern...' : 'Speichern' }}
-          </button>
-          <button v-if="!editMode" @click="closeDetailModal" class="btn-secondary">Schließen</button>
-        </div>
       </div>
     </div>
 
@@ -191,7 +198,8 @@ const sortKey = ref('name')
 const sortDir = ref('asc')
 
 const selectedEntry = ref(null)
-const editMode = ref(false)
+
+const showEditModal = ref(false)
 const editForm = ref({})
 
 const showCreateModal = ref(false)
@@ -254,31 +262,28 @@ function fmt(val) {
 
 function openDetailModal(entry) {
   selectedEntry.value = entry
-  editMode.value = false
   modalError.value = null
 }
 
 function closeDetailModal() {
   selectedEntry.value = null
-  editMode.value = false
   modalError.value = null
 }
 
-function startEdit() {
-  editForm.value = { ...selectedEntry.value }
-  editMode.value = true
+function openEditModal(entry) {
+  editForm.value = { ...entry }
   modalError.value = null
+  showEditModal.value = true
 }
 
 async function saveEdit() {
   saving.value = true
   modalError.value = null
   try {
-    const updated = await ingredientCatalogService.update(selectedEntry.value.id, editForm.value)
+    const updated = await ingredientCatalogService.update(editForm.value.id, editForm.value)
     const idx = entries.value.findIndex(e => e.id === updated.id)
     if (idx !== -1) entries.value[idx] = updated
-    selectedEntry.value = updated
-    editMode.value = false
+    showEditModal.value = false
   } catch (err) {
     modalError.value = err.message || 'Fehler beim Speichern.'
   } finally {
@@ -359,6 +364,19 @@ async function openDeleteConfirm(entry) {
 }
 
 .btn-secondary:hover { background: #cbd5e0; }
+
+.btn-edit {
+  padding: 4px 10px;
+  background: #ebf8ff;
+  color: #2b6cb0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-right: 6px;
+}
+
+.btn-edit:hover { background: #bee3f8; }
 
 .btn-delete {
   padding: 4px 10px;
