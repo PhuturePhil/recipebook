@@ -113,7 +113,7 @@ public class NutritionService {
       Map<String, Object> requestBody = Map.of(
         "model", "gpt-4.1",
         "temperature", 0,
-        "max_tokens", 500,
+        "max_tokens", 100 * ingredients.size() + 200,
         "messages", List.of(Map.of("role", "user", "content", prompt))
       );
 
