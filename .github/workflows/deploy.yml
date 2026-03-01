@@ -82,8 +82,9 @@ jobs:
                 hostname: backend
                 networks:
                   - recipebook_default
-                ports:
-                  - "8080:8080"
+                expose:
+                  - "8080"
+
                 environment:
                   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/recipebook
                   SPRING_DATASOURCE_USERNAME: postgres
