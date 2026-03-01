@@ -7,11 +7,13 @@ import com.recipebook.model.Recipe;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.User;
 import com.recipebook.repository.RecipeRepository;
+import com.recipebook.repository.RecipeRepository.RecipeSummaryProjection;
 import com.recipebook.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class RecipeService {
@@ -29,7 +31,18 @@ public class RecipeService {
     }
     
     public List<RecipeSummaryDto> findAllSummaries() {
-        return recipeRepository.findAllSummaries();
+        return recipeRepository.findAllSummaries().stream().map(p -> {
+            RecipeSummaryDto dto = new RecipeSummaryDto(
+                p.getId(), p.getTitle(), p.getDescription(), p.getImageUrl(),
+                p.getPrepTimeMinutes(), p.getBaseServings(), p.getServingsTo(),
+                p.getIngredientCount()
+            );
+            dto.setAuthor(p.getAuthor());
+            dto.setSource(p.getSource());
+            dto.setCreatedBy(p.getCreatedBy());
+            dto.setIngredientNames(p.getIngredientNames());
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     public List<SourceAuthorDto> findDistinctSourceAuthorPairs() {

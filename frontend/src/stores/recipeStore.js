@@ -10,6 +10,10 @@ const toSummary = (recipe) => ({
   baseServings: recipe.baseServings,
   servingsTo: recipe.servingsTo,
   ingredientCount: recipe.ingredientCount ?? recipe.ingredients?.length ?? 0,
+  author: recipe.author ?? '',
+  source: recipe.source ?? '',
+  createdBy: recipe.createdBy ?? '',
+  ingredientNames: recipe.ingredientNames ?? '',
 })
 
 export const useRecipeStore = defineStore('recipe', {
@@ -18,20 +22,38 @@ export const useRecipeStore = defineStore('recipe', {
     currentRecipe: null,
     loading: false,
     error: null,
-    searchQuery: '',
+    searchTerms: [],
     _lastFetched: null,
   }),
 
   getters: {
     filteredRecipes: (state) => {
-      if (!state.searchQuery) return state.recipes
-      const query = state.searchQuery.toLowerCase()
-      return state.recipes.filter(
-        (recipe) =>
-          recipe.title.toLowerCase().includes(query) ||
-          (recipe.description || '').toLowerCase().includes(query)
+      if (!state.searchTerms.length) return state.recipes
+      const timeRegex = /^([<>])\s*(\d+)$/
+      return state.recipes.filter((recipe) =>
+        state.searchTerms.every((term) => {
+          const timeMatch = term.match(timeRegex)
+          if (timeMatch) {
+            const op = timeMatch[1]
+            const minutes = parseInt(timeMatch[2], 10)
+            const prep = recipe.prepTimeMinutes ?? null
+            if (prep === null) return false
+            return op === '<' ? prep < minutes : prep > minutes
+          }
+          const q = term.toLowerCase()
+          return (
+            (recipe.title || '').toLowerCase().includes(q) ||
+            (recipe.description || '').toLowerCase().includes(q) ||
+            (recipe.author || '').toLowerCase().includes(q) ||
+            (recipe.source || '').toLowerCase().includes(q) ||
+            (recipe.createdBy || '').toLowerCase().includes(q) ||
+            (recipe.ingredientNames || '').toLowerCase().includes(q)
+          )
+        })
       )
     },
+
+    searchQuery: (state) => state.searchTerms.join(', '),
 
     getRecipeById: (state) => (id) => {
       return state.recipes.find((recipe) => recipe.id === parseInt(id))
@@ -135,8 +157,8 @@ export const useRecipeStore = defineStore('recipe', {
       }
     },
 
-    setSearchQuery(query) {
-      this.searchQuery = query
+    setSearchTerms(terms) {
+      this.searchTerms = terms
     },
 
     clearError() {

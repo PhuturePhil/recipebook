@@ -1,5 +1,15 @@
 export const changelog = [
   {
+    date: '01.03.2026',
+    title: 'Erweiterte Suche',
+    changes: [
+      'Suche jetzt auch nach Zutaten, Autor und Kochbuch',
+      'Mehrere Suchbegriffe mit Komma kombinieren — alle müssen passen',
+      'Zeitfilter mit < oder > (z.B. "< 30" findet Rezepte unter 30 Minuten)',
+      'Suchbegriffe erscheinen als Badges und lassen sich einzeln entfernen',
+    ]
+  },
+  {
     date: '28.02.2026',
     title: 'Fehlerbehebungen',
     changes: [
