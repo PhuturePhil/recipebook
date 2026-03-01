@@ -21,12 +21,16 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 
 const store = useRecipeStore()
 const badges = ref([])
 const inputValue = ref('')
+
+onMounted(() => {
+  badges.value = [...store.searchTerms]
+})
 
 const addBadge = (value) => {
   const trimmed = value.trim()
