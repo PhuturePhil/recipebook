@@ -1,6 +1,17 @@
 export const changelog = [
   {
     date: '01.03.2026',
+    title: 'Zutaten & Nährwerte',
+    changes: [
+      'Neue Seite "Zutaten" im Menü: alle Zutaten mit ihren Nährwerten auf einen Blick',
+      'Klick auf eine Zutat zeigt die genauen Nährwerte pro Einheit',
+      'Spalten lassen sich sortieren — nach Name, Einheit oder Nährwerten',
+      'Admins können Nährwerte direkt in der Tabelle pflegen und neue Zutaten anlegen',
+      'Beim Anlegen eines Rezepts werden bekannte Zutaten aus dem Katalog verwendet — spart Zeit und verbessert die Genauigkeit',
+    ]
+  },
+  {
+    date: '01.03.2026',
     title: 'Schnellere Ladezeiten',
     changes: [
       'Rezepte ohne Bild laden jetzt schneller — externe Platzhalterbilder werden nicht mehr nachgeladen',
