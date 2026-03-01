@@ -86,6 +86,26 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/invite")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.Map<String, String>> generateInviteLink(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        String url = authService.generateInvitationToken(userDetails.getId());
+        return ResponseEntity.ok(java.util.Map.of("url", url));
+    }
+
+    @PostMapping("/register-with-invite")
+    public ResponseEntity<UserResponse> registerWithInvite(@RequestBody com.recipebook.dto.RegisterWithInviteRequest request) {
+        User user = authService.registerWithInvitation(
+                request.getToken(),
+                request.getVorname(),
+                request.getNachname(),
+                request.getEmail(),
+                request.getPassword()
+        );
+        return ResponseEntity.ok(toUserResponse(user));
+    }
+
     @PostMapping("/password-reset")
     public ResponseEntity<Void> requestPasswordReset(@RequestBody PasswordResetRequest request) {
         authService.requestPasswordReset(request.getEmail());

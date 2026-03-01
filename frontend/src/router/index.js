@@ -18,6 +18,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/invite',
+      name: 'invite',
+      component: () => import('@/views/RegisterWithInviteView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('@/views/AdminUsersView.vue'),

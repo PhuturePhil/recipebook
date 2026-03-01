@@ -2,9 +2,14 @@
   <div class="admin-users-container">
     <h1>Benutzerverwaltung</h1>
 
-    <button @click="openCreateForm" class="btn-primary">
-      Neuen Benutzer erstellen
-    </button>
+    <div class="header-actions">
+      <button @click="openCreateForm" class="btn-primary">
+        Neuen Benutzer erstellen
+      </button>
+      <button @click="handleGenerateInvite" :disabled="inviteLinkLoading" class="btn-secondary-action">
+        {{ inviteLinkLoading ? 'Generiere...' : 'Einladungslink generieren' }}
+      </button>
+    </div>
 
     <div v-if="formError && !showCreateForm && !showEditForm" class="error-banner">{{ formError }}</div>
 
@@ -41,6 +46,20 @@
         </tr>
       </tbody>
     </table>
+
+    <div v-if="showInviteModal" class="modal-overlay" @click.self="showInviteModal = false">
+      <div class="modal-content">
+        <h3>Einladungslink</h3>
+        <p class="hint">Dieser Link ist 24 Stunden gültig und kann nur einmal verwendet werden.</p>
+        <div class="invite-link-row">
+          <input :value="inviteLink" readonly class="invite-link-input" ref="inviteLinkInput" />
+          <button @click="copyInviteLink" class="btn-copy">{{ copied ? 'Kopiert!' : 'Kopieren' }}</button>
+        </div>
+        <div class="modal-actions">
+          <button @click="showInviteModal = false" class="btn-secondary">Schließen</button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="showCreateForm" class="modal-overlay" @click.self="showCreateForm = false">
       <div class="modal-content">
@@ -141,6 +160,12 @@ const showEditForm = ref(false)
 const creating = ref(false)
 const saving = ref(false)
 
+const showInviteModal = ref(false)
+const inviteLink = ref('')
+const inviteLinkLoading = ref(false)
+const copied = ref(false)
+const inviteLinkInput = ref(null)
+
 const newUser = ref({
   vorname: '',
   nachname: '',
@@ -220,6 +245,34 @@ async function handleEditUser() {
   saving.value = false
 }
 
+async function handleGenerateInvite() {
+  inviteLinkLoading.value = true
+  formError.value = null
+  try {
+    inviteLink.value = await authService.generateInviteLink()
+    copied.value = false
+    showInviteModal.value = true
+  } catch (err) {
+    formError.value = err.message || 'Fehler beim Generieren des Einladungslinks.'
+  }
+  inviteLinkLoading.value = false
+}
+
+async function copyInviteLink() {
+  try {
+    await navigator.clipboard.writeText(inviteLink.value)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    if (inviteLinkInput.value) {
+      inviteLinkInput.value.select()
+      document.execCommand('copy')
+      copied.value = true
+      setTimeout(() => { copied.value = false }, 2000)
+    }
+  }
+}
+
 async function handleDeleteUser(user) {
   const name = [user.vorname, user.nachname].filter(Boolean).join(' ') || user.email
   if (!confirm(`Benutzer "${name}" wirklich loeschen?`)) return
@@ -259,6 +312,12 @@ h1 {
   margin-top: 16px;
 }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .btn-primary {
   padding: 10px 20px;
   background: #4a5568;
@@ -270,6 +329,56 @@ h1 {
 }
 
 .btn-primary:hover {
+  background: #2d3748;
+}
+
+.btn-secondary-action {
+  padding: 10px 20px;
+  background: white;
+  color: #4a5568;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.btn-secondary-action:hover:not(:disabled) {
+  background: #f7fafc;
+}
+
+.btn-secondary-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.invite-link-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.invite-link-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #4a5568;
+  background: #f7fafc;
+}
+
+.btn-copy {
+  padding: 10px 16px;
+  background: #4a5568;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.btn-copy:hover {
   background: #2d3748;
 }
 

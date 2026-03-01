@@ -163,6 +163,46 @@ class AuthService {
     }
   }
 
+  async generateInviteLink() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/invite`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`
+        }
+      })
+      if (!response.ok) {
+        const msg = await parseError(response, 'Fehler beim Generieren des Einladungslinks.')
+        throw new Error(msg)
+      }
+      const data = await response.json()
+      return data.url
+    } catch (error) {
+      console.error('Failed to generate invite link:', error)
+      throw error
+    }
+  }
+
+  async registerWithInvite({ token, vorname, nachname, email, password }) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register-with-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token, vorname, nachname, email, password })
+      })
+      if (!response.ok) {
+        const msg = await parseError(response, 'Registrierung fehlgeschlagen.')
+        throw new Error(msg)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Register with invite failed:', error)
+      throw error
+    }
+  }
+
   async requestPasswordReset(email) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/password-reset`, {
