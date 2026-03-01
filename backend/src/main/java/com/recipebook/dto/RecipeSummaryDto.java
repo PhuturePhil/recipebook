@@ -10,6 +10,10 @@ public class RecipeSummaryDto {
   private Integer baseServings;
   private Integer servingsTo;
   private Long ingredientCount;
+  private String author;
+  private String source;
+  private String createdBy;
+  private String ingredientNames;
 
   public RecipeSummaryDto(Long id, String title, String description, String imageUrl,
       Integer prepTimeMinutes, Integer baseServings, Integer servingsTo, Long ingredientCount) {
@@ -39,4 +43,12 @@ public class RecipeSummaryDto {
   public void setServingsTo(Integer servingsTo) { this.servingsTo = servingsTo; }
   public Long getIngredientCount() { return ingredientCount; }
   public void setIngredientCount(Long ingredientCount) { this.ingredientCount = ingredientCount; }
+  public String getAuthor() { return author; }
+  public void setAuthor(String author) { this.author = author; }
+  public String getSource() { return source; }
+  public void setSource(String source) { this.source = source; }
+  public String getCreatedBy() { return createdBy; }
+  public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+  public String getIngredientNames() { return ingredientNames; }
+  public void setIngredientNames(String ingredientNames) { this.ingredientNames = ingredientNames; }
 }

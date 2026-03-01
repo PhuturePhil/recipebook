@@ -1,5 +1,24 @@
 export const changelog = [
   {
+    date: '01.03.2026',
+    title: 'Einladungslink',
+    changes: [
+      'Admins können in der Benutzerverwaltung einen Einladungslink generieren',
+      'Der Link ist 24 Stunden gültig und kann nur einmal verwendet werden',
+      'Wer den Link öffnet, kann sich direkt registrieren — ohne dass der Admin eine E-Mail-Adresse kennen muss',
+    ]
+  },
+  {
+    date: '01.03.2026',
+    title: 'Erweiterte Suche',
+    changes: [
+      'Suche jetzt auch nach Zutaten, Autor und Kochbuch',
+      'Mehrere Suchbegriffe mit Komma kombinieren — alle müssen passen',
+      'Zeitfilter mit < oder > (z.B. "< 30" findet Rezepte unter 30 Minuten)',
+      'Suchbegriffe erscheinen als Badges und lassen sich einzeln entfernen',
+    ]
+  },
+  {
     date: '28.02.2026',
     title: 'Fehlerbehebungen',
     changes: [

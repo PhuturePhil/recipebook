@@ -3,9 +3,11 @@ package com.recipebook.service;
 import com.recipebook.dto.UpdateProfileRequest;
 import com.recipebook.dto.UpdateUserRequest;
 import com.recipebook.model.CustomUserDetails;
+import com.recipebook.model.InvitationToken;
 import com.recipebook.model.PasswordResetToken;
 import com.recipebook.model.Role;
 import com.recipebook.model.User;
+import com.recipebook.repository.InvitationTokenRepository;
 import com.recipebook.repository.PasswordResetTokenRepository;
 import com.recipebook.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
@@ -33,6 +35,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
+    private final InvitationTokenRepository invitationTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -47,12 +50,14 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             PasswordResetTokenRepository tokenRepository,
+            InvitationTokenRepository invitationTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AuthenticationManager authenticationManager,
             JavaMailSender mailSender) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
+        this.invitationTokenRepository = invitationTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
@@ -183,7 +188,33 @@ public class AuthService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
         tokenRepository.deleteByUser(user);
+        invitationTokenRepository.deleteByInvitedBy(user);
         userRepository.delete(user);
+    }
+
+    @Transactional
+    public String generateInvitationToken(Long invitedByUserId) {
+        User invitedBy = userRepository.findById(invitedByUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
+        String token = UUID.randomUUID().toString();
+        InvitationToken invitationToken = new InvitationToken(
+                token, invitedBy, LocalDateTime.now().plusHours(24)
+        );
+        invitationTokenRepository.save(invitationToken);
+        return appUrl + "/invite?token=" + token;
+    }
+
+    @Transactional
+    public User registerWithInvitation(String token, String vorname, String nachname, String email, String password) {
+        InvitationToken invitationToken = invitationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Der Einladungslink ist ungueltig oder abgelaufen."));
+        if (!invitationToken.isValid()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Der Einladungslink ist ungueltig oder abgelaufen.");
+        }
+        User user = register(vorname, nachname, email, password, Role.USER);
+        invitationToken.setUsed(true);
+        invitationTokenRepository.save(invitationToken);
+        return user;
     }
 
     @Transactional

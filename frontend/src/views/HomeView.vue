@@ -9,7 +9,7 @@
     </div>
 
     <div v-else-if="store.filteredRecipes.length === 0" class="empty">
-      <p v-if="store.searchQuery">Keine Rezepte gefunden für "{{ store.searchQuery }}"</p>
+      <p v-if="store.searchTerms.length">Keine Rezepte gefunden für "{{ store.searchTerms.join(', ') }}"</p>
       <p v-else>Noch keine Rezepte vorhanden. Erstelle dein erstes Rezept!</p>
     </div>
 
