@@ -1,6 +1,14 @@
 export const changelog = [
   {
     date: '02.03.2026',
+    title: 'Zuverlässigere Nährwertberechnung',
+    changes: [
+      'Die Nährwertberechnung erkennt Zutaten jetzt zuverlässiger — auch wenn die KI intern nach einer anderen Schreibweise sucht',
+      'Zutaten, für die keine Nährwerte ermittelt werden konnten, werden nun protokolliert',
+    ]
+  },
+  {
+    date: '02.03.2026',
     title: 'Nährwerte der Zutaten',
     changes: [
       'Im Nährwerte-Tab eines Rezepts gibt es jetzt einen Link zur Zutatenseite — dort werden alle Zutaten des Rezepts mit ihren Nährwerten angezeigt, sortiert nach Kalorien',

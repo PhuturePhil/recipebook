@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class NutritionService {
 
   private static final Logger log = LoggerFactory.getLogger(NutritionService.class);
+  private static final Logger nutritionWarnLog = LoggerFactory.getLogger("NUTRITION_WARN");
 
   @Value("${openai.api-key:}")
   private String apiKey;
@@ -76,12 +77,27 @@ public class NutritionService {
 
     if (!missing.isEmpty() && apiKey != null && !apiKey.isBlank()) {
       List<IngredientCatalog> aiEntries = fetchFromOpenAi(missing);
+
       for (IngredientCatalog aiEntry : aiEntries) {
+        if (aiEntry.getNutritionKcal() == null && aiEntry.getNutritionFat() == null
+          && aiEntry.getNutritionProtein() == null && aiEntry.getNutritionCarbs() == null
+          && aiEntry.getNutritionFiber() == null) {
+          nutritionWarnLog.warn("Keine Nährwerte von OpenAI erhalten für: {} {}", aiEntry.getName(), aiEntry.getUnit());
+          continue;
+        }
+
         Ingredient matched = missing.stream()
           .filter(i -> i.getName().trim().equalsIgnoreCase(aiEntry.getName())
             && i.getUnit().trim().equalsIgnoreCase(aiEntry.getUnit()))
           .findFirst().orElse(null);
-        Double amount = matched != null ? parseAmount(matched.getAmount()) : null;
+
+        if (matched == null) {
+          nutritionWarnLog.warn("OpenAI hat unbekannte Zutat zurückgegeben (nicht in Eingabe): {} {}", aiEntry.getName(), aiEntry.getUnit());
+          saveToCatalog(aiEntry);
+          continue;
+        }
+
+        Double amount = parseAmount(matched.getAmount());
         if (amount == null) continue;
         if (aiEntry.getNutritionKcal() != null) { totalKcal += aiEntry.getNutritionKcal() * amount; hasAnyValue = true; }
         if (aiEntry.getNutritionFat() != null) { totalFat += aiEntry.getNutritionFat() * amount; hasAnyValue = true; }
@@ -89,6 +105,15 @@ public class NutritionService {
         if (aiEntry.getNutritionCarbs() != null) { totalCarbs += aiEntry.getNutritionCarbs() * amount; hasAnyValue = true; }
         if (aiEntry.getNutritionFiber() != null) { totalFiber += aiEntry.getNutritionFiber() * amount; hasAnyValue = true; }
         saveToCatalog(aiEntry);
+      }
+
+      List<String> returnedNames = aiEntries.stream()
+        .map(e -> e.getName().trim().toLowerCase())
+        .toList();
+      for (Ingredient m : missing) {
+        if (!returnedNames.contains(m.getName().trim().toLowerCase())) {
+          nutritionWarnLog.warn("OpenAI hat keine Antwort für Zutat geliefert: {} {}", m.getName(), m.getUnit());
+        }
       }
     }
 
@@ -107,6 +132,7 @@ public class NutritionService {
         Antworte NUR mit einem validen JSON-Array ohne Markdown-Codeblock:
         [{"name": "Mehl", "unit": "g", "kcal": 3.4, "fat": 0.01, "protein": 0.1, "carbs": 0.72, "fiber": 0.03}]
         Alle Werte pro 1 Einheit (nicht pro Gesamtmenge), in Gramm außer kcal.
+        Wichtig: Verwende für "name" EXAKT denselben Namen wie in der Eingabe. Keine Änderung der Schreibweise, kein Singular/Plural, keine Übersetzung.
         Zutaten: %s
         """.formatted(ingredientList);
 
