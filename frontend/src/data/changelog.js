@@ -1,6 +1,14 @@
 export const changelog = [
   {
     date: '02.03.2026',
+    title: 'Rezeptanzahl',
+    changes: [
+      'Die Anzahl der Rezepte wird jetzt auf der Hauptseite angezeigt',
+      'Bei aktiver Suche wird angezeigt, wie viele Rezepte gefunden wurden',
+    ]
+  },
+  {
+    date: '02.03.2026',
     title: 'Ladeanimation',
     changes: [
       'Beim Speichern eines Rezepts und beim Analysieren eines Rezeptfotos erscheint jetzt eine Ladeanimation',
