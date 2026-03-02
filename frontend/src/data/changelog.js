@@ -1,6 +1,14 @@
 export const changelog = [
   {
     date: '02.03.2026',
+    title: 'Ladeanimation',
+    changes: [
+      'Beim Speichern eines Rezepts und beim Analysieren eines Rezeptfotos erscheint jetzt eine Ladeanimation',
+      'Während die Animation läuft, ist die Seite gesperrt — so gibt es keine versehentlichen Doppelklicks',
+    ]
+  },
+  {
+    date: '02.03.2026',
     title: 'Badges',
     changes: [
       'Rezepte werden jetzt mit Badges ausgezeichnet — z.B. "Schnell", "Proteinreich" oder "Kalorienarm"',

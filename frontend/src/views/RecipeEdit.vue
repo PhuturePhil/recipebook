@@ -81,6 +81,7 @@ onUnmounted(() => {
 })
 
 const handleSubmit = async (recipeData) => {
+  uiStore.showLoading('Rezept wird gespeichert…')
   try {
     if (isEdit.value) {
       await store.updateRecipe(route.params.id, recipeData)
@@ -91,6 +92,8 @@ const handleSubmit = async (recipeData) => {
     }
   } catch (error) {
     alert('Fehler beim Speichern des Rezepts: ' + error.message)
+  } finally {
+    uiStore.hideLoading()
   }
 }
 </script>
