@@ -77,12 +77,12 @@ export const useRecipeStore = defineStore('recipe', {
       return badgeMap
     },
 
-    filteredRecipes: (state, getters) => {
-      if (!state.searchTerms.length) return state.recipes
+    filteredRecipes() {
+      if (!this.searchTerms.length) return this.recipes
       const timeRegex = /^([<>])\s*(\d+)$/
-      const badgeMap = getters.computedBadges
-      return state.recipes.filter((recipe) =>
-        state.searchTerms.every((term) => {
+      const badgeMap = this.computedBadges
+      return this.recipes.filter((recipe) =>
+        this.searchTerms.every((term) => {
           const timeMatch = term.match(timeRegex)
           if (timeMatch) {
             const op = timeMatch[1]
