@@ -292,6 +292,7 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipeService'
 import { useRecipeStore } from '@/stores/recipeStore'
+import { useUiStore } from '@/stores/uiStore'
 
 const props = defineProps({
   recipe: {
@@ -304,6 +305,7 @@ const emit = defineEmits(['submit', 'cancel', 'titleChange'])
 
 const router = useRouter()
 const store = useRecipeStore()
+const uiStore = useUiStore()
 const isEdit = ref(!!props.recipe)
 const scanning = ref(false)
 const scanned = ref(false)
@@ -501,6 +503,7 @@ const handleScan = async () => {
   scanning.value = true
   scanError.value = ''
   unrecognizedText.value = ''
+  uiStore.showLoading('Rezept wird analysiert…')
 
   try {
     const payload = selectedImages.value.map(({ imageData, mimeType }) => ({ imageData, mimeType }))
@@ -532,6 +535,7 @@ const handleScan = async () => {
     scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
   } finally {
     scanning.value = false
+    uiStore.hideLoading()
   }
 }
 

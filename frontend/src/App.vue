@@ -4,6 +4,7 @@ import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import NavBar from '@/components/NavBar.vue'
 import ProfileModal from '@/components/ProfileModal.vue'
+import LoadingOverlay from '@/components/LoadingOverlay.vue'
 
 const authStore = useAuthStore()
 const showProfileSetup = ref(false)
@@ -20,6 +21,7 @@ onMounted(async () => {
   <NavBar />
   <RouterView />
   <ProfileModal v-if="showProfileSetup" @close="showProfileSetup = false" />
+  <LoadingOverlay />
 </template>
 
 <style>
