@@ -74,6 +74,7 @@ onUnmounted(() => {
   font-size: 0.875rem;
   color: var(--color-text-muted, #a0aec0);
   margin-bottom: 16px;
+  text-align: center;
 }
 
 .recipe-grid {
