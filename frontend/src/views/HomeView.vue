@@ -14,6 +14,7 @@
         v-for="recipe in store.filteredRecipes"
         :key="recipe.id"
         :recipe="recipe"
+        :badges="store.computedBadges.get(recipe.id) ?? []"
       />
     </div>
   </div>

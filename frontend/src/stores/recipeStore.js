@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { recipeService } from '@/services/recipeService'
 import { useUiStore } from '@/stores/uiStore'
 
+const BADGE_NAMES = ['Kalorienarm', 'Proteinreich', 'Ballaststoffreich', 'Fettarm', 'Schnell']
+
 const toSummary = (recipe) => ({
   id: recipe.id,
   title: recipe.title,
@@ -15,6 +17,10 @@ const toSummary = (recipe) => ({
   source: recipe.source ?? '',
   createdBy: recipe.createdBy ?? '',
   ingredientNames: recipe.ingredientNames ?? '',
+  nutritionKcal: recipe.nutritionKcal ?? null,
+  nutritionFat: recipe.nutritionFat ?? null,
+  nutritionProtein: recipe.nutritionProtein ?? null,
+  nutritionFiber: recipe.nutritionFiber ?? null,
 })
 
 export const useRecipeStore = defineStore('recipe', {
@@ -28,11 +34,56 @@ export const useRecipeStore = defineStore('recipe', {
   }),
 
   getters: {
-    filteredRecipes: (state) => {
-      if (!state.searchTerms.length) return state.recipes
+    computedBadges: (state) => {
+      const recipes = state.recipes
+      const badgeMap = new Map()
+
+      const percentile10 = (values) => {
+        if (!values.length) return null
+        const sorted = [...values].sort((a, b) => a - b)
+        const idx = Math.max(0, Math.ceil(sorted.length * 0.1) - 1)
+        return sorted[idx]
+      }
+      const percentile90 = (values) => {
+        if (!values.length) return null
+        const sorted = [...values].sort((a, b) => a - b)
+        const idx = Math.min(sorted.length - 1, Math.floor(sorted.length * 0.9))
+        return sorted[idx]
+      }
+
+      const servings = (r) => (r.baseServings && r.baseServings > 0 ? r.baseServings : 1)
+
+      const kcalPer = recipes.filter(r => r.nutritionKcal != null).map(r => r.nutritionKcal / servings(r))
+      const fatPer = recipes.filter(r => r.nutritionFat != null).map(r => r.nutritionFat / servings(r))
+      const proteinPer = recipes.filter(r => r.nutritionProtein != null).map(r => r.nutritionProtein / servings(r))
+      const fiberPer = recipes.filter(r => r.nutritionFiber != null).map(r => r.nutritionFiber / servings(r))
+      const prep = recipes.filter(r => r.prepTimeMinutes != null).map(r => r.prepTimeMinutes)
+
+      const kcalThreshold = percentile10(kcalPer)
+      const fatThreshold = percentile10(fatPer)
+      const proteinThreshold = percentile90(proteinPer)
+      const fiberThreshold = percentile90(fiberPer)
+      const prepThreshold = percentile10(prep)
+
+      for (const r of recipes) {
+        const badges = []
+        const s = servings(r)
+        if (r.nutritionKcal != null && kcalThreshold != null && r.nutritionKcal / s <= kcalThreshold) badges.push('Kalorienarm')
+        if (r.nutritionFat != null && fatThreshold != null && r.nutritionFat / s <= fatThreshold) badges.push('Fettarm')
+        if (r.nutritionProtein != null && proteinThreshold != null && r.nutritionProtein / s >= proteinThreshold) badges.push('Proteinreich')
+        if (r.nutritionFiber != null && fiberThreshold != null && r.nutritionFiber / s >= fiberThreshold) badges.push('Ballaststoffreich')
+        if (r.prepTimeMinutes != null && prepThreshold != null && r.prepTimeMinutes <= prepThreshold) badges.push('Schnell')
+        badgeMap.set(r.id, badges)
+      }
+      return badgeMap
+    },
+
+    filteredRecipes() {
+      if (!this.searchTerms.length) return this.recipes
       const timeRegex = /^([<>])\s*(\d+)$/
-      return state.recipes.filter((recipe) =>
-        state.searchTerms.every((term) => {
+      const badgeMap = this.computedBadges
+      return this.recipes.filter((recipe) =>
+        this.searchTerms.every((term) => {
           const timeMatch = term.match(timeRegex)
           if (timeMatch) {
             const op = timeMatch[1]
@@ -41,7 +92,12 @@ export const useRecipeStore = defineStore('recipe', {
             if (prep === null) return false
             return op === '<' ? prep < minutes : prep > minutes
           }
-          const q = term.toLowerCase()
+          const termLower = term.toLowerCase()
+          const matchedBadge = BADGE_NAMES.find(b => b.toLowerCase() === termLower)
+          if (matchedBadge) {
+            return (badgeMap.get(recipe.id) ?? []).includes(matchedBadge)
+          }
+          const q = termLower
           return (
             (recipe.title || '').toLowerCase().includes(q) ||
             (recipe.description || '').toLowerCase().includes(q) ||
