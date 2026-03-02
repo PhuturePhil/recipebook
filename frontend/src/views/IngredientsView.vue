@@ -182,9 +182,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { ingredientCatalogService } from '@/services/ingredientCatalogService'
 
+const route = useRoute()
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
 
@@ -196,6 +198,7 @@ const modalError = ref(null)
 
 const sortKey = ref('name')
 const sortDir = ref('asc')
+const activeFilter = ref(null)
 
 const selectedEntry = ref(null)
 
@@ -210,6 +213,11 @@ function emptyForm() {
 }
 
 onMounted(async () => {
+  if (route.query.sort) sortKey.value = route.query.sort
+  if (route.query.dir) sortDir.value = route.query.dir
+  if (route.query.filter) {
+    activeFilter.value = route.query.filter.split(',').map(s => s.toLowerCase())
+  }
   await load()
 })
 
@@ -226,7 +234,13 @@ async function load() {
 }
 
 const sortedEntries = computed(() => {
-  return [...entries.value].sort((a, b) => {
+  let result = [...entries.value]
+  if (activeFilter.value) {
+    result = result.filter(e =>
+      activeFilter.value.includes(`${e.name}|${e.unit}`.toLowerCase())
+    )
+  }
+  return result.sort((a, b) => {
     const av = a[sortKey.value]
     const bv = b[sortKey.value]
     if (av == null && bv == null) return 0

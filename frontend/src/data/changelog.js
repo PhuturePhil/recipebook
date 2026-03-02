@@ -1,6 +1,13 @@
 export const changelog = [
   {
     date: '02.03.2026',
+    title: 'Nährwerte der Zutaten',
+    changes: [
+      'Im Nährwerte-Tab eines Rezepts gibt es jetzt einen Link zur Zutatenseite — dort werden alle Zutaten des Rezepts mit ihren Nährwerten angezeigt, sortiert nach Kalorien',
+    ]
+  },
+  {
+    date: '02.03.2026',
     title: 'Ladeanimation',
     changes: [
       'Beim Speichern eines Rezepts und beim Analysieren eines Rezeptfotos erscheint jetzt eine Ladeanimation',
