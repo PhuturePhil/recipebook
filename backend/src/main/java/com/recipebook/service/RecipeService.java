@@ -41,6 +41,10 @@ public class RecipeService {
             dto.setSource(p.getSource());
             dto.setCreatedBy(p.getCreatedBy());
             dto.setIngredientNames(p.getIngredientNames());
+            dto.setNutritionKcal(p.getNutritionKcal());
+            dto.setNutritionFat(p.getNutritionFat());
+            dto.setNutritionProtein(p.getNutritionProtein());
+            dto.setNutritionFiber(p.getNutritionFiber());
             return dto;
         }).collect(Collectors.toList());
     }

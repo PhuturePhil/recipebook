@@ -22,6 +22,10 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     String getSource();
     String getCreatedBy();
     String getIngredientNames();
+    Double getNutritionKcal();
+    Double getNutritionFat();
+    Double getNutritionProtein();
+    Double getNutritionFiber();
   }
 
   @Query(value =
@@ -29,6 +33,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       "r.prep_time_minutes AS prepTimeMinutes, r.base_servings AS baseServings, r.servings_to AS servingsTo, " +
       "COUNT(i.id) AS ingredientCount, " +
       "r.author, r.source, " +
+      "r.nutrition_kcal AS nutritionKcal, r.nutrition_fat AS nutritionFat, " +
+      "r.nutrition_protein AS nutritionProtein, r.nutrition_fiber AS nutritionFiber, " +
       "COALESCE(CONCAT_WS(' ', NULLIF(u.vorname, ''), NULLIF(u.nachname, '')), '') AS createdBy, " +
       "STRING_AGG(i.name, ', ') AS ingredientNames " +
       "FROM recipes r " +
