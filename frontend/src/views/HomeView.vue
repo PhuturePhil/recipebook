@@ -1,14 +1,10 @@
 <template>
   <div class="home-view">
-    <div v-if="store.loading" class="loading">
-      Lädt...
-    </div>
-
-    <div v-else-if="store.error" class="error">
+    <div v-if="store.error" class="error">
       {{ store.error }}
     </div>
 
-    <div v-else-if="store.filteredRecipes.length === 0" class="empty">
+    <div v-else-if="store.filteredRecipes.length === 0 && !store.loading" class="empty">
       <p v-if="store.searchTerms.length">Keine Rezepte gefunden für "{{ store.searchTerms.join(', ') }}"</p>
       <p v-else>Noch keine Rezepte vorhanden. Erstelle dein erstes Rezept!</p>
     </div>
@@ -53,7 +49,6 @@ onUnmounted(() => {
   padding: 24px;
 }
 
-.loading,
 .error,
 .empty {
   text-align: center;

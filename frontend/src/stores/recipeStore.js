@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { recipeService } from '@/services/recipeService'
+import { useUiStore } from '@/stores/uiStore'
 
 const toSummary = (recipe) => ({
   id: recipe.id,
@@ -67,6 +68,8 @@ export const useRecipeStore = defineStore('recipe', {
       this._forceRefresh = false
       if (!background) this.loading = true
       this.error = null
+      const uiStore = useUiStore()
+      uiStore.showLoading('Rezepte werden geladen…')
       try {
         const data = await recipeService.getAll()
         this.recipes = data
@@ -76,6 +79,7 @@ export const useRecipeStore = defineStore('recipe', {
         console.error('Failed to fetch recipes:', error)
       } finally {
         this.loading = false
+        uiStore.hideLoading()
       }
     },
 
