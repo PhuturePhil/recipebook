@@ -1,5 +1,14 @@
 export const changelog = [
   {
+    date: '02.03.2026',
+    title: 'Badges',
+    changes: [
+      'Rezepte werden jetzt mit Badges ausgezeichnet — z.B. "Schnell", "Proteinreich" oder "Kalorienarm"',
+      'Die Badges werden automatisch vergeben und zeigen, welche Rezepte in ihrer Kategorie besonders herausstechen',
+      'Über die Suche kann direkt nach Badges gefiltert werden',
+    ]
+  },
+  {
     date: '01.03.2026',
     title: 'Schnellere Ladezeiten',
     changes: [
