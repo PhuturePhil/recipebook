@@ -124,15 +124,15 @@ public class NutritionService {
   private List<IngredientCatalog> fetchFromOpenAi(List<Ingredient> ingredients) {
     try {
       String ingredientList = ingredients.stream()
-        .map(i -> i.getAmount() + " " + i.getUnit() + " " + i.getName())
-        .collect(Collectors.joining(", "));
+        .map(i -> "{\"name\": \"" + i.getName() + "\", \"amount\": \"" + i.getAmount() + "\", \"unit\": \"" + i.getUnit() + "\"}")
+        .collect(Collectors.joining(", ", "[", "]"));
 
       String prompt = """
         Gib die Nährwerte pro 1 Einheit für jede der folgenden Zutaten zurück.
         Antworte NUR mit einem validen JSON-Array ohne Markdown-Codeblock:
         [{"name": "Mehl", "unit": "g", "kcal": 3.4, "fat": 0.01, "protein": 0.1, "carbs": 0.72, "fiber": 0.03}]
         Alle Werte pro 1 Einheit (nicht pro Gesamtmenge), in Gramm außer kcal.
-        Wichtig: Verwende für "name" EXAKT denselben Namen wie in der Eingabe. Keine Änderung der Schreibweise, kein Singular/Plural, keine Übersetzung.
+        Wichtig: Verwende für "name" und "unit" EXAKT die Werte aus der Eingabe. Keine Änderung der Schreibweise, kein Singular/Plural, keine Übersetzung.
         Zutaten: %s
         """.formatted(ingredientList);
 
