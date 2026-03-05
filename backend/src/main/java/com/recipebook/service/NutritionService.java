@@ -86,6 +86,16 @@ public class NutritionService {
           continue;
         }
 
+        boolean allZero = isZeroOrNull(aiEntry.getNutritionKcal())
+          && isZeroOrNull(aiEntry.getNutritionFat())
+          && isZeroOrNull(aiEntry.getNutritionProtein())
+          && isZeroOrNull(aiEntry.getNutritionCarbs())
+          && isZeroOrNull(aiEntry.getNutritionFiber());
+        if (allZero) {
+          nutritionWarnLog.warn("OpenAI hat nur Nullwerte zurückgegeben für: {} {}", aiEntry.getName(), aiEntry.getUnit());
+          continue;
+        }
+
         Ingredient matched = missing.stream()
           .filter(i -> i.getName().trim().equalsIgnoreCase(aiEntry.getName())
             && i.getUnit().trim().equalsIgnoreCase(aiEntry.getUnit()))
@@ -197,6 +207,10 @@ public class NutritionService {
     } catch (Exception e) {
       log.warn("Could not save ingredient to catalog: {} {}: {}", entry.getName(), entry.getUnit(), e.getMessage());
     }
+  }
+
+  private boolean isZeroOrNull(Double value) {
+    return value == null || value == 0.0;
   }
 
   private Double parseAmount(String amount) {
