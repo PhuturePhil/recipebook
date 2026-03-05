@@ -9,49 +9,50 @@
     <div v-else-if="error" class="error-banner">{{ error }}</div>
     <div v-else-if="entries.length === 0" class="empty">Noch keine Zutaten im Katalog.</div>
 
-    <table v-else class="ingredients-table">
-      <thead>
-        <tr>
-          <th @click="setSort('name')" class="sortable">
-            Name <span class="sort-indicator">{{ sortIndicator('name') }}</span>
-          </th>
-          <th @click="setSort('unit')" class="sortable">
-            Einheit <span class="sort-indicator">{{ sortIndicator('unit') }}</span>
-          </th>
-          <th @click="setSort('nutritionKcal')" class="sortable">
-            kcal <span class="sort-indicator">{{ sortIndicator('nutritionKcal') }}</span>
-          </th>
-          <th @click="setSort('nutritionFat')" class="sortable">
-            Fett (g) <span class="sort-indicator">{{ sortIndicator('nutritionFat') }}</span>
-          </th>
-          <th @click="setSort('nutritionProtein')" class="sortable">
-            Protein (g) <span class="sort-indicator">{{ sortIndicator('nutritionProtein') }}</span>
-          </th>
-          <th @click="setSort('nutritionCarbs')" class="sortable">
-            KH (g) <span class="sort-indicator">{{ sortIndicator('nutritionCarbs') }}</span>
-          </th>
-          <th @click="setSort('nutritionFiber')" class="sortable">
-            Ballaststoffe (g) <span class="sort-indicator">{{ sortIndicator('nutritionFiber') }}</span>
-          </th>
-          <th v-if="isAdmin"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="entry in sortedEntries" :key="entry.id" @click="openDetailModal(entry)" class="clickable-row">
-          <td>{{ entry.name }}</td>
-          <td>{{ entry.unit || '—' }}</td>
-          <td>{{ fmt(entry.nutritionKcal) }}</td>
-          <td>{{ fmt(entry.nutritionFat) }}</td>
-          <td>{{ fmt(entry.nutritionProtein) }}</td>
-          <td>{{ fmt(entry.nutritionCarbs) }}</td>
-          <td>{{ fmt(entry.nutritionFiber) }}</td>
-          <td v-if="isAdmin" class="actions-cell" @click.stop>
-            <button @click="openEditModal(entry)" class="btn-edit">Bearbeiten</button>
-            <button @click="openDeleteConfirm(entry)" class="btn-delete">Löschen</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else>
+      <div v-for="group in groupedEntries" :key="group.unit" class="unit-group">
+        <h2 class="unit-heading">{{ group.unit || '—' }}</h2>
+        <table class="ingredients-table">
+          <thead>
+            <tr>
+              <th @click="setSort('name')" class="sortable">
+                Name <span class="sort-indicator">{{ sortIndicator('name') }}</span>
+              </th>
+              <th @click="setSort('nutritionKcal')" class="sortable">
+                kcal <span class="sort-indicator">{{ sortIndicator('nutritionKcal') }}</span>
+              </th>
+              <th @click="setSort('nutritionFat')" class="sortable">
+                Fett (g) <span class="sort-indicator">{{ sortIndicator('nutritionFat') }}</span>
+              </th>
+              <th @click="setSort('nutritionProtein')" class="sortable">
+                Protein (g) <span class="sort-indicator">{{ sortIndicator('nutritionProtein') }}</span>
+              </th>
+              <th @click="setSort('nutritionCarbs')" class="sortable">
+                KH (g) <span class="sort-indicator">{{ sortIndicator('nutritionCarbs') }}</span>
+              </th>
+              <th @click="setSort('nutritionFiber')" class="sortable">
+                Ballaststoffe (g) <span class="sort-indicator">{{ sortIndicator('nutritionFiber') }}</span>
+              </th>
+              <th v-if="isAdmin"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in group.entries" :key="entry.id" @click="openDetailModal(entry)" class="clickable-row">
+              <td>{{ entry.name }}</td>
+              <td>{{ fmt(entry.nutritionKcal) }}</td>
+              <td>{{ fmt(entry.nutritionFat) }}</td>
+              <td>{{ fmt(entry.nutritionProtein) }}</td>
+              <td>{{ fmt(entry.nutritionCarbs) }}</td>
+              <td>{{ fmt(entry.nutritionFiber) }}</td>
+              <td v-if="isAdmin" class="actions-cell" @click.stop>
+                <button @click="openEditModal(entry)" class="btn-edit">Bearbeiten</button>
+                <button @click="openDeleteConfirm(entry)" class="btn-delete">Löschen</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
     <div v-if="selectedEntry" class="modal-overlay" @click.self="closeDetailModal">
       <div class="modal-content">
@@ -233,14 +234,14 @@ async function load() {
   }
 }
 
-const sortedEntries = computed(() => {
+const groupedEntries = computed(() => {
   let result = [...entries.value]
   if (activeFilter.value) {
     result = result.filter(e =>
       activeFilter.value.includes(`${e.name}|${e.unit}`.toLowerCase())
     )
   }
-  return result.sort((a, b) => {
+  result.sort((a, b) => {
     const av = a[sortKey.value]
     const bv = b[sortKey.value]
     if (av == null && bv == null) return 0
@@ -253,6 +254,15 @@ const sortedEntries = computed(() => {
     }
     return sortDir.value === 'asc' ? av - bv : bv - av
   })
+  const map = new Map()
+  for (const entry of result) {
+    const unit = entry.unit || ''
+    if (!map.has(unit)) map.set(unit, [])
+    map.get(unit).push(entry)
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, 'de'))
+    .map(([unit, entries]) => ({ unit, entries }))
 })
 
 function setSort(key) {
@@ -424,6 +434,19 @@ async function openDeleteConfirm(entry) {
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 12px;
+}
+
+.unit-group {
+  margin-bottom: 32px;
+}
+
+.unit-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .ingredients-table {
