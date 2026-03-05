@@ -1,5 +1,12 @@
 export const changelog = [
   {
+    date: '05.03.2026',
+    title: 'Zutaten nach Einheit gruppiert',
+    changes: [
+      'Die Zutatenseite zeigt Zutaten jetzt nach Einheit gruppiert an',
+    ]
+  },
+  {
     date: '02.03.2026',
     title: 'Zuverlässigere Nährwertberechnung',
     changes: [
@@ -12,6 +19,14 @@ export const changelog = [
     title: 'Nährwerte der Zutaten',
     changes: [
       'Im Nährwerte-Tab eines Rezepts gibt es jetzt einen Link zur Zutatenseite — dort werden alle Zutaten des Rezepts mit ihren Nährwerten angezeigt, sortiert nach Kalorien',
+    ]
+  },
+  {
+    date: '02.03.2026',
+    title: 'Rezeptanzahl',
+    changes: [
+      'Die Anzahl der Rezepte wird jetzt auf der Hauptseite angezeigt',
+      'Bei aktiver Suche wird angezeigt, wie viele Rezepte gefunden wurden',
     ]
   },
   {

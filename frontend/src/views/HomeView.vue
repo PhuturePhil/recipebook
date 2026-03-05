@@ -9,7 +9,12 @@
       <p v-else>Noch keine Rezepte vorhanden. Erstelle dein erstes Rezept!</p>
     </div>
 
-    <div v-else class="recipe-grid">
+    <div v-if="store.recipes.length > 0" class="recipe-count">
+      <span v-if="isFiltered">{{ store.filteredRecipes.length }} von {{ store.recipes.length }} Rezepten</span>
+      <span v-else>{{ store.recipes.length }} Rezepte</span>
+    </div>
+
+    <div class="recipe-grid">
       <RecipeCard
         v-for="recipe in store.filteredRecipes"
         :key="recipe.id"
@@ -21,11 +26,15 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 import RecipeCard from '@/components/RecipeCard.vue'
 
 const store = useRecipeStore()
+
+const isFiltered = computed(() =>
+  store.searchTerms.length > 0 && store.filteredRecipes.length < store.recipes.length
+)
 
 const onVisibilityChange = () => {
   if (document.visibilityState === 'visible') {
@@ -59,6 +68,13 @@ onUnmounted(() => {
 
 .error {
   color: var(--color-error, #e53e3e);
+}
+
+.recipe-count {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #a0aec0);
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 .recipe-grid {
