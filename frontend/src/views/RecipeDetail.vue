@@ -92,6 +92,12 @@
             </tr>
           </tbody>
         </table>
+
+        <div v-if="activeTab === 'nutrition'" class="nutrition-link">
+          <button @click="goToIngredients" class="btn-nutrition-link">
+            Nährwerte der Zutaten anzeigen
+          </button>
+        </div>
       </section>
 
       <section v-if="recipe.instructions?.length" class="recipe-section">
@@ -205,6 +211,14 @@ const scaledIngredients = computed(() => {
 const formatNutrition = (value) => {
   if (value == null) return '–'
   return Math.round(value * 10) / 10
+}
+
+const goToIngredients = () => {
+  const filter = (recipe.value.ingredients || [])
+    .filter(i => i.name && i.unit)
+    .map(i => `${i.name}|${i.unit}`)
+    .join(',')
+  router.push({ name: 'ingredients', query: { filter, sort: 'nutritionKcal', dir: 'desc' } })
 }
 
 const formatPrepTime = (minutes) => {
@@ -560,5 +574,25 @@ const handleDelete = async () => {
 
 .nutrition-table tr:last-child td {
   border-bottom: none;
+}
+
+.nutrition-link {
+  margin-top: 16px;
+  text-align: right;
+}
+
+.btn-nutrition-link {
+  background: none;
+  border: none;
+  color: var(--color-primary, #4a5568);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn-nutrition-link:hover {
+  color: var(--color-primary-dark, #2d3748);
 }
 </style>
