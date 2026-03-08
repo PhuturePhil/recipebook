@@ -8,7 +8,7 @@ echo ========================================
 echo.
 
 echo [1/4] Starte PostgreSQL mit Docker...
-docker-compose up -d postgres
+docker-compose -f docker-compose.local.yml up -d postgres
 if %errorlevel% neq 0 (
     echo FEHLER: Docker konnte nicht gestartet werden
     echo Bitte Docker Desktop starten und erneut versuchen
@@ -23,7 +23,7 @@ timeout /t 5 /nobreak
 echo.
 
 echo [3/4] Starte Backend (SpringBoot)...
-start "Backend - SpringBoot" cmd /k "cd /d %~dp0backend && mvn spring-boot:run"
+start "Backend - SpringBoot" cmd /k "cd /d %~dp0backend && mvn spring-boot:run -Dspring-boot.run.profiles=local"
 echo.
 
 echo [4/4] Starte Frontend (Vue.js)...

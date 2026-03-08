@@ -51,9 +51,9 @@ class IngredientCatalogService {
     }
   }
 
-  async update(id, data) {
+  async updateUnit(id, data) {
     try {
-      const response = await fetch(`${API_BASE_URL}/ingredient-catalog/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/ingredient-catalog/unit/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -62,19 +62,40 @@ class IngredientCatalogService {
         body: JSON.stringify(data)
       })
       if (!response.ok) {
-        const msg = await parseError(response, 'Fehler beim Speichern des Eintrags.')
+        const msg = await parseError(response, 'Fehler beim Speichern der Einheit.')
         throw new Error(msg)
       }
       return await response.json()
     } catch (error) {
-      console.error('Failed to update catalog entry:', error)
+      console.error('Failed to update unit:', error)
       throw error
     }
   }
 
-  async delete(id) {
+  async updateIngredient(id, data) {
     try {
-      const response = await fetch(`${API_BASE_URL}/ingredient-catalog/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/ingredient-catalog/ingredient/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(data)
+      })
+      if (!response.ok) {
+        const msg = await parseError(response, 'Fehler beim Speichern der Nährwerte.')
+        throw new Error(msg)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Failed to update ingredient:', error)
+      throw error
+    }
+  }
+
+  async deleteUnit(id) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ingredient-catalog/unit/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${getToken()}` }
       })
