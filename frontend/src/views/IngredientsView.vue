@@ -15,37 +15,52 @@
         <table class="ingredients-table">
           <thead>
             <tr>
-              <th @click="setSort('name')" class="sortable">
-                Name <span class="sort-indicator">{{ sortIndicator('name') }}</span>
+              <th @click="setSort('nameDe')" class="sortable">
+                Name <span class="sort-indicator">{{ sortIndicator('nameDe') }}</span>
               </th>
-              <th @click="setSort('nutritionKcal')" class="sortable">
-                kcal <span class="sort-indicator">{{ sortIndicator('nutritionKcal') }}</span>
+              <th @click="setSort('nameEn')" class="sortable">
+                Name (EN) <span class="sort-indicator">{{ sortIndicator('nameEn') }}</span>
               </th>
-              <th @click="setSort('nutritionFat')" class="sortable">
-                Fett (g) <span class="sort-indicator">{{ sortIndicator('nutritionFat') }}</span>
+              <th @click="setSort('gramsPerUnit')" class="sortable">
+                g/Einheit <span class="sort-indicator">{{ sortIndicator('gramsPerUnit') }}</span>
               </th>
-              <th @click="setSort('nutritionProtein')" class="sortable">
-                Protein (g) <span class="sort-indicator">{{ sortIndicator('nutritionProtein') }}</span>
+              <th v-if="activeFilter" class="col-conversion">Umrechnung</th>
+              <th @click="setSort('calories100g')" class="sortable">
+                kcal/100g <span class="sort-indicator">{{ sortIndicator('calories100g') }}</span>
               </th>
-              <th @click="setSort('nutritionCarbs')" class="sortable">
-                KH (g) <span class="sort-indicator">{{ sortIndicator('nutritionCarbs') }}</span>
+              <th @click="setSort('fat100g')" class="sortable">
+                Fett/100g <span class="sort-indicator">{{ sortIndicator('fat100g') }}</span>
               </th>
-              <th @click="setSort('nutritionFiber')" class="sortable">
-                Ballaststoffe (g) <span class="sort-indicator">{{ sortIndicator('nutritionFiber') }}</span>
+              <th @click="setSort('protein100g')" class="sortable">
+                Protein/100g <span class="sort-indicator">{{ sortIndicator('protein100g') }}</span>
               </th>
+              <th @click="setSort('carbs100g')" class="sortable">
+                KH/100g <span class="sort-indicator">{{ sortIndicator('carbs100g') }}</span>
+              </th>
+              <th @click="setSort('fiber100g')" class="sortable">
+                Ballaststoffe/100g <span class="sort-indicator">{{ sortIndicator('fiber100g') }}</span>
+              </th>
+              <th>Schätzung</th>
               <th v-if="isAdmin"></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="entry in group.entries" :key="entry.id" @click="openDetailModal(entry)" class="clickable-row">
-              <td>{{ entry.name }}</td>
-              <td>{{ fmt(entry.nutritionKcal) }}</td>
-              <td>{{ fmt(entry.nutritionFat) }}</td>
-              <td>{{ fmt(entry.nutritionProtein) }}</td>
-              <td>{{ fmt(entry.nutritionCarbs) }}</td>
-              <td>{{ fmt(entry.nutritionFiber) }}</td>
+            <tr v-for="entry in group.entries" :key="entry.unitId" @click="openDetailModal(entry)" class="clickable-row">
+              <td>{{ entry.nameDe }}</td>
+              <td class="col-en">{{ entry.nameEn }}</td>
+              <td>{{ fmt(entry.gramsPerUnit) }} g</td>
+              <td v-if="activeFilter" class="col-conversion">1 {{ entry.unitDescription }} = {{ fmt(entry.gramsPerUnit) }} g</td>
+              <td>{{ fmt(entry.calories100g) }}</td>
+              <td>{{ fmt(entry.fat100g) }}</td>
+              <td>{{ fmt(entry.protein100g) }}</td>
+              <td>{{ fmt(entry.carbs100g) }}</td>
+              <td>{{ fmt(entry.fiber100g) }}</td>
+              <td>
+                <span v-if="entry.isEstimated" class="badge-estimated">&#9888; Geschätzt</span>
+              </td>
               <td v-if="isAdmin" class="actions-cell" @click.stop>
-                <button @click="openEditModal(entry)" class="btn-edit">Bearbeiten</button>
+                <button @click="openEditUnitModal(entry)" class="btn-edit">Einheit</button>
+                <button @click="openEditIngredientModal(entry)" class="btn-edit">Nährwerte</button>
                 <button @click="openDeleteConfirm(entry)" class="btn-delete">Löschen</button>
               </td>
             </tr>
@@ -56,79 +71,91 @@
 
     <div v-if="selectedEntry" class="modal-overlay" @click.self="closeDetailModal">
       <div class="modal-content">
-        <h3>{{ selectedEntry.name }} <span class="unit-label">pro 1 {{ selectedEntry.unit || 'Einheit' }}</span></h3>
-
+        <h3>{{ selectedEntry.nameDe }} <span class="unit-label">pro 100g</span></h3>
+        <p class="name-en">{{ selectedEntry.nameEn }}</p>
+        <p v-if="selectedEntry.isEstimated" class="estimated-notice">&#9888; Diese Werte sind eine KI-Schätzung und wurden noch nicht geprüft.</p>
         <table class="detail-table">
           <tbody>
-            <tr>
-              <td>Energie</td>
-              <td>{{ fmt(selectedEntry.nutritionKcal) }} kcal</td>
-            </tr>
-            <tr>
-              <td>Fett</td>
-              <td>{{ fmt(selectedEntry.nutritionFat) }} g</td>
-            </tr>
-            <tr>
-              <td>Protein</td>
-              <td>{{ fmt(selectedEntry.nutritionProtein) }} g</td>
-            </tr>
-            <tr>
-              <td>Kohlenhydrate</td>
-              <td>{{ fmt(selectedEntry.nutritionCarbs) }} g</td>
-            </tr>
-            <tr>
-              <td>Ballaststoffe</td>
-              <td>{{ fmt(selectedEntry.nutritionFiber) }} g</td>
-            </tr>
+            <tr><td>Energie</td><td>{{ fmt(selectedEntry.calories100g) }} kcal</td></tr>
+            <tr><td>Fett</td><td>{{ fmt(selectedEntry.fat100g) }} g</td></tr>
+            <tr><td>Protein</td><td>{{ fmt(selectedEntry.protein100g) }} g</td></tr>
+            <tr><td>Kohlenhydrate</td><td>{{ fmt(selectedEntry.carbs100g) }} g</td></tr>
+            <tr><td>Ballaststoffe</td><td>{{ fmt(selectedEntry.fiber100g) }} g</td></tr>
+            <tr><td>g pro 1 {{ selectedEntry.unitDescription }}</td><td>{{ fmt(selectedEntry.gramsPerUnit) }} g</td></tr>
           </tbody>
         </table>
-
         <div class="modal-actions">
           <button @click="closeDetailModal" class="btn-secondary">Schließen</button>
         </div>
       </div>
     </div>
 
-    <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
+    <div v-if="showEditUnitModal" class="modal-overlay" @click.self="showEditUnitModal = false">
       <div class="modal-content">
-        <h3>Zutat bearbeiten</h3>
-        <form @submit.prevent="saveEdit">
+        <h3>Einheit bearbeiten</h3>
+        <form @submit.prevent="saveEditUnit">
           <div class="form-group">
-            <label>Name</label>
-            <input v-model="editForm.name" type="text" required />
+            <label>Name (DE)</label>
+            <input v-model="editUnitForm.nameDe" type="text" required />
           </div>
           <div class="form-group">
             <label>Einheit</label>
-            <input v-model="editForm.unit" type="text" placeholder="z.B. g, ml, Stück" />
+            <input v-model="editUnitForm.unitDescription" type="text" required />
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>kcal</label>
-              <input v-model.number="editForm.nutritionKcal" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Fett (g)</label>
-              <input v-model.number="editForm.nutritionFat" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Protein (g)</label>
-              <input v-model.number="editForm.nutritionProtein" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>KH (g)</label>
-              <input v-model.number="editForm.nutritionCarbs" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Ballaststoffe (g)</label>
-              <input v-model.number="editForm.nutritionFiber" type="number" step="0.01" min="0" />
-            </div>
+          <div class="form-group">
+            <label>Gramm pro 1 Einheit</label>
+            <input v-model.number="editUnitForm.gramsPerUnit" type="number" step="0.1" min="0" required />
           </div>
           <div v-if="modalError" class="error-message">{{ modalError }}</div>
           <div class="modal-actions">
-            <button type="button" @click="showEditModal = false" class="btn-secondary">Abbrechen</button>
-            <button type="submit" :disabled="saving" class="btn-primary">
-              {{ saving ? 'Speichern...' : 'Speichern' }}
-            </button>
+            <button type="button" @click="showEditUnitModal = false" class="btn-secondary">Abbrechen</button>
+            <button type="submit" :disabled="saving" class="btn-primary">{{ saving ? 'Speichern...' : 'Speichern' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div v-if="showEditIngredientModal" class="modal-overlay" @click.self="showEditIngredientModal = false">
+      <div class="modal-content">
+        <h3>Nährwerte bearbeiten</h3>
+        <p class="modal-subtitle">{{ editIngredientForm.nameEn }}</p>
+        <form @submit.prevent="saveEditIngredient">
+          <div class="form-group">
+            <label>Name (EN)</label>
+            <input v-model="editIngredientForm.nameEn" type="text" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>kcal/100g</label>
+              <input v-model.number="editIngredientForm.calories100g" type="number" step="0.01" min="0" />
+            </div>
+            <div class="form-group">
+              <label>Fett/100g</label>
+              <input v-model.number="editIngredientForm.fat100g" type="number" step="0.01" min="0" />
+            </div>
+            <div class="form-group">
+              <label>Protein/100g</label>
+              <input v-model.number="editIngredientForm.protein100g" type="number" step="0.01" min="0" />
+            </div>
+            <div class="form-group">
+              <label>KH/100g</label>
+              <input v-model.number="editIngredientForm.carbs100g" type="number" step="0.01" min="0" />
+            </div>
+            <div class="form-group">
+              <label>Ballaststoffe/100g</label>
+              <input v-model.number="editIngredientForm.fiber100g" type="number" step="0.01" min="0" />
+            </div>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label>
+              <input v-model="editIngredientForm.isEstimated" type="checkbox" />
+              Schätzung (nicht verifiziert)
+            </label>
+          </div>
+          <div v-if="modalError" class="error-message">{{ modalError }}</div>
+          <div class="modal-actions">
+            <button type="button" @click="showEditIngredientModal = false" class="btn-secondary">Abbrechen</button>
+            <button type="submit" :disabled="saving" class="btn-primary">{{ saving ? 'Speichern...' : 'Speichern' }}</button>
           </div>
         </form>
       </div>
@@ -139,41 +166,53 @@
         <h3>Neue Zutat</h3>
         <form @submit.prevent="createEntry">
           <div class="form-group">
-            <label>Name</label>
-            <input v-model="createForm.name" type="text" required />
+            <label>Name (DE)</label>
+            <input v-model="createForm.nameDe" type="text" required />
           </div>
           <div class="form-group">
-            <label>Einheit <span class="hint-inline">pro 1 Einheit angeben</span></label>
-            <input v-model="createForm.unit" type="text" placeholder="z.B. g, ml, Stück" />
+            <label>Name (EN)</label>
+            <input v-model="createForm.nameEn" type="text" required />
+          </div>
+          <div class="form-group">
+            <label>Einheit</label>
+            <input v-model="createForm.unitDescription" type="text" placeholder="z.B. g, ml, Stück" required />
+          </div>
+          <div class="form-group">
+            <label>Gramm pro 1 Einheit</label>
+            <input v-model.number="createForm.gramsPerUnit" type="number" step="0.1" min="0" required />
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>kcal</label>
-              <input v-model.number="createForm.nutritionKcal" type="number" step="0.01" min="0" />
+              <label>kcal/100g</label>
+              <input v-model.number="createForm.calories100g" type="number" step="0.01" min="0" />
             </div>
             <div class="form-group">
-              <label>Fett (g)</label>
-              <input v-model.number="createForm.nutritionFat" type="number" step="0.01" min="0" />
+              <label>Fett/100g</label>
+              <input v-model.number="createForm.fat100g" type="number" step="0.01" min="0" />
             </div>
             <div class="form-group">
-              <label>Protein (g)</label>
-              <input v-model.number="createForm.nutritionProtein" type="number" step="0.01" min="0" />
+              <label>Protein/100g</label>
+              <input v-model.number="createForm.protein100g" type="number" step="0.01" min="0" />
             </div>
             <div class="form-group">
-              <label>KH (g)</label>
-              <input v-model.number="createForm.nutritionCarbs" type="number" step="0.01" min="0" />
+              <label>KH/100g</label>
+              <input v-model.number="createForm.carbs100g" type="number" step="0.01" min="0" />
             </div>
             <div class="form-group">
-              <label>Ballaststoffe (g)</label>
-              <input v-model.number="createForm.nutritionFiber" type="number" step="0.01" min="0" />
+              <label>Ballaststoffe/100g</label>
+              <input v-model.number="createForm.fiber100g" type="number" step="0.01" min="0" />
             </div>
+          </div>
+          <div class="form-group form-group-checkbox">
+            <label>
+              <input v-model="createForm.isEstimated" type="checkbox" />
+              Schätzung (nicht verifiziert)
+            </label>
           </div>
           <div v-if="modalError" class="error-message">{{ modalError }}</div>
           <div class="modal-actions">
             <button type="button" @click="showCreateModal = false" class="btn-secondary">Abbrechen</button>
-            <button type="submit" :disabled="saving" class="btn-primary">
-              {{ saving ? 'Erstellen...' : 'Erstellen' }}
-            </button>
+            <button type="submit" :disabled="saving" class="btn-primary">{{ saving ? 'Erstellen...' : 'Erstellen' }}</button>
           </div>
         </form>
       </div>
@@ -197,20 +236,24 @@ const error = ref(null)
 const saving = ref(false)
 const modalError = ref(null)
 
-const sortKey = ref('name')
+const sortKey = ref('nameDe')
 const sortDir = ref('asc')
 const activeFilter = ref(null)
 
 const selectedEntry = ref(null)
-
-const showEditModal = ref(false)
-const editForm = ref({})
-
+const showEditUnitModal = ref(false)
+const editUnitForm = ref({})
+const showEditIngredientModal = ref(false)
+const editIngredientForm = ref({})
 const showCreateModal = ref(false)
 const createForm = ref(emptyForm())
 
 function emptyForm() {
-  return { name: '', unit: '', nutritionKcal: null, nutritionFat: null, nutritionProtein: null, nutritionCarbs: null, nutritionFiber: null }
+  return {
+    nameDe: '', nameEn: '', unitDescription: '', gramsPerUnit: null,
+    calories100g: null, fat100g: null, protein100g: null, carbs100g: null, fiber100g: null,
+    isEstimated: false
+  }
 }
 
 onMounted(async () => {
@@ -238,7 +281,7 @@ const groupedEntries = computed(() => {
   let result = [...entries.value]
   if (activeFilter.value) {
     result = result.filter(e =>
-      activeFilter.value.includes(`${e.name}|${e.unit}`.toLowerCase())
+      activeFilter.value.includes(`${e.nameDe}|${e.unitDescription}`.toLowerCase())
     )
   }
   result.sort((a, b) => {
@@ -248,21 +291,19 @@ const groupedEntries = computed(() => {
     if (av == null) return 1
     if (bv == null) return -1
     if (typeof av === 'string') {
-      return sortDir.value === 'asc'
-        ? av.localeCompare(bv, 'de')
-        : bv.localeCompare(av, 'de')
+      return sortDir.value === 'asc' ? av.localeCompare(bv, 'de') : bv.localeCompare(av, 'de')
     }
     return sortDir.value === 'asc' ? av - bv : bv - av
   })
   const map = new Map()
   for (const entry of result) {
-    const unit = entry.unit || ''
+    const unit = entry.unitDescription || ''
     if (!map.has(unit)) map.set(unit, [])
     map.get(unit).push(entry)
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b, 'de'))
-    .map(([unit, entries]) => ({ unit, entries }))
+    .map(([unit, unitEntries]) => ({ unit, entries: unitEntries }))
 })
 
 function setSort(key) {
@@ -291,23 +332,56 @@ function openDetailModal(entry) {
 
 function closeDetailModal() {
   selectedEntry.value = null
-  modalError.value = null
 }
 
-function openEditModal(entry) {
-  editForm.value = { ...entry }
+function openEditUnitModal(entry) {
+  editUnitForm.value = { unitId: entry.unitId, nameDe: entry.nameDe, unitDescription: entry.unitDescription, gramsPerUnit: entry.gramsPerUnit }
   modalError.value = null
-  showEditModal.value = true
+  showEditUnitModal.value = true
 }
 
-async function saveEdit() {
+async function saveEditUnit() {
   saving.value = true
   modalError.value = null
   try {
-    const updated = await ingredientCatalogService.update(editForm.value.id, editForm.value)
-    const idx = entries.value.findIndex(e => e.id === updated.id)
-    if (idx !== -1) entries.value[idx] = updated
-    showEditModal.value = false
+    const updated = await ingredientCatalogService.updateUnit(editUnitForm.value.unitId, editUnitForm.value)
+    const idx = entries.value.findIndex(e => e.unitId === updated.unitId)
+    if (idx !== -1) entries.value[idx] = { ...entries.value[idx], ...updated }
+    showEditUnitModal.value = false
+  } catch (err) {
+    modalError.value = err.message || 'Fehler beim Speichern.'
+  } finally {
+    saving.value = false
+  }
+}
+
+function openEditIngredientModal(entry) {
+  editIngredientForm.value = {
+    ingredientId: entry.ingredientId,
+    nameEn: entry.nameEn,
+    calories100g: entry.calories100g,
+    fat100g: entry.fat100g,
+    protein100g: entry.protein100g,
+    carbs100g: entry.carbs100g,
+    fiber100g: entry.fiber100g,
+    isEstimated: entry.isEstimated
+  }
+  modalError.value = null
+  showEditIngredientModal.value = true
+}
+
+async function saveEditIngredient() {
+  saving.value = true
+  modalError.value = null
+  try {
+    await ingredientCatalogService.updateIngredient(editIngredientForm.value.ingredientId, editIngredientForm.value)
+    entries.value = entries.value.map(e => {
+      if (e.ingredientId === editIngredientForm.value.ingredientId) {
+        return { ...e, ...editIngredientForm.value }
+      }
+      return e
+    })
+    showEditIngredientModal.value = false
   } catch (err) {
     modalError.value = err.message || 'Fehler beim Speichern.'
   } finally {
@@ -336,10 +410,10 @@ async function createEntry() {
 }
 
 async function openDeleteConfirm(entry) {
-  if (!confirm(`"${entry.name} (${entry.unit || '—'})" wirklich löschen?`)) return
+  if (!confirm(`"${entry.nameDe} (${entry.unitDescription || '—'})" wirklich löschen?`)) return
   try {
-    await ingredientCatalogService.delete(entry.id)
-    entries.value = entries.value.filter(e => e.id !== entry.id)
+    await ingredientCatalogService.deleteUnit(entry.unitId)
+    entries.value = entries.value.filter(e => e.unitId !== entry.unitId)
   } catch (err) {
     error.value = err.message || 'Fehler beim Löschen.'
   }
@@ -348,7 +422,7 @@ async function openDeleteConfirm(entry) {
 
 <style scoped>
 .ingredients-container {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
 }
@@ -360,8 +434,17 @@ async function openDeleteConfirm(entry) {
   margin-bottom: 24px;
 }
 
-.ingredients-header h1 {
-  margin: 0;
+.ingredients-header h1 { margin: 0; }
+
+.unit-group { margin-bottom: 32px; }
+
+.unit-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .btn-primary {
@@ -397,7 +480,7 @@ async function openDeleteConfirm(entry) {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.8rem;
-  margin-right: 6px;
+  margin-right: 4px;
 }
 
 .btn-edit:hover { background: #bee3f8; }
@@ -436,28 +519,15 @@ async function openDeleteConfirm(entry) {
   margin-bottom: 12px;
 }
 
-.unit-group {
-  margin-bottom: 32px;
-}
-
-.unit-heading {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #4a5568;
-  margin: 0 0 8px 0;
-  padding-bottom: 6px;
-  border-bottom: 2px solid #e2e8f0;
-}
-
 .ingredients-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .ingredients-table th,
 .ingredients-table td {
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -468,11 +538,7 @@ async function openDeleteConfirm(entry) {
   white-space: nowrap;
 }
 
-.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
+.sortable { cursor: pointer; user-select: none; }
 .sortable:hover { background: #edf2f7; }
 
 .sort-indicator {
@@ -485,6 +551,17 @@ async function openDeleteConfirm(entry) {
 .clickable-row:hover td { background: #f7fafc; }
 
 .actions-cell { white-space: nowrap; }
+.col-en { color: #718096; font-size: 0.8rem; }
+.col-conversion { font-style: italic; color: #4a5568; }
+
+.badge-estimated {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
 
 .modal-overlay {
   position: fixed;
@@ -501,13 +578,13 @@ async function openDeleteConfirm(entry) {
   border-radius: 8px;
   padding: 30px;
   width: 90%;
-  max-width: 480px;
+  max-width: 520px;
   max-height: 90vh;
   overflow-y: auto;
 }
 
 .modal-content h3 {
-  margin: 0 0 20px 0;
+  margin: 0 0 4px 0;
   font-size: 1.25rem;
 }
 
@@ -515,6 +592,21 @@ async function openDeleteConfirm(entry) {
   font-size: 0.875rem;
   color: #718096;
   font-weight: 400;
+}
+
+.name-en, .modal-subtitle {
+  color: #718096;
+  font-size: 0.875rem;
+  margin: 0 0 16px 0;
+}
+
+.estimated-notice {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
 }
 
 .detail-table {
@@ -536,9 +628,7 @@ async function openDeleteConfirm(entry) {
 
 .detail-table tr:last-child td { border-bottom: none; }
 
-.form-group {
-  margin-bottom: 14px;
-}
+.form-group { margin-bottom: 14px; }
 
 .form-group label {
   display: block;
@@ -548,7 +638,8 @@ async function openDeleteConfirm(entry) {
   color: #4a5568;
 }
 
-.form-group input {
+.form-group input[type='text'],
+.form-group input[type='number'] {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid #ddd;
@@ -557,17 +648,20 @@ async function openDeleteConfirm(entry) {
   box-sizing: border-box;
 }
 
+.form-group-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.form-group-checkbox input[type='checkbox'] { width: auto; }
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 10px;
-}
-
-.hint-inline {
-  font-size: 0.75rem;
-  color: #718096;
-  font-weight: 400;
-  margin-left: 4px;
 }
 
 .modal-actions {

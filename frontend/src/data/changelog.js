@@ -1,5 +1,16 @@
 export const changelog = [
   {
+    date: '08.03.2026',
+    title: 'Nährwertberechnung mit echten Daten',
+    changes: [
+      'Nährwerte werden jetzt auf Basis echter Lebensmitteldaten der USDA-Datenbank berechnet — statt Schätzungen durch KI',
+      'Zutaten werden beim ersten Berechnen automatisch gespeichert und beim nächsten Mal direkt wiederverwendet',
+      'Wenn keine offiziellen Daten gefunden werden, schätzt die KI die Nährwerte und kennzeichnet diese als Schätzung',
+      'In der Zutatenverwaltung sind Schätzungen jetzt mit einem Hinweis markiert',
+      'Administratoren können Nährwerte und Einheiten direkt in der Zutatenverwaltung bearbeiten',
+    ]
+  },
+  {
     date: '05.03.2026',
     title: 'Zutaten nach Einheit gruppiert',
     changes: [

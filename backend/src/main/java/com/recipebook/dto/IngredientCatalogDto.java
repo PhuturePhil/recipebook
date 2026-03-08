@@ -2,43 +2,43 @@ package com.recipebook.dto;
 
 public class IngredientCatalogDto {
 
-    private Long id;
-    private String name;
-    private String unit;
-    private Double nutritionKcal;
-    private Double nutritionFat;
-    private Double nutritionProtein;
-    private Double nutritionCarbs;
-    private Double nutritionFiber;
+  private Long unitId;
+  private Long ingredientId;
+  private String nameDe;
+  private String nameEn;
+  private String unitDescription;
+  private Double gramsPerUnit;
+  private Double calories100g;
+  private Double fat100g;
+  private Double protein100g;
+  private Double carbs100g;
+  private Double fiber100g;
+  private Boolean isEstimated;
 
-    public IngredientCatalogDto() {}
+  public IngredientCatalogDto() {}
 
-    public IngredientCatalogDto(Long id, String name, String unit, Double nutritionKcal,
-            Double nutritionFat, Double nutritionProtein, Double nutritionCarbs, Double nutritionFiber) {
-        this.id = id;
-        this.name = name;
-        this.unit = unit;
-        this.nutritionKcal = nutritionKcal;
-        this.nutritionFat = nutritionFat;
-        this.nutritionProtein = nutritionProtein;
-        this.nutritionCarbs = nutritionCarbs;
-        this.nutritionFiber = nutritionFiber;
-    }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getUnit() { return unit; }
-    public void setUnit(String unit) { this.unit = unit; }
-    public Double getNutritionKcal() { return nutritionKcal; }
-    public void setNutritionKcal(Double nutritionKcal) { this.nutritionKcal = nutritionKcal; }
-    public Double getNutritionFat() { return nutritionFat; }
-    public void setNutritionFat(Double nutritionFat) { this.nutritionFat = nutritionFat; }
-    public Double getNutritionProtein() { return nutritionProtein; }
-    public void setNutritionProtein(Double nutritionProtein) { this.nutritionProtein = nutritionProtein; }
-    public Double getNutritionCarbs() { return nutritionCarbs; }
-    public void setNutritionCarbs(Double nutritionCarbs) { this.nutritionCarbs = nutritionCarbs; }
-    public Double getNutritionFiber() { return nutritionFiber; }
-    public void setNutritionFiber(Double nutritionFiber) { this.nutritionFiber = nutritionFiber; }
+  public Long getUnitId() { return unitId; }
+  public void setUnitId(Long unitId) { this.unitId = unitId; }
+  public Long getIngredientId() { return ingredientId; }
+  public void setIngredientId(Long ingredientId) { this.ingredientId = ingredientId; }
+  public String getNameDe() { return nameDe; }
+  public void setNameDe(String nameDe) { this.nameDe = nameDe; }
+  public String getNameEn() { return nameEn; }
+  public void setNameEn(String nameEn) { this.nameEn = nameEn; }
+  public String getUnitDescription() { return unitDescription; }
+  public void setUnitDescription(String unitDescription) { this.unitDescription = unitDescription; }
+  public Double getGramsPerUnit() { return gramsPerUnit; }
+  public void setGramsPerUnit(Double gramsPerUnit) { this.gramsPerUnit = gramsPerUnit; }
+  public Double getCalories100g() { return calories100g; }
+  public void setCalories100g(Double calories100g) { this.calories100g = calories100g; }
+  public Double getFat100g() { return fat100g; }
+  public void setFat100g(Double fat100g) { this.fat100g = fat100g; }
+  public Double getProtein100g() { return protein100g; }
+  public void setProtein100g(Double protein100g) { this.protein100g = protein100g; }
+  public Double getCarbs100g() { return carbs100g; }
+  public void setCarbs100g(Double carbs100g) { this.carbs100g = carbs100g; }
+  public Double getFiber100g() { return fiber100g; }
+  public void setFiber100g(Double fiber100g) { this.fiber100g = fiber100g; }
+  public Boolean getIsEstimated() { return isEstimated; }
+  public void setIsEstimated(Boolean isEstimated) { this.isEstimated = isEstimated; }
 }
