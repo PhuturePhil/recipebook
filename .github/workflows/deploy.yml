@@ -101,6 +101,10 @@ jobs:
                   SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
                   SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
                   SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+                  OIDC_ENABLED: ${OIDC_ENABLED:-false}
+                  OIDC_ISSUER_URI: https://auth.pastoors.cloud
+                  OIDC_CLIENT_ID: recipebook
+                  OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
                 depends_on:
                   - postgres
                 restart: unless-stopped

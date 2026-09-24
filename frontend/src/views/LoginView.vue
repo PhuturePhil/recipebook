@@ -3,9 +3,15 @@
     <div class="login-card">
       <h1>Pastoors Familienrezepte</h1>
       <h2>Anmelden</h2>
+
+      <div v-if="error" class="error-message">{{ error }}</div>
+
+      <template v-if="oidcEnabled">
+        <a :href="oidcLoginUrl" class="oidc-button">Mit pastoors.cloud anmelden</a>
+        <div class="divider"><span>oder mit E-Mail und Passwort</span></div>
+      </template>
       
       <form @submit.prevent="handleLogin">
-        <div v-if="error" class="error-message">{{ error }}</div>
         
         <div class="form-group">
           <label for="email">E-Mail</label>
@@ -73,13 +79,25 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { authService } from '@/services/authService'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+
+const oidcEnabled = ref(false)
+const oidcLoginUrl = authService.getOidcLoginUrl()
+
+const oidcErrors = {
+  access_denied: 'Dein pastoors.cloud-Konto hat keinen Zugriff auf die Rezepte.',
+  unavailable: 'Die Anmeldung über pastoors.cloud ist gerade nicht verfügbar.',
+  missing_email: 'Für dein pastoors.cloud-Konto ist keine E-Mail-Adresse hinterlegt.',
+  email_not_verified: 'Die E-Mail-Adresse deines pastoors.cloud-Kontos ist nicht bestätigt.',
+  account_conflict: 'Dieses Rezepte-Konto ist bereits mit einem anderen pastoors.cloud-Login verknüpft.'
+}
 
 const email = ref('')
 const password = ref('')
@@ -90,6 +108,15 @@ const showResetForm = ref(false)
 const resetEmail = ref('')
 const resetLoading = ref(false)
 const resetSuccess = ref(false)
+
+onMounted(async () => {
+  const oidcError = route.query.oidcError
+  if (oidcError) {
+    error.value = oidcErrors[oidcError] || 'Die Anmeldung über pastoors.cloud ist fehlgeschlagen.'
+    router.replace({ name: 'login' })
+  }
+  oidcEnabled.value = await authService.isOidcEnabled()
+})
 
 async function handleLogin() {
   loading.value = true
@@ -196,6 +223,39 @@ button:hover:not(:disabled) {
 button:disabled {
   background: #a0aec0;
   cursor: not-allowed;
+}
+
+.oidc-button {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: #2c3e50;
+  color: white;
+  border-radius: 4px;
+  font-size: 1rem;
+  text-align: center;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.oidc-button:hover {
+  background: #1a252f;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 25px 0;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid #ddd;
 }
 
 .error-message {
