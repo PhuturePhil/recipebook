@@ -24,6 +24,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/share/:token',
+      name: 'shared-recipe',
+      component: () => import('@/views/SharedRecipeView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/ingredients',
       name: 'ingredients',
       component: () => import('@/views/IngredientsView.vue'),
