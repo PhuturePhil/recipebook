@@ -1,5 +1,15 @@
 export const changelog = [
   {
+    date: '24.09.2026',
+    title: 'Rezepte teilen & als PDF speichern',
+    changes: [
+      'Rezepte lassen sich jetzt per Link mit anderen teilen — auch mit Personen ohne Konto',
+      'Geteilte Links zeigen nur Zutaten, Zubereitung und Quelle; Beschreibung und persönliche Notizen bleiben privat',
+      'Ein Link ist 30 Tage gültig und kann jederzeit widerrufen oder neu erzeugt werden',
+      'Über "Als PDF speichern" lässt sich ein Rezept vollständig drucken oder als PDF sichern',
+    ]
+  },
+  {
     date: '05.03.2026',
     title: 'Zutaten nach Einheit gruppiert',
     changes: [

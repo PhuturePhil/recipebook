@@ -7,6 +7,10 @@
     <div v-else-if="recipe" class="recipe-content">
       <header class="recipe-header">
         <h1 ref="titleRef">{{ recipe.title }}</h1>
+        <div class="recipe-tools">
+          <button class="btn-tool" @click="showShareModal = true">Teilen</button>
+          <button class="btn-tool" @click="printRecipe">Als PDF speichern</button>
+        </div>
       </header>
 
       <div v-if="recipe.imageUrl" class="recipe-image">
@@ -109,6 +113,11 @@
         </ol>
       </section>
 
+      <footer class="print-footer">
+        <p>Aus dem Familienkochbuch — pastoors.cloud</p>
+        <p class="print-footer__small">Für den privaten Gebrauch</p>
+      </footer>
+
       <div class="detail-actions">
         <button class="btn-cancel" @click="goBack">Abbrechen</button>
         <button class="btn-delete" @click="handleDelete">Löschen</button>
@@ -122,14 +131,18 @@
       <p>Rezept nicht gefunden</p>
       <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
     </div>
+
+    <ShareModal v-if="showShareModal && recipe" :recipe-id="recipe.id" @close="showShareModal = false" />
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
+import { scaleIngredients } from '@/utils/scaleIngredients'
+import ShareModal from '@/components/ShareModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -142,6 +155,7 @@ const recipe = computed(() => store.currentRecipe)
 const currentServings = ref(1)
 const activeTab = ref('ingredients')
 const titleRef = ref(null)
+const showShareModal = ref(false)
 let titleObserver = null
 
 onMounted(async () => {
@@ -189,24 +203,18 @@ const decreaseServings = () => {
   }
 }
 
-const scaledIngredients = computed(() => {
-  if (!recipe.value?.ingredients) return []
-  
-  const baseServings = recipe.value.baseServings
-  
-  return recipe.value.ingredients.map(ingredient => {
-    const amount = parseFloat(ingredient.amount)
-    if (isNaN(amount)) {
-      return ingredient
-    }
-    const scaledAmount = (amount / baseServings) * currentServings.value
-    const formattedAmount = scaledAmount % 1 === 0 ? scaledAmount : scaledAmount.toFixed(1).replace('.0', '')
-    return {
-      ...ingredient,
-      amount: formattedAmount
-    }
-  })
-})
+const scaledIngredients = computed(() =>
+  scaleIngredients(recipe.value?.ingredients, recipe.value?.baseServings, currentServings.value)
+)
+
+const printRecipe = async () => {
+  activeTab.value = 'ingredients'
+  await nextTick()
+  const originalTitle = document.title
+  document.title = recipe.value.title
+  window.addEventListener('afterprint', () => { document.title = originalTitle }, { once: true })
+  window.print()
+}
 
 const formatNutrition = (value) => {
   if (value == null) return '–'
@@ -594,5 +602,85 @@ const handleDelete = async () => {
 
 .btn-nutrition-link:hover {
   color: var(--color-primary-dark, #2d3748);
+}
+
+.recipe-tools {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-tool {
+  padding: 6px 12px;
+  background: var(--color-bg-card, #fff);
+  color: var(--color-primary, #4a5568);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-tool:hover {
+  background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.print-footer {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  :global(.navbar) {
+    display: none !important;
+  }
+
+  .recipe-detail {
+    max-width: none;
+    padding: 0;
+  }
+
+  .recipe-tools,
+  .detail-actions,
+  .servings-control,
+  .nutrition-link,
+  .tab-btn:not(.active) {
+    display: none !important;
+  }
+
+  .recipe-image {
+    max-height: 240px;
+  }
+
+  .recipe-section,
+  .ingredients-list li,
+  .instructions-list li {
+    break-inside: avoid;
+  }
+
+  .tab-btn.active {
+    padding-right: 0;
+    border-bottom-color: transparent;
+    color: var(--color-text-primary, #333);
+  }
+
+  .print-footer {
+    display: block;
+    margin-top: 32px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border, #ddd);
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #666);
+    break-inside: avoid;
+  }
+
+  .print-footer__small {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #999);
+  }
 }
 </style>
