@@ -1,10 +1,10 @@
 package com.recipebook.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import io.netty.channel.ChannelOption;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -64,7 +64,7 @@ public class OpenAiChatClient implements OpenAiClient {
         messages.addObject().put("role", "system").put("content", systemPrompt);
         try {
             messages.addObject().put("role", "user").put("content", objectMapper.writeValueAsString(payload));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new AiCallException("Anfrage konnte nicht serialisiert werden", e);
         }
 
@@ -97,7 +97,7 @@ public class OpenAiChatClient implements OpenAiClient {
             JsonNode json = objectMapper.readTree(content.asText());
             if (json == null || !json.isObject()) throw new AiCallException("Antwort ist kein JSON-Objekt");
             return json;
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new AiCallException("Antwort ist kein gültiges JSON: " + e.getOriginalMessage(), e);
         }
     }

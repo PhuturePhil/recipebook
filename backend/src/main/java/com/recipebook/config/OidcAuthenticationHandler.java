@@ -53,7 +53,7 @@ public class OidcAuthenticationHandler implements AuthenticationSuccessHandler, 
                     oidcUser.getFamilyName(),
                     oidcUser.getFullName()));
             String ticket = oidcLoginService.issueTicket(user);
-            response.sendRedirect(UriComponentsBuilder.fromHttpUrl(appUrl)
+            response.sendRedirect(UriComponentsBuilder.fromUriString(appUrl)
                     .path("/login/oidc")
                     .queryParam("ticket", ticket)
                     .toUriString());
@@ -75,7 +75,7 @@ public class OidcAuthenticationHandler implements AuthenticationSuccessHandler, 
     }
 
     private void redirectWithError(HttpServletResponse response, String reason) throws IOException {
-        response.sendRedirect(UriComponentsBuilder.fromHttpUrl(appUrl)
+        response.sendRedirect(UriComponentsBuilder.fromUriString(appUrl)
                 .path("/login")
                 .queryParam("oidcError", reason)
                 .toUriString());
