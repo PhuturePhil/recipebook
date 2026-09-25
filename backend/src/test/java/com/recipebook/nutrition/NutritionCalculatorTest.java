@@ -199,6 +199,58 @@ class NutritionCalculatorTest {
     }
 
     @Test
+    void totalGramsSumsAllConvertedLinesAndPer100gIsTotalOverWeight() {
+        RecipeNutrition n = NutritionCalculator.calculate(List.of(
+            line("0.5", "kg", "Weizenmehl"),
+            line("2", "EL", "Olivenöl"),
+            line("2", "Stück", "Zwiebeln"),
+            line("", "", "Salz")), 4, reference());
+        assertEquals(500 + 20 + 180, n.totalGrams(), 1e-9);
+        assertTrue(n.totalGramsComplete());
+        assertEquals(n.total().kcal() / n.totalGrams() * 100, n.per100g().kcal(), 1e-9);
+        assertEquals(n.total().protein() / n.totalGrams() * 100, n.per100g().protein(), 1e-9);
+        assertEquals(n.total().salt() / n.totalGrams() * 100, n.per100g().salt(), 1e-9);
+    }
+
+    @Test
+    void per100gDoesNotDependOnServings() {
+        List<IngredientLine> lines = List.of(line("300", "g", "Mehl"), line("1", "Stück", "Fenchelknolle"));
+        RecipeNutrition one = NutritionCalculator.calculate(lines, 1, reference());
+        RecipeNutrition four = NutritionCalculator.calculate(lines, 4, reference());
+        assertEquals(one.per100g().kcal(), four.per100g().kcal(), 1e-9);
+        assertEquals(one.perServing().kcal() / 4, four.perServing().kcal(), 1e-9);
+    }
+
+    @Test
+    void badgesUseTheSamePer100gAsTheResponse() {
+        RecipeNutrition n = NutritionCalculator.calculate(List.of(
+            line("2", "Stück", "Fenchelknolle"), line("1", "Stück", "Zwiebel")), 2, reference());
+        assertEquals((2 * 230 * 33 + 90 * 34) / 550.0, n.per100g().kcal(), 1e-9);
+        assertEquals(NutritionBadges.evaluate(n.per100g(), true), n.badges());
+        assertTrue(n.badges().contains(NutritionBadges.ENERGY_LOW));
+    }
+
+    @Test
+    void missingGramConversionMarksTotalWeightIncomplete() {
+        RecipeNutrition n = NutritionCalculator.calculate(List.of(
+            line("200", "g", "Mehl"), line("2", "Stück", "Mehl")), 1, reference());
+        assertEquals(IngredientStatus.NO_CONVERSION, n.items().get(1).status());
+        assertNull(n.items().get(1).grams());
+        assertEquals(200.0, n.totalGrams(), 1e-9);
+        assertFalse(n.totalGramsComplete());
+        assertEquals(348.0, n.per100g().kcal(), 1e-9);
+        assertTrue(n.badges().isEmpty());
+    }
+
+    @Test
+    void noValuesMeansNoPer100gAndIncompleteWeight() {
+        RecipeNutrition n = NutritionCalculator.calculate(List.of(line("3", "g", "Einhornstaub")), 1, reference());
+        assertNull(n.per100g());
+        assertEquals(0.0, n.totalGrams(), 1e-9);
+        assertFalse(n.totalGramsComplete());
+    }
+
+    @Test
     void kcalShareBySource() {
         RecipeNutrition n = NutritionCalculator.calculate(List.of(
             line("100", "g", "Mehl"), line("100", "g", "Kreuzkümmel")), 1, reference());

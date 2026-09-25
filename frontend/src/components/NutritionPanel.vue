@@ -36,36 +36,40 @@
           <thead>
             <tr>
               <th></th>
+              <th v-if="per100g">pro 100 g</th>
               <th>pro Portion</th>
-              <th>{{ currentServings }} {{ currentServings === 1 ? 'Portion' : 'Portionen' }}</th>
-              <th class="col-100g">pro 100 g</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Energie</td>
+              <td v-if="per100g">
+                {{ formatKcal(per100g.kcal) }} kcal
+                <span class="kj">{{ formatKcal(per100g.kj) }} kJ</span>
+              </td>
               <td>
                 {{ formatKcal(perServing.kcal) }} kcal
                 <span class="kj">{{ formatKcal(perServing.kj) }} kJ</span>
               </td>
-              <td>
-                {{ formatKcal(scaled.kcal) }} kcal
-                <span class="kj">{{ formatKcal(scaled.kj) }} kJ</span>
-              </td>
-              <td class="col-100g">
-                {{ formatKcal(per100g?.kcal) }} kcal
-                <span class="kj">{{ formatKcal(per100g?.kj) }} kJ</span>
-              </td>
             </tr>
             <tr v-for="row in macroRows" :key="row.key" :class="{ 'sub-row': row.sub }">
               <td>{{ row.label }}</td>
-              <td>{{ formatGram(perServing[row.key]) }} g</td>
-              <td>{{ formatGram(scaled[row.key]) }} g</td>
-              <td class="col-100g">{{ formatGram(per100g?.[row.key]) }} g</td>
+              <td v-if="per100g">{{ formatRow(row, per100g[row.key]) }} g</td>
+              <td>{{ formatRow(row, perServing[row.key]) }} g</td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <p v-if="per100g" :class="['weight-note', { 'weight-note--incomplete': !nutrition.totalGramsComplete }]">
+        <template v-if="nutrition.totalGramsComplete">
+          Pro 100 g bezogen auf {{ formatGram(nutrition.totalGrams) }} g Gesamtgewicht der rohen Zutaten.
+        </template>
+        <template v-else>
+          Pro 100 g nur näherungsweise: bezogen auf {{ formatGram(nutrition.totalGrams) }} g der berechneten Zutaten,
+          das Gewicht von {{ nutrition.missingIngredients.join(', ') }} ist nicht bekannt.
+        </template>
+      </p>
 
       <p class="sources">
         Quelle der Werte:
@@ -148,10 +152,6 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  currentServings: {
-    type: Number,
-    required: true,
-  },
   info: {
     type: Object,
     default: null,
@@ -164,22 +164,13 @@ const MACROS = [
   { key: 'sugar', label: 'davon Zucker', sub: true },
   { key: 'fiber', label: 'Ballaststoffe' },
   { key: 'protein', label: 'Eiweiß' },
-  { key: 'salt', label: 'Salz' },
+  { key: 'salt', label: 'Salz', precise: true },
 ]
 
 const macroRows = MACROS
 
 const perServing = computed(() => props.nutrition.perServing ?? {})
 const per100g = computed(() => props.nutrition.per100g)
-
-const scaled = computed(() => {
-  const result = {}
-  for (const key of ['kcal', 'kj', ...MACROS.map(m => m.key)]) {
-    const v = perServing.value[key]
-    result[key] = v == null ? null : v * props.currentServings
-  }
-  return result
-})
 
 const sourceShares = computed(() =>
   Object.entries(props.nutrition.kcalShareBySource ?? {})
@@ -198,6 +189,11 @@ const microRows = computed(() => {
 })
 
 const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+
+const formatRow = (row, value) =>
+  row.precise && value != null && Math.abs(value) < 1
+    ? value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : formatGram(value)
 
 const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionDigits: 2 })
 </script>
@@ -309,6 +305,16 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--color-text-muted, #999);
+}
+
+.weight-note {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.weight-note--incomplete {
+  color: #744210;
 }
 
 .sources {
@@ -437,12 +443,6 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
   .breakdown__main {
     flex-direction: column;
     gap: 2px;
-  }
-}
-
-@media (max-width: 480px) {
-  .col-100g {
-    display: none;
   }
 }
 

@@ -74,7 +74,6 @@
           <NutritionPanel
             v-else-if="nutrition"
             :nutrition="nutrition"
-            :current-servings="currentServings"
             :info="nutritionInfo"
           />
         </template>

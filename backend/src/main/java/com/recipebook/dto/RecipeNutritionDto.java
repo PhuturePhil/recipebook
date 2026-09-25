@@ -13,6 +13,7 @@ public record RecipeNutritionDto(
     NutrientValuesDto perServing,
     NutrientValuesDto per100g,
     Double totalGrams,
+    boolean totalGramsComplete,
     int servings,
     Coverage coverage,
     List<String> badges,
@@ -33,7 +34,7 @@ public record RecipeNutritionDto(
             .filter(i -> i.status().isRelevant() && !i.status().isCalculated())
             .map(IngredientBreakdown::originalName).toList();
         return new RecipeNutritionDto(n.hasValues(), NutrientValuesDto.of(n.total()), NutrientValuesDto.of(n.perServing()),
-            NutrientValuesDto.withoutMicros(n.per100g()), NutrientValuesDto.round(n.totalGrams(), 1), n.servings(),
+            NutrientValuesDto.withoutMicros(n.per100g()), NutrientValuesDto.round(n.totalGrams(), 1), n.totalGramsComplete(), n.servings(),
             new Coverage(n.calculatedCount(), n.relevantCount(), n.ingredientCount(), n.coveragePercent(), n.complete(),
                 n.fullyCalculated()),
             n.badges(), share, n.microDataCount(), missing,
