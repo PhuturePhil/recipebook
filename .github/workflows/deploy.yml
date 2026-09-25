@@ -5,8 +5,26 @@ on:
     branches: [main]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: mvn -B test
+
   build-and-push:
     runs-on: ubuntu-latest
+    needs: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,14 +45,18 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ steps.owner.outputs.value }}/recipebook-backend:latest
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/recipebook-backend:latest
+            ghcr.io/${{ steps.owner.outputs.value }}/recipebook-backend:${{ github.sha }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ steps.owner.outputs.value }}/recipebook-frontend:latest
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/recipebook-frontend:latest
+            ghcr.io/${{ steps.owner.outputs.value }}/recipebook-frontend:${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -74,6 +96,12 @@ jobs:
                   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
                 volumes:
                   - postgres_data:/var/lib/postgresql/data
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U postgres -d recipebook"]
+                  interval: 30s
+                  timeout: 5s
+                  retries: 3
+                  start_period: 20s
                 restart: unless-stopped
 
               backend:
@@ -107,7 +135,14 @@ jobs:
                   OIDC_CLIENT_ID: recipebook
                   OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
                 depends_on:
-                  - postgres
+                  postgres:
+                    condition: service_healthy
+                healthcheck:
+                  test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:8080/api/auth/oidc/status || exit 1"]
+                  interval: 30s
+                  timeout: 5s
+                  retries: 3
+                  start_period: 120s
                 restart: unless-stopped
 
               frontend:
@@ -122,6 +157,12 @@ jobs:
                   - /opt/ssl/pastoors.cloud:/etc/ssl/certs:ro
                 depends_on:
                   - backend
+                healthcheck:
+                  test: ["CMD-SHELL", "curl -skf -o /dev/null https://127.0.0.1/ || exit 1"]
+                  interval: 30s
+                  timeout: 5s
+                  retries: 3
+                  start_period: 10s
                 restart: unless-stopped
 
             networks:

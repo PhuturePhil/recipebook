@@ -105,4 +105,30 @@ class JwtServiceTest {
 
         assertNotNull(token);
     }
+
+    private static com.recipebook.model.CustomUserDetails customUser(int tokenVersion) {
+        com.recipebook.model.User user = new com.recipebook.model.User();
+        user.setId(1L);
+        user.setEmail("anna@test.de");
+        user.setPassword("hash");
+        user.setRole(com.recipebook.model.Role.USER);
+        user.setTokenVersion(tokenVersion);
+        return new com.recipebook.model.CustomUserDetails(user);
+    }
+
+    @Test
+    void validateToken_shouldAcceptLegacyTokenWithoutVersionClaimAsVersionZero() {
+        String legacyToken = jwtService.generateToken(new User("anna@test.de", "password", Collections.emptyList()));
+
+        assertTrue(jwtService.validateToken(legacyToken, customUser(0)));
+        assertFalse(jwtService.validateToken(legacyToken, customUser(1)));
+    }
+
+    @Test
+    void validateToken_shouldRejectTokenFromOlderVersion() {
+        String token = jwtService.generateToken(customUser(2));
+
+        assertTrue(jwtService.validateToken(token, customUser(2)));
+        assertFalse(jwtService.validateToken(token, customUser(3)));
+    }
 }

@@ -1,6 +1,17 @@
 export const changelog = [
   {
     date: '25.09.2026',
+    title: 'Sicherheit und klarere Fehlermeldungen',
+    changes: [
+      'Fehlermeldungen des Servers erscheinen jetzt im Klartext, z. B. „Das Rezept wurde nicht gefunden.“ oder „Diese E-Mail-Adresse ist bereits vergeben.“',
+      'Wenn ein Admin ein Rezept bearbeitet, bleibt der ursprüngliche Ersteller eingetragen',
+      'Passwörter müssen jetzt mindestens 8 Zeichen lang sein. Nach einem Passwortwechsel werden alle anderen Anmeldungen dieses Kontos abgemeldet',
+      'Nach vielen Fehlversuchen beim Anmelden gibt es eine kurze Wartezeit',
+      'Ein Benutzer, der noch Rezepte hat, lässt sich nicht löschen. Stattdessen erscheint ein Hinweis',
+    ]
+  },
+  {
+    date: '25.09.2026',
     title: 'Nährwerttabelle pro 100 g und pro Portion',
     changes: [
       'Die Nährwerttabelle zeigt links die Werte pro 100 g und rechts pro Portion, auch auf dem Handy',

@@ -54,7 +54,7 @@
             v-model="form.password"
             type="password"
             :required="user?.mustChangePassword"
-            minlength="6"
+            minlength="8"
             placeholder="Leer lassen zum Beibehalten"
           />
         </div>

@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    static final String REFRESHED_TOKEN_HEADER = "X-Refreshed-Token";
+
     private final AuthService authService;
     private final OidcLoginService oidcLoginService;
 
@@ -97,8 +99,10 @@ public class AuthController {
     public ResponseEntity<UserResponse> updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody UpdateProfileRequest request) {
-        User user = authService.updateProfile(userDetails.getId(), request);
-        return ResponseEntity.ok(toUserResponse(user));
+        AuthService.ProfileUpdateResult result = authService.updateProfileAndReissueToken(userDetails.getId(), request);
+        return ResponseEntity.ok()
+                .header(REFRESHED_TOKEN_HEADER, result.token())
+                .body(toUserResponse(result.user()));
     }
 
     @PutMapping("/users/{id}")

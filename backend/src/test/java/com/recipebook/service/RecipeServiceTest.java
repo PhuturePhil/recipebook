@@ -220,4 +220,78 @@ class RecipeServiceTest {
 
         assertFalse(result);
     }
+
+    @Test
+    void save_shouldTreatUnknownIdAsNewRecipeAndDropForeignIngredientIds() {
+        Recipe incoming = new Recipe();
+        incoming.setId(99L);
+        incoming.setTitle("Neu");
+        Ingredient foreign = new Ingredient("Salz", "1", "TL");
+        foreign.setId(500L);
+        incoming.setIngredients(List.of(foreign));
+        when(recipeRepository.existsById(99L)).thenReturn(false);
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(incoming, testUser);
+
+        assertNull(result.getId());
+        assertNull(result.getIngredients().get(0).getId());
+        assertEquals(testUser, result.getUser());
+    }
+
+    @Test
+    void save_shouldKeepOriginalOwnerWhenSomeoneElseEdits() {
+        User admin = new User();
+        admin.setId(2L);
+        admin.setRole(Role.ADMIN);
+        Recipe edited = new Recipe();
+        edited.setId(1L);
+        edited.setTitle("Bearbeitet");
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of());
+        when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(edited, admin);
+
+        assertEquals(testUser, result.getUser());
+    }
+
+    @Test
+    void save_shouldAssignEditorWhenExistingRecipeHasNoOwner() {
+        Recipe edited = new Recipe();
+        edited.setId(1L);
+        edited.setTitle("Ohne Besitzer");
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of());
+        when(recipeRepository.findOwner(1L)).thenReturn(Optional.empty());
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(edited, testUser);
+
+        assertEquals(testUser, result.getUser());
+    }
+
+    @Test
+    void save_shouldKeepOwnIngredientIdsAndDropForeignOnesOnUpdate() {
+        Recipe edited = new Recipe();
+        edited.setId(1L);
+        edited.setTitle("Update");
+        Ingredient own = new Ingredient("Linsen", "250", "g");
+        own.setId(10L);
+        Ingredient foreign = new Ingredient("Reis", "200", "g");
+        foreign.setId(777L);
+        edited.setIngredients(List.of(own, foreign));
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of(10L, 11L));
+        when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(edited, testUser);
+
+        assertEquals(1L, result.getId());
+        assertEquals(10L, result.getIngredients().get(0).getId());
+        assertNull(result.getIngredients().get(1).getId());
+        assertSame(result, result.getIngredients().get(1).getRecipe());
+    }
 }

@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.model.CustomUserDetails;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,9 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    // Tokens issued before token versions existed carry no claim and count as version 0.
+    static final String TOKEN_VERSION_CLAIM = "tv";
     
     @Value("${jwt.secret}")
     private String secretKey;
@@ -49,6 +53,9 @@ public class JwtService {
     
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
+        if (userDetails instanceof CustomUserDetails custom) {
+            claims.put(TOKEN_VERSION_CLAIM, custom.getTokenVersion());
+        }
         return createToken(claims, userDetails.getUsername());
     }
     
@@ -67,8 +74,15 @@ public class JwtService {
     }
     
     public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        final Claims claims = extractAllClaims(token);
+        if (!claims.getSubject().equals(userDetails.getUsername()) || claims.getExpiration().before(new Date())) {
+            return false;
+        }
+        if (userDetails instanceof CustomUserDetails custom) {
+            Integer version = claims.get(TOKEN_VERSION_CLAIM, Integer.class);
+            return (version == null ? 0 : version) == custom.getTokenVersion();
+        }
+        return true;
     }
     
     private SecretKey getSigningKey() {
