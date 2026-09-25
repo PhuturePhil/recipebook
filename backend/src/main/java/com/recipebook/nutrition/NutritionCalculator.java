@@ -29,6 +29,7 @@ public final class NutritionCalculator {
         int relevant = 0;
         int microData = 0;
         int ingredientCount = 0;
+        int relevantWithoutGrams = 0;
         Map<NutritionSource, Double> kcalBySource = new EnumMap<>(NutritionSource.class);
 
         for (IngredientLine line : lines == null ? List.<IngredientLine>of() : lines) {
@@ -37,6 +38,7 @@ public final class NutritionCalculator {
             IngredientBreakdown item = calculateLine(line, ref);
             items.add(item);
             if (item.status().isRelevant()) relevant++;
+            if (item.status().isRelevant() && item.grams() == null) relevantWithoutGrams++;
             if (item.status().isCalculated()) {
                 calculated++;
                 total = total.plus(item.nutrients());
@@ -52,6 +54,7 @@ public final class NutritionCalculator {
         NutrientTotals totals = hasValues ? total : null;
         NutrientTotals perServing = hasValues ? total.scale(1.0 / portions) : null;
         NutrientTotals per100g = hasValues && totalGrams > 0 ? total.scale(100.0 / totalGrams) : null;
+        boolean totalGramsComplete = per100g != null && relevantWithoutGrams == 0;
         List<String> badges = NutritionBadges.evaluate(per100g, fullyCalculated);
 
         Map<NutritionSource, Integer> share = new EnumMap<>(NutritionSource.class);
@@ -60,9 +63,9 @@ public final class NutritionCalculator {
             kcalBySource.forEach((source, kcal) -> share.put(source, (int) Math.round(kcal * 100.0 / kcalSum)));
         }
 
-        return new RecipeNutrition(totals, perServing, per100g, totalGrams, portions, calculated, relevant,
-            ingredientCount, coverage, hasValues && coverage >= COMPLETE_THRESHOLD_PERCENT, fullyCalculated, badges,
-            share, microData, items);
+        return new RecipeNutrition(totals, perServing, per100g, totalGrams, totalGramsComplete, portions, calculated,
+            relevant, ingredientCount, coverage, hasValues && coverage >= COMPLETE_THRESHOLD_PERCENT, fullyCalculated,
+            badges, share, microData, items);
     }
 
     public static IngredientBreakdown calculateLine(IngredientLine line, NutritionReference ref) {

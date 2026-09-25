@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '25.09.2026',
+    title: 'Nährwerttabelle pro 100 g und pro Portion',
+    changes: [
+      'Die Nährwerttabelle zeigt links die Werte pro 100 g und rechts pro Portion, auch auf dem Handy',
+      'Die Spalte mit der Summe für alle Portionen entfällt',
+      'Unter der Tabelle steht, auf welches Gesamtgewicht der rohen Zutaten sich „pro 100 g“ bezieht; fehlt für eine Zutat die Grammangabe, gibt es einen Hinweis',
+    ]
+  },
+  {
+    date: '25.09.2026',
     title: 'Länger angemeldet bleiben',
     changes: [
       'Nach dem Neuladen der Seite oder beim Öffnen eines Rezept-Links bleibt man jetzt angemeldet',

@@ -8,6 +8,7 @@ public record RecipeNutrition(
     NutrientTotals perServing,
     NutrientTotals per100g,
     double totalGrams,
+    boolean totalGramsComplete,
     int servings,
     int calculatedCount,
     int relevantCount,
