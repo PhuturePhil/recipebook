@@ -90,6 +90,7 @@ jobs:
                   SPRING_DATASOURCE_USERNAME: postgres
                   SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
                   JWT_SECRET: ${JWT_SECRET}
+                  JWT_EXPIRATION: ${JWT_EXPIRATION:-7776000000}
                   ADMIN_PASSWORD: ${ADMIN_PASSWORD}
                   APP_URL: https://pastoors.cloud
                   ALLOWED_ORIGIN: https://pastoors.cloud
