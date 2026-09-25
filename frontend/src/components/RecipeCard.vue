@@ -13,6 +13,13 @@
         <span v-if="recipe.ingredientCount" class="recipe-card__count">
           {{ recipe.ingredientCount }} Zutaten
         </span>
+        <span
+          v-if="kcalPerServing != null"
+          class="recipe-card__count"
+          :title="recipe.nutrition.complete ? 'pro Portion' : 'pro Portion, unvollständig berechnet'"
+        >
+          {{ recipe.nutrition.complete ? '' : 'mind. ' }}{{ kcalPerServing }} kcal
+        </span>
       </div>
       <div v-if="badges && badges.length" class="recipe-card__badges">
         <span v-for="badge in badges" :key="badge" :class="['badge', `badge--${badgeKey(badge)}`]">
@@ -24,6 +31,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -35,6 +43,11 @@ const props = defineProps({
     type: Array,
     default: () => []
   }
+})
+
+const kcalPerServing = computed(() => {
+  const kcal = props.recipe.nutrition?.perServing?.kcal
+  return kcal == null ? null : Math.round(kcal).toLocaleString('de-DE')
 })
 
 const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/\s+/g, '-')
@@ -131,7 +144,7 @@ const navigateToDetail = () => {
 
 .badge--schnell { background: #c6f6d5; color: #22543d; }
 .badge--proteinreich { background: #bee3f8; color: #2a4365; }
-.badge--kalorienarm { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
+.badge--energiearm { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
 .badge--fettarm { background: #fefcbf; color: #744210; }
 .badge--ballaststoffreich { background: #e9d8fd; color: #44337a; }
 </style>

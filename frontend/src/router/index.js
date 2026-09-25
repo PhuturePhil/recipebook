@@ -72,6 +72,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/naehrwerte',
+      name: 'nutrition-info',
+      component: () => import('@/views/NutritionInfoView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/changelog',
       name: 'changelog',
       component: () => import('@/views/ChangelogView.vue'),
