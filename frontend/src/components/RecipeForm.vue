@@ -293,6 +293,7 @@ import { useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipeService'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
+import { resizeImageFile } from '@/utils/resizeImage'
 
 const props = defineProps({
   recipe: {
@@ -566,14 +567,10 @@ const addIngredient = () => {
   formData.value.ingredients.push({ name: '', amount: '', unit: '' })
 }
 
-const handleImageUpload = (event) => {
+const handleImageUpload = async (event) => {
   const file = event.target.files[0]
   if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      formData.value.imageUrl = e.target.result
-    }
-    reader.readAsDataURL(file)
+    formData.value.imageUrl = await resizeImageFile(file)
   }
 }
 

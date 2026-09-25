@@ -4,12 +4,13 @@
       <input
         :value="inputValue"
         type="text"
+        aria-label="Rezepte durchsuchen"
         placeholder="Suchen… (Komma = neuer Begriff)"
         @input="handleInput"
         @keydown.enter="commitInput"
         @keydown.backspace="handleBackspace"
       />
-      <span v-if="badges.length" class="search-clear-all" @click="clearAll">&times;</span>
+      <span v-if="badges.length || inputValue" class="search-clear-all" @click="clearAll">&times;</span>
     </div>
     <div v-if="badges.length" class="search-badges">
       <span v-for="(badge, index) in badges" :key="index" class="search-badge">
@@ -21,16 +22,30 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 
 const store = useRecipeStore()
 const badges = ref([])
 const inputValue = ref('')
+const LIVE_SEARCH_DELAY_MS = 200
+let liveSearchTimer = null
 
 onMounted(() => {
   badges.value = [...store.searchTerms]
+  inputValue.value = store.pendingSearchTerm
 })
+
+onUnmounted(() => clearTimeout(liveSearchTimer))
+
+const updateLiveSearch = (immediate = false) => {
+  clearTimeout(liveSearchTimer)
+  if (immediate) {
+    store.setPendingSearchTerm(inputValue.value)
+  } else {
+    liveSearchTimer = setTimeout(() => store.setPendingSearchTerm(inputValue.value), LIVE_SEARCH_DELAY_MS)
+  }
+}
 
 const addBadge = (value) => {
   const trimmed = value.trim()
@@ -47,8 +62,10 @@ const handleInput = (e) => {
     parts.slice(0, -1).forEach((part) => addBadge(part))
     inputValue.value = parts[parts.length - 1].trimStart()
     e.target.value = inputValue.value
+    updateLiveSearch(true)
   } else {
     inputValue.value = val
+    updateLiveSearch()
   }
 }
 
@@ -56,6 +73,7 @@ const commitInput = () => {
   if (inputValue.value.trim()) {
     addBadge(inputValue.value)
     inputValue.value = ''
+    updateLiveSearch(true)
   }
 }
 
@@ -75,6 +93,7 @@ const removeBadge = (index) => {
 const clearAll = () => {
   badges.value = []
   inputValue.value = ''
+  updateLiveSearch(true)
   store.setSearchTerms([])
 }
 </script>

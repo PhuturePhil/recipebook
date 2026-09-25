@@ -30,6 +30,7 @@ export const useRecipeStore = defineStore('recipe', {
     loading: false,
     error: null,
     searchTerms: [],
+    pendingSearchTerm: '',
     _lastFetched: null,
   }),
 
@@ -44,12 +45,20 @@ export const useRecipeStore = defineStore('recipe', {
       return badgeMap
     },
 
+    activeSearchTerms: (state) => {
+      const pending = state.pendingSearchTerm.trim()
+      return pending && !state.searchTerms.includes(pending)
+        ? [...state.searchTerms, pending]
+        : state.searchTerms
+    },
+
     filteredRecipes() {
-      if (!this.searchTerms.length) return this.recipes
+      const terms = this.activeSearchTerms
+      if (!terms.length) return this.recipes
       const timeRegex = /^([<>])\s*(\d+)$/
       const badgeMap = this.computedBadges
       return this.recipes.filter((recipe) =>
-        this.searchTerms.every((term) => {
+        terms.every((term) => {
           const timeMatch = term.match(timeRegex)
           if (timeMatch) {
             const op = timeMatch[1]
@@ -76,7 +85,9 @@ export const useRecipeStore = defineStore('recipe', {
       )
     },
 
-    searchQuery: (state) => state.searchTerms.join(', '),
+    searchQuery() {
+      return this.activeSearchTerms.join(', ')
+    },
 
     getRecipeById: (state) => (id) => {
       return state.recipes.find((recipe) => recipe.id === parseInt(id))
@@ -117,6 +128,7 @@ export const useRecipeStore = defineStore('recipe', {
         this.currentRecipe = data
         return data
       } catch (error) {
+        this.currentRecipe = null
         this.error = error.message
         console.error('Failed to fetch recipe:', error)
         throw error
@@ -187,6 +199,10 @@ export const useRecipeStore = defineStore('recipe', {
 
     setSearchTerms(terms) {
       this.searchTerms = terms
+    },
+
+    setPendingSearchTerm(term) {
+      this.pendingSearchTerm = term
     },
 
     clearError() {

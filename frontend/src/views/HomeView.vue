@@ -5,7 +5,7 @@
     </div>
 
     <div v-else-if="store.filteredRecipes.length === 0 && !store.loading" class="empty">
-      <p v-if="store.searchTerms.length">Keine Rezepte gefunden für "{{ store.searchTerms.join(', ') }}"</p>
+      <p v-if="store.activeSearchTerms.length">Keine Rezepte gefunden für "{{ store.searchQuery }}"</p>
       <p v-else>Noch keine Rezepte vorhanden. Erstelle dein erstes Rezept!</p>
     </div>
 
@@ -33,7 +33,7 @@ import RecipeCard from '@/components/RecipeCard.vue'
 const store = useRecipeStore()
 
 const isFiltered = computed(() =>
-  store.searchTerms.length > 0 && store.filteredRecipes.length < store.recipes.length
+  store.activeSearchTerms.length > 0 && store.filteredRecipes.length < store.recipes.length
 )
 
 const onVisibilityChange = () => {
