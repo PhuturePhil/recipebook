@@ -9,8 +9,8 @@ import com.recipebook.service.JwtService;
 import com.recipebook.service.ShareLinkService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,13 +29,13 @@ class ShareControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private ShareLinkService shareLinkService;
 
-    @MockBean
+    @MockitoBean
     private JwtService jwtService;
 
-    @MockBean
+    @MockitoBean
     private CustomUserDetailsService userDetailsService;
 
     @Test
