@@ -1,6 +1,7 @@
 package com.recipebook.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -151,5 +152,10 @@ public class Recipe {
     
     public void setUser(User user) {
         this.user = user;
+    }
+
+    @JsonProperty(value = "ownerId", access = JsonProperty.Access.READ_ONLY)
+    public Long getOwnerId() {
+        return user != null ? user.getId() : null;
     }
 }

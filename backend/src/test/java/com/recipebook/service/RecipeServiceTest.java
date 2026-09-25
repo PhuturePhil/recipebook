@@ -89,15 +89,11 @@ class RecipeServiceTest {
     }
 
     @Test
-    void search_shouldReturnMatchingRecipes() {
-        List<Recipe> recipes = Arrays.asList(testRecipe);
-        when(recipeRepository.searchByTitleOrDescription("Test")).thenReturn(recipes);
+    void findImageUrl_shouldReadOnlyTheImageColumn() {
+        when(recipeRepository.findImageUrl(1L)).thenReturn(Optional.of("data:image/jpeg;base64,AAAA"));
 
-        List<Recipe> result = recipeService.search("Test");
-
-        assertEquals(1, result.size());
-        assertEquals("Test Recipe", result.get(0).getTitle());
-        verify(recipeRepository, times(1)).searchByTitleOrDescription("Test");
+        assertEquals(Optional.of("data:image/jpeg;base64,AAAA"), recipeService.findImageUrl(1L));
+        verify(recipeRepository, never()).findById(any());
     }
 
     @Test

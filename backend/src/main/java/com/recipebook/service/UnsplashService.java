@@ -5,9 +5,14 @@ import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import io.netty.channel.ChannelOption;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+
+import java.time.Duration;
 
 @Service
 public class UnsplashService {
@@ -20,11 +25,24 @@ public class UnsplashService {
   private final WebClient webClient;
   private final ObjectMapper objectMapper;
 
-  public UnsplashService(ObjectMapper objectMapper) {
+  private final Duration timeout;
+
+  public UnsplashService(ObjectMapper objectMapper,
+      @Value("${unsplash.timeout-seconds:10}") long timeoutSeconds,
+      @Value("${unsplash.base-url:https://api.unsplash.com}") String baseUrl) {
+    this.timeout = Duration.ofSeconds(timeoutSeconds);
+    HttpClient http = HttpClient.create()
+      .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5_000)
+      .responseTimeout(timeout);
     this.webClient = WebClient.builder()
-      .baseUrl("https://api.unsplash.com")
+      .baseUrl(baseUrl)
+      .clientConnector(new ReactorClientHttpConnector(http))
       .build();
     this.objectMapper = objectMapper;
+  }
+
+  void setApiKey(String apiKey) {
+    this.apiKey = apiKey;
   }
 
   public String findImageUrl(String title) {
@@ -35,6 +53,7 @@ public class UnsplashService {
         .header("Authorization", "Client-ID " + apiKey)
         .retrieve()
         .bodyToMono(String.class)
+        .timeout(timeout)
         .onErrorResume(e -> {
           log.warn("Unsplash error: {}", e.getMessage());
           return Mono.empty();

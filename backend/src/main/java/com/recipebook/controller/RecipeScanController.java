@@ -1,8 +1,12 @@
 package com.recipebook.controller;
 
 import com.recipebook.service.RecipeScanService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -10,6 +14,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/recipes/scan")
 public class RecipeScanController {
+
+  private static final Logger log = LoggerFactory.getLogger(RecipeScanController.class);
 
   private final RecipeScanService recipeScanService;
 
@@ -32,8 +38,12 @@ public class RecipeScanController {
     try {
       RecipeScanService.RecipeScanResult result = recipeScanService.scanImages(images);
       return ResponseEntity.ok(result);
+    } catch (RecipeScanService.ScanTimeoutException e) {
+      log.warn("Recipe scan timed out: {}", e.getMessage());
+      throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT);
     } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+      log.warn("Recipe scan failed: {}", e.getMessage());
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY);
     }
   }
 }

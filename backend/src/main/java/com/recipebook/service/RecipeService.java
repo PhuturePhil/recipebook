@@ -80,8 +80,8 @@ public class RecipeService {
         return recipeRepository.findById(id);
     }
     
-    public List<Recipe> search(String query) {
-        return recipeRepository.searchByTitleOrDescription(query);
+    public Optional<String> findImageUrl(Long id) {
+        return recipeRepository.findImageUrl(id);
     }
     
     @Transactional
