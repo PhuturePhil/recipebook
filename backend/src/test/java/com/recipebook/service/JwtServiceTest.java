@@ -56,6 +56,20 @@ class JwtServiceTest {
     }
 
     @Test
+    void generateToken_shouldUseConfiguredExpiration() {
+        long ninetyDays = 90L * 24 * 60 * 60 * 1000;
+        ReflectionTestUtils.setField(jwtService, "expiration", ninetyDays);
+
+        long before = System.currentTimeMillis();
+        String token = jwtService.generateToken(testUserDetails);
+        long expiresAt = jwtService.extractExpiration(token).getTime();
+
+        // JWT timestamps have second precision
+        assertTrue(expiresAt >= before + ninetyDays - 1000);
+        assertTrue(expiresAt <= System.currentTimeMillis() + ninetyDays);
+    }
+
+    @Test
     void isTokenExpired_shouldReturnFalseForValidToken() {
         String token = jwtService.generateToken(testUserDetails);
 

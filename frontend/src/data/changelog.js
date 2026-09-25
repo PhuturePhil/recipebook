@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '25.09.2026',
+    title: 'Länger angemeldet bleiben',
+    changes: [
+      'Nach dem Neuladen der Seite oder beim Öffnen eines Rezept-Links bleibt man jetzt angemeldet',
+      'Eine Anmeldung gilt jetzt 90 Tage statt 24 Stunden',
+      'Ist die Anmeldung abgelaufen, geht es mit einem kurzen Hinweis zur Anmeldeseite und nach dem Anmelden zurück zur aufgerufenen Seite',
+    ]
+  },
+  {
+    date: '25.09.2026',
     title: 'Nährwerte neu berechnet',
     changes: [
       'Die Nährwerte stammen jetzt aus dem Bundeslebensmittelschlüssel (BLS), der offiziellen deutschen Nährwertdatenbank, statt aus KI-Schätzungen',

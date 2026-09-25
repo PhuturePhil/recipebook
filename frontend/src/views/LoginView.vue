@@ -109,7 +109,17 @@ const resetEmail = ref('')
 const resetLoading = ref(false)
 const resetSuccess = ref(false)
 
+function redirectTarget() {
+  const target = route.query.redirect
+  // Only follow app-internal paths
+  return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//') ? target : '/'
+}
+
 onMounted(async () => {
+  if (authStore.sessionExpired) {
+    error.value = 'Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.'
+    authStore.sessionExpired = false
+  }
   const oidcError = route.query.oidcError
   if (oidcError) {
     error.value = oidcErrors[oidcError] || 'Die Anmeldung über pastoors.cloud ist fehlgeschlagen.'
@@ -125,7 +135,7 @@ async function handleLogin() {
   const success = await authStore.login(email.value, password.value)
   
   if (success) {
-    router.push('/')
+    router.push(redirectTarget())
   } else {
     error.value = authStore.error || 'Anmeldung fehlgeschlagen'
   }

@@ -89,7 +89,9 @@ class AuthService {
         }
       })
       if (!response.ok) {
-        throw new Error('Not authenticated')
+        const error = new Error('Not authenticated')
+        error.status = response.status
+        throw error
       }
       return await response.json()
     } catch (error) {
@@ -275,8 +277,25 @@ class AuthService {
     }
   }
 
+  getTokenExpiry() {
+    const token = this.getToken()
+    if (!token) return null
+    try {
+      const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+      const { exp } = JSON.parse(atob(payload))
+      return typeof exp === 'number' ? exp * 1000 : null
+    } catch {
+      return null
+    }
+  }
+
+  isTokenExpired() {
+    const expiry = this.getTokenExpiry()
+    return expiry === null || expiry <= Date.now()
+  }
+
   isAuthenticated() {
-    return !!this.getToken()
+    return !!this.getToken() && !this.isTokenExpired()
   }
 }
 

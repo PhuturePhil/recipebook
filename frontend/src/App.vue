@@ -10,7 +10,7 @@ const authStore = useAuthStore()
 const showProfileSetup = ref(false)
 
 onMounted(async () => {
-  await authStore.checkAuth()
+  await authStore.init()
   if (authStore.isAuthenticated && authStore.needsProfileSetup) {
     showProfileSetup.value = true
   }
