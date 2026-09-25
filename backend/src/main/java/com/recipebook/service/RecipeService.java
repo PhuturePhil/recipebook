@@ -1,17 +1,22 @@
 package com.recipebook.service;
 
+import com.recipebook.dto.NutritionSummaryDto;
+import com.recipebook.dto.RecipeNutritionDto;
 import com.recipebook.dto.RecipeSummaryDto;
 import com.recipebook.dto.SourceAuthorDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.User;
+import com.recipebook.nutrition.RecipeNutrition;
 import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.RecipeRepository.RecipeSummaryProjection;
 import com.recipebook.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -22,16 +27,23 @@ public class RecipeService {
     private final UserRepository userRepository;
     private final UnsplashService unsplashService;
     private final NutritionService nutritionService;
+    private final IngredientAiService ingredientAiService;
 
-    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, UnsplashService unsplashService, NutritionService nutritionService) {
+    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, UnsplashService unsplashService,
+            NutritionService nutritionService, IngredientAiService ingredientAiService) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.unsplashService = unsplashService;
         this.nutritionService = nutritionService;
+        this.ingredientAiService = ingredientAiService;
     }
     
     public List<RecipeSummaryDto> findAllSummaries() {
-        return recipeRepository.findAllSummaries().stream().map(p -> {
+        List<RecipeSummaryProjection> projections = recipeRepository.findAllSummaries();
+        Map<Long, Integer> servings = new LinkedHashMap<>();
+        projections.forEach(p -> servings.put(p.getId(), p.getBaseServings()));
+        Map<Long, RecipeNutrition> nutrition = nutritionService.calculateAll(servings);
+        return projections.stream().map(p -> {
             RecipeSummaryDto dto = new RecipeSummaryDto(
                 p.getId(), p.getTitle(), p.getDescription(), p.getImageUrl(),
                 p.getPrepTimeMinutes(), p.getBaseServings(), p.getServingsTo(),
@@ -41,12 +53,14 @@ public class RecipeService {
             dto.setSource(p.getSource());
             dto.setCreatedBy(p.getCreatedBy());
             dto.setIngredientNames(p.getIngredientNames());
-            dto.setNutritionKcal(p.getNutritionKcal());
-            dto.setNutritionFat(p.getNutritionFat());
-            dto.setNutritionProtein(p.getNutritionProtein());
-            dto.setNutritionFiber(p.getNutritionFiber());
+            RecipeNutrition n = nutrition.get(p.getId());
+            if (n != null) dto.setNutrition(NutritionSummaryDto.of(n));
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    public RecipeNutritionDto nutrition(Recipe recipe) {
+        return RecipeNutritionDto.of(nutritionService.calculate(recipe));
     }
 
     public List<SourceAuthorDto> findDistinctSourceAuthorPairs() {
@@ -93,17 +107,16 @@ public class RecipeService {
             String imageUrl = unsplashService.findImageUrl(recipe.getTitle());
             if (imageUrl != null) recipe.setImageUrl(imageUrl);
         }
-        if (recipe.getIngredients() != null && !recipe.getIngredients().isEmpty()) {
-            NutritionService.NutritionResult nutrition = nutritionService.calculateNutrition(recipe.getIngredients());
-            if (nutrition != null) {
-                recipe.setNutritionKcal(nutrition.getKcal());
-                recipe.setNutritionFat(nutrition.getFat());
-                recipe.setNutritionProtein(nutrition.getProtein());
-                recipe.setNutritionCarbs(nutrition.getCarbs());
-                recipe.setNutritionFiber(nutrition.getFiber());
+        if (recipe.getIngredients() != null) {
+            for (Ingredient ingredient : recipe.getIngredients()) {
+                if (ingredient.getName() != null) ingredient.setName(ingredient.getName().trim());
+                if (ingredient.getAmount() != null) ingredient.setAmount(ingredient.getAmount().trim());
+                if (ingredient.getUnit() != null) ingredient.setUnit(ingredient.getUnit().trim());
             }
         }
-        return save(recipe, user);
+        Recipe saved = save(recipe, user);
+        ingredientAiService.enqueueForIngredients(saved.getIngredients());
+        return saved;
     }
 
     public boolean isOwner(Long recipeId, User user) {

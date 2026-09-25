@@ -1,0 +1,112 @@
+# Umrechnung Einheit -> Gramm (Stand 25.09.2026)
+# einheit;zutat_klasse;zutat;gramm_pro_einheit;notiz
+# Suchreihenfolge: Zutat > Zutat-Klasse > global (Klasse und Zutat leer).
+# g/kg/mg sind fest im Code. Volumen (ml, l, cl, dl, Tasse, cup) wird im Code in ml umgerechnet;
+# die Zeilen "ml" hier sind die Dichte (Gramm pro ml).
+ml;;;1.0;Dichte 1 als Standard
+ml;OIL;;0.92;Speiseöl
+ml;SYRUP;;1.4;Honig/Sirup
+ml;DAIRY;;1.03;
+ml;FLOUR;;0.55;lose geschüttet
+ml;SUGAR;;0.85;
+ml;GRAIN;;0.8;
+EL;;;15;
+EL;LIQUID;;15;
+EL;OIL;;10;gestrichener EL Öl (Küchenkonvention)
+EL;FAT;;12;
+EL;FLOUR;;10;
+EL;SUGAR;;15;
+EL;SYRUP;;20;
+EL;SPICE_GROUND;;6;
+EL;SPICE_SEED;;6;
+EL;SALT;;15;
+EL;PASTE;;15;
+EL;DAIRY;;15;
+EL;GRAIN;;12;
+EL;NUTS;;10;
+EL;HERB_FRESH;;3;
+EL;CHEESE;;6;
+EL;VEGETABLE;;8;gehackt
+TL;;;5;
+TL;LIQUID;;5;
+TL;OIL;;4;
+TL;FAT;;4;
+TL;FLOUR;;3;
+TL;SUGAR;;5;
+TL;SYRUP;;7;
+TL;SPICE_GROUND;;2;
+TL;SPICE_SEED;;2.5;
+TL;SALT;;5;
+TL;PASTE;;5;
+TL;DAIRY;;5;
+TL;GRAIN;;4;
+TL;NUTS;;3;
+TL;HERB_FRESH;;1;
+TL;CHEESE;;2;
+TL;VEGETABLE;;3;
+Prise;;;0.3;
+Msp;;;0.3;Messerspitze
+Spritzer;;;2;
+Handvoll;;;30;
+Handvoll;HERB_FRESH;;10;
+Bund;HERB_FRESH;;25;
+Flasche;LIQUID;;750;0,75-l-Flasche
+Stück;;Apfel;150;mittelgroß
+Stück;;Aubergine;300;
+Stück;;Avocado;150;essbarer Anteil
+Stück;;Banane;120;essbarer Anteil
+Stück;;Chilischote (frisch);15;
+Stück;;Curryblätter;0.1;
+Stück;;Ei;55;Größe M ohne Schale
+Stück;;Fenchelknolle;230;mittelgroß, groß ≈ 300 g
+Stück;;Fladenbrot;150;kleines Fladenbrot/Flatbread
+Stück;;Grüne Oliven;4;
+Stück;;Ingwer;20;daumengroß
+Stück;;Kardamomkapseln;0.2;
+Stück;;Karotte;80;
+Stück;;Kartoffeln (festkochend);100;
+Stück;;Knoblauch;4;eine Zehe
+Stück;;Knoblauchknolle;50;
+Stück;;Koriander (frisch);1;ein Stängel
+Stück;;Limette;60;
+Stück;;Lorbeerblatt;0.2;
+Stück;;Paprika (rot);150;
+Stück;;Porree;200;
+Stück;;Salatgurke;400;
+Stück;;Schalotten;25;
+Stück;;Staudensellerie;40;eine Stange
+Stück;;Tomaten;100;
+Stück;;Vollkornbaguette;250;
+Stück;;Zitrone;100;
+Stück;;Zitronenschale (abgerieben);3;Abrieb einer Zitrone
+Stück;;Zwiebel;90;mittelgroß
+Stück;;Frühlingszwiebeln;15;
+Stück;;Rote Bete;150;
+Stück;;Süßkartoffel;300;
+Zehe;;Knoblauch;4;
+Knolle;;Knoblauchknolle;50;
+Knolle;;Knoblauch;50;
+Knolle;;Fenchelknolle;230;
+cm;;Ingwer;5;
+Stange;;Staudensellerie;40;
+Stange;;Porree;200;
+Stange;;Zimt;3;
+Kopf;;Brokkoli;500;
+Bund;;Frühlingszwiebeln;120;
+Bund;;Grüner Spargel;500;
+Bund;;Thymian (frisch);15;
+Bund;;Dill (frisch);20;
+Bund;;Schnittlauch;25;
+Bund;;Petersilie (frisch);30;
+Bund;;Koriander (frisch);25;
+Bund;;Basilikum (frisch);25;
+Dose;;Kichererbsen (Dose, abgetropft);240;400-g-Dose abgetropft
+Dose;;Weiße Bohnen (Dose, abgetropft);240;400-g-Dose abgetropft
+Dose;;Schwarze Bohnen (Dose);240;400-g-Dose abgetropft
+Dose;;Butterbohnen (Dose);240;400-g-Dose abgetropft
+Dose;;Tomaten (Dose, stückig);400;
+Dose;;Kokosmilch;400;
+Päckchen;;Puddingpulver (Vanille);37;
+Päckchen;;Backpulver;15;
+Stückchen;;Butter;10;
+Handvoll;;Kapern;15;

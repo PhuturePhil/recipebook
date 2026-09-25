@@ -28,6 +28,15 @@
         <span v-if="recipe.baseServings" class="meta-item">
           {{ recipe.baseServings }}{{ recipe.servingsTo ? `–${recipe.servingsTo}` : '' }} Personen
         </span>
+        <button
+          v-if="nutrition?.hasValues"
+          type="button"
+          :class="['meta-item', 'meta-item--kcal', { 'meta-item--incomplete': !nutrition.coverage.complete }]"
+          :title="kcalChipTitle"
+          @click="activeTab = 'nutrition'"
+        >
+          {{ nutrition.coverage.complete ? '' : 'mind. ' }}{{ formatKcal(nutrition.perServing.kcal) }} kcal pro Portion
+        </button>
       </div>
 
       <div v-if="recipe.author || recipe.source" class="recipe-source">
@@ -46,11 +55,10 @@
 
       <section v-if="recipe.ingredients?.length" class="recipe-section">
         <div class="section-header">
-          <div v-if="recipe.nutritionKcal != null" class="tab-toggle">
+          <div class="tab-toggle">
             <button :class="['tab-btn', { active: activeTab === 'ingredients' }]" @click="activeTab = 'ingredients'">Zutaten</button>
             <button :class="['tab-btn', { active: activeTab === 'nutrition' }]" @click="activeTab = 'nutrition'">Nährwerte</button>
           </div>
-          <h2 v-else>Zutaten</h2>
         </div>
 
         <ul v-if="activeTab === 'ingredients'" class="ingredients-list">
@@ -60,48 +68,16 @@
           </li>
         </ul>
 
-        <table v-if="activeTab === 'nutrition'" class="nutrition-table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>pro Portion</th>
-              <th>gesamt</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Energie</td>
-              <td>{{ formatNutrition(recipe.nutritionKcal / recipe.baseServings) }} kcal</td>
-              <td>{{ formatNutrition(recipe.nutritionKcal / recipe.baseServings * currentServings) }} kcal</td>
-            </tr>
-            <tr>
-              <td>Fett</td>
-              <td>{{ formatNutrition(recipe.nutritionFat / recipe.baseServings) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionFat / recipe.baseServings * currentServings) }} g</td>
-            </tr>
-            <tr>
-              <td>Eiweiß</td>
-              <td>{{ formatNutrition(recipe.nutritionProtein / recipe.baseServings) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionProtein / recipe.baseServings * currentServings) }} g</td>
-            </tr>
-            <tr>
-              <td>Kohlenhydrate</td>
-              <td>{{ formatNutrition(recipe.nutritionCarbs / recipe.baseServings) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionCarbs / recipe.baseServings * currentServings) }} g</td>
-            </tr>
-            <tr>
-              <td>Ballaststoffe</td>
-              <td>{{ formatNutrition(recipe.nutritionFiber / recipe.baseServings) }} g</td>
-              <td>{{ formatNutrition(recipe.nutritionFiber / recipe.baseServings * currentServings) }} g</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div v-if="activeTab === 'nutrition'" class="nutrition-link">
-          <button @click="goToIngredients" class="btn-nutrition-link">
-            Nährwerte der Zutaten anzeigen
-          </button>
-        </div>
+        <template v-if="activeTab === 'nutrition'">
+          <p v-if="nutritionLoading" class="nutrition-state">Nährwerte werden berechnet…</p>
+          <p v-else-if="nutritionError" class="nutrition-state nutrition-state--error">{{ nutritionError }}</p>
+          <NutritionPanel
+            v-else-if="nutrition"
+            :nutrition="nutrition"
+            :current-servings="currentServings"
+            :info="nutritionInfo"
+          />
+        </template>
       </section>
 
       <section v-if="recipe.instructions?.length" class="recipe-section">
@@ -143,6 +119,8 @@ import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { scaleIngredients } from '@/utils/scaleIngredients'
 import ShareModal from '@/components/ShareModal.vue'
+import NutritionPanel from '@/components/NutritionPanel.vue'
+import { nutritionService, formatKcal } from '@/services/nutritionService'
 
 const route = useRoute()
 const router = useRouter()
@@ -156,13 +134,42 @@ const currentServings = ref(1)
 const activeTab = ref('ingredients')
 const titleRef = ref(null)
 const showShareModal = ref(false)
+const nutrition = ref(null)
+const nutritionInfo = ref(null)
+const nutritionLoading = ref(false)
+const nutritionError = ref(null)
 let titleObserver = null
+
+const loadNutrition = async (id) => {
+  nutritionLoading.value = true
+  nutritionError.value = null
+  try {
+    const [data, info] = await Promise.all([
+      nutritionService.getRecipeNutrition(id),
+      nutritionService.getInfo().catch(() => null),
+    ])
+    nutrition.value = data
+    nutritionInfo.value = info
+  } catch (error) {
+    nutritionError.value = 'Nährwerte konnten nicht geladen werden.'
+  } finally {
+    nutritionLoading.value = false
+  }
+}
+
+const kcalChipTitle = computed(() => {
+  const n = nutrition.value
+  if (!n?.hasValues) return ''
+  const base = `Berechnet aus ${n.coverage.calculated} von ${n.coverage.relevant} Zutaten`
+  return n.coverage.complete ? base : `${base} – unvollständig, tatsächlicher Wert liegt höher`
+})
 
 onMounted(async () => {
   activeTab.value = 'ingredients'
   await store.fetchRecipeById(route.params.id)
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings
+    loadNutrition(recipe.value.id)
   }
 
   if (titleRef.value) {
@@ -214,19 +221,6 @@ const printRecipe = async () => {
   document.title = recipe.value.title
   window.addEventListener('afterprint', () => { document.title = originalTitle }, { once: true })
   window.print()
-}
-
-const formatNutrition = (value) => {
-  if (value == null) return '–'
-  return Math.round(value * 10) / 10
-}
-
-const goToIngredients = () => {
-  const filter = (recipe.value.ingredients || [])
-    .filter(i => i.name && i.unit)
-    .map(i => `${i.name}|${i.unit}`)
-    .join(',')
-  router.push({ name: 'ingredients', query: { filter, sort: 'nutritionKcal', dir: 'desc' } })
 }
 
 const formatPrepTime = (minutes) => {
@@ -349,6 +343,32 @@ const handleDelete = async () => {
   background: var(--color-bg-secondary, #f0f0f0);
   border-radius: 4px;
   font-weight: 500;
+}
+
+.meta-item--kcal {
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: #22543d;
+  background: #f0fff4;
+  cursor: pointer;
+}
+
+.meta-item--kcal:hover {
+  border-color: #9ae6b4;
+}
+
+.meta-item--incomplete {
+  color: #744210;
+  background: #fffaf0;
+}
+
+.nutrition-state {
+  color: var(--color-text-secondary, #666);
+}
+
+.nutrition-state--error {
+  color: var(--color-error, #e53e3e);
 }
 
 .recipe-description {
@@ -549,61 +569,6 @@ const handleDelete = async () => {
   color: var(--color-text-secondary, #4a5568);
 }
 
-.nutrition-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-
-.nutrition-table th,
-.nutrition-table td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--color-border-light, #eee);
-}
-
-.nutrition-table th {
-  font-weight: 600;
-  color: var(--color-text-secondary, #666);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.nutrition-table td:first-child {
-  color: var(--color-text-primary, #333);
-  font-weight: 500;
-}
-
-.nutrition-table td:not(:first-child) {
-  color: var(--color-primary, #4a5568);
-  font-weight: 600;
-}
-
-.nutrition-table tr:last-child td {
-  border-bottom: none;
-}
-
-.nutrition-link {
-  margin-top: 16px;
-  text-align: right;
-}
-
-.btn-nutrition-link {
-  background: none;
-  border: none;
-  color: var(--color-primary, #4a5568);
-  font-size: 0.875rem;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.btn-nutrition-link:hover {
-  color: var(--color-primary-dark, #2d3748);
-}
-
 .recipe-tools {
   display: flex;
   gap: 8px;
@@ -646,7 +611,6 @@ const handleDelete = async () => {
   .recipe-tools,
   .detail-actions,
   .servings-control,
-  .nutrition-link,
   .tab-btn:not(.active) {
     display: none !important;
   }

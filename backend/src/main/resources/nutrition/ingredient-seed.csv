@@ -1,0 +1,142 @@
+# Kuratierte Startzuordnung Zutat -> BLS 4.0 (Stand 25.09.2026)
+# name;klasse;bls_code;vernachlaessigbar;aliasse (| getrennt, werden beim Import normalisiert)
+# Leerer bls_code = kein passender BLS-Eintrag; Werte kommen dann aus dem Altkatalog (KI-Schätzung) oder werden manuell gepflegt.
+Apfel;VEGETABLE;F110100;false;Äpfel|sweet apple|Apfel
+Apfelessig;LIQUID;R123100;false;apple cider vinegar
+Aubergine;VEGETABLE;G510100;false;Auberginen
+Avocado;VEGETABLE;F502100;false;reife Avocado|reife Avocado (für das Dressing)
+Backpulver;FLOUR;R421100;false;
+Baharat;SPICE_GROUND;;false;Baharat (gehäuft)|Baharat (gehäuft) – oder selbst mischen, siehe Zubereitung
+Balsamico;LIQUID;R125000;false;weißer Balsamico-Essig|Balsamico-Essig|Essig oder Balsamico|Balsamico
+Banane;VEGETABLE;F503100;false;
+Basilikum (frisch);HERB_FRESH;G061000;false;Basilikum|Basilikumblätter|Basilikumblätter, in Stücke gerissen|Bündel Basilikum|Bündel Basilikum (für das Dressing)|Basilikum oder Koriander
+Blattspinat;VEGETABLE;G211100;false;Blattspinat (TK oder frisch)|junger Spinat|Spinat|mixed green leaves|Grünkohl oder Spinat
+Bockshornkleesamen;SPICE_SEED;;false;Bockshornsamen
+Brokkoli;VEGETABLE;G312100;false;Broccoli
+Brühe (Gemüse, zubereitet);LIQUID;X416243;false;Gemüsebrühe|Gemuesebruehe|Gemuesebruehe oder Wasser|Gemüsebrühe (heiß)
+Brühpulver (Gemüse);FLOUR;R821000;false;gekörnte Gemüsebrühe oder Brühwürfel|gekörnte Gemüsebrühe|Suppengrundstock
+Buchweizen;GRAIN;C322000;false;Buchweizen (oder Weizen-/Dinkelkörner)
+Butter;FAT;Q611000;false;kalte Butter
+Butterbohnen (Dose);VEGETABLE;G780432;false;tin of butter beans|Butterbohnen
+Chiliflocken;SPICE_GROUND;;false;getrocknete Chiliflocken|Chiliflocken (oder weniger, je nach Schärfe)
+Chilischote (frisch);VEGETABLE;G554100;false;rote Chilischote|frische rote Chilischote|Frische Chilischote|grüne Chilischote|grüne Chilischote (für das Dressing)|frische, nicht zu scharfe rote Chilischoten|Chilischote
+Conchiglie;GRAIN;E401000;false;Conchiglie (Muschelnudeln)
+Couscous;GRAIN;C119200;false;
+Currypulver;SPICE_GROUND;;false;Currypulver mild|Mildes Currypulver
+Curryblätter;HERB_FRESH;;false;Currylätter
+Dijonsenf;PASTE;R133000;false;Dijon mustard
+Dill (frisch);HERB_FRESH;;false;Dill|fresh dill|chopped dill|kleines Bund Dill
+Dinkel (gepufft);GRAIN;;false;
+Dinkelmehl;FLOUR;C234000;false;
+Edamame;VEGETABLE;G750100;false;Edamame-Bohnen
+Ei;DEFAULT;E111100;false;Eier|medium eggs
+Erbsen (TK);VEGETABLE;G760100;false;Erbsen|TK-Erbsen|Erbsen, blanchiert oder tiefgefroren und aufgetaut
+Fenchelknolle;VEGETABLE;G431100;false;große Fenchelknolle|Fenchel
+Fenchelsamen;SPICE_SEED;;false;Fenchelsamen, gemahlen
+Feta;CHEESE;M012200;false;crumbled feta|Feta, in Stücke gebrochen|Schafskäse
+Fladenbrot;DEFAULT;B782100;false;flatbreads|Fladenbrot oder Reis
+Frühlingszwiebeln;VEGETABLE;G482100;false;Frühlingszwiebel|kleine, dünne Frühlingszwiebeln|kleines Bund Frühlingszwiebeln
+Garam Masala;SPICE_GROUND;;false;
+Grüne Bohnen;VEGETABLE;G710100;false;de-stringed runner beans|Stangenbohnen|grüne Bohnen
+Grüne Oliven;DEFAULT;H510802;false;roughly chopped, pitted green olives|grüne Oliven
+Grünkern (geschrotet);GRAIN;C412000;false;geschroteter Grünkern
+Grünkohl;VEGETABLE;G322100;false;
+Haferflocken;GRAIN;C133000;false;Haferflocken (Zart)
+Hirse;GRAIN;C332000;false;
+Honig;SYRUP;S120000;false;flüssiger Honig|flüssiger Honig oder Agavendicksaft|flüssiger Honig oder Agavendicksaft (für das Dressing)
+Ingwer;VEGETABLE;R211200;false;Frischer Ingwer|Frischer Ingwer, fein gehackt|gehackter frischer Ingwer|Ingwer, fein gehackt
+Joghurt (griechisch, 10 %);DAIRY;M141500;false;griechischer Joghurt|Griechischer Joghurt
+Joghurt (3,5 %);DAIRY;M141300;false;Joghurt|Naturjoghurt|Naturjoghurt (zum Servieren)|yogurt or soured cream
+Kapern;DEFAULT;G012902;false;capers
+Kardamomkapseln;SPICE_SEED;;false;Kardamom
+Karotte;VEGETABLE;G620100;false;Karotten|Möhre|Möhren|Karotten, fein gewürfelt
+Kartoffeln (festkochend);VEGETABLE;K110100;false;Kartoffeln|Kartoffeln, festkochend|baby new potatoes|kleine neue Kartoffeln|Geschälte festkochende Kartoffeln|Geschälte festkochende Kartoffeln, in 2,5cm große Würfel geschnitten
+Käse (gerieben);CHEESE;M300600;false;geriebener Käse
+Kichererbsen (Dose, abgetropft);VEGETABLE;H720902;false;Kichererbsen|Kichererbsen, abgetropft|Kichererbsen (Dose, abgetropft)
+Kichererbsen (gegart);VEGETABLE;G770432;false;gegarte Kichererbsen
+Kidneybohnen (getrocknet);GRAIN;H742100;false;getrocknete Kidneybohnen
+Kirschtomaten;VEGETABLE;G561100;false;
+Knoblauch;VEGETABLE;G490100;false;Knoblauchzehe|Knoblauchzehen|Knoblauchzehen, zerdrückt|Knoblauchzehen, fein gehackt|finely chopped cloves of garlic|geschrotete Knoblauchflakes oder frischer Knoblauch
+Knoblauchknolle;VEGETABLE;G490100;false;
+Kokosmilch;LIQUID;H154000;false;Kokosmilch (für das Dressing)
+Kokosöl;OIL;Q550000;false;
+Koriander (frisch);HERB_FRESH;;false;Koriander|Koriander, frisch|Koriandergrün|Stängel Koriandergrün|Stängel Koriandergrün (nach Belieben)|Bündel Koriandergrün|Bündel Koriandergrün (für das Dressing)|Koriander oder Petersilie
+Koriander (gemahlen);SPICE_GROUND;;false;Koriander, gemahlen
+Koriandersamen;SPICE_SEED;;false;
+Kreuzkümmel (gemahlen);SPICE_GROUND;;false;gem. Kreuzkümmel|Gemahlener Kreuzkümmel|Kreuzkümmel, gemahlen|Kreuzkuemmel gemahlen|Kreuzkümmel
+Kreuzkümmelsamen;SPICE_SEED;;false;
+Kürbis (Hokkaido);VEGETABLE;G581000;false;Hokkaido-Kürbis|Kürbis|Kürbis (Crown Prince, Kabocha oder Butternut; Hokkaido geht auch)
+Kürbiskerne;NUTS;H310100;false;
+Kürbiskernöl;OIL;Q250000;false;
+Kurkuma;SPICE_GROUND;;false;Kurkuma, gemahlen
+Lachsfilet;DEFAULT;T410100;false;Lachsfilet (aufgetaut)|Lachs
+Limette;VEGETABLE;F602100;false;Zitrone / Limette
+Linsen, braun (trocken);GRAIN;H725100;false;Braune Tellerlinsen, trocken|Berglinsen oder braune Linsen, trocken|Tellerlinsen
+Linsen, rot (trocken);GRAIN;H730000;false;rote Linsen|Rote Linsen, trocken
+Lorbeerblatt;HERB_FRESH;;false;Lorbeerblätter
+Maisstärke;FLOUR;C446000;false;Speisestärke|Maisstärke zum Wenden des Tofus
+Mandeldrink (ungesüßt);LIQUID;H800000;false;ungesüßte Mandelmilch|Mandelmilch
+Mandelmus;PASTE;H212800;false;
+Mayonnaise;PASTE;Q991000;false;mayonaise
+Meerrettich;VEGETABLE;G630100;false;Meerrettich, frisch geraspelt
+Mehl (Weizen, Type 405);FLOUR;C214100;false;Mehl|Weizenmehl
+Milch (3,5 %);LIQUID;M111300;false;Milch|Vollmilch
+Nudeln (Hartweizen, roh);GRAIN;E401000;false;Spaghetti|Spaghetti oder Linguine|Bandnudeln|Nudeln|Linguine
+Olivenöl;OIL;Q120000;false;natives Olivenöl extra|extra virgin olive oil|Olivenöl, Salz, Pfeffer, Prise Zucker
+Oregano (getrocknet);SPICE_GROUND;;false;Oregano|Oregano, getrocknet|dried oregano|getrockneter Oregano
+Paprika (rot);VEGETABLE;G543100;false;Kleine rote Paprikaschoten|Paprikaschote|rote Paprika
+Paprikapulver;SPICE_GROUND;;false;Paprikapulver edelsüß|geräuchertes mildes Paprikapulver
+Parmesan;CHEESE;M306400;false;Parmesan, gerieben|Parmesan zum Servieren
+Passierte Tomaten;VEGETABLE;R161200;false;
+Petersilie (frisch);HERB_FRESH;G250100;false;Petersilie|Petersilie (20 % Feuchtigkeit, tr.)
+Pfeffer;SPICE_GROUND;R258100;true;schwarzer Pfeffer|grob zerstoßene schwarze Pfefferkörner|Pfefferkörner
+Pflanzenöl;OIL;Q180000;false;Pflanzenöl (plus extra zum Einpinseln)|Pflanzenöl zum Braten|Rapsöl|Öl|Rapsoel oder Kokosoel|Rapsöl oder Kokosöl
+Pinienkerne;NUTS;H320100;false;
+Porree;VEGETABLE;G470100;false;Lauch
+Puddingpulver (Vanille);FLOUR;R481100;false;Vanille-Puddingpulver
+Quark (20 %);DAIRY;M713300;false;Quark
+Reis (Basmati, roh);GRAIN;C352000;false;Basmatireis|Reis
+Reisessig;LIQUID;R121000;false;Reisessig (für das Dressing)
+Risottoreis;GRAIN;C352000;false;Risottoreis (Arborio)|Risottoreis (Arborio oder Carnaroli)
+Rote Bete;VEGETABLE;G613100;false;Rote Bete (roh)
+Rote Bete (vorgegart);VEGETABLE;G613132;false;Rote Bete, vorgegart und vakuumisiert
+Rotwein (trocken);LIQUID;P2A3000;false;trockener Rotwein
+Rotweinessig;LIQUID;R121000;false;red wine vinegar
+Sahne (30 %);LIQUID;M173800;false;Sahne|Schlagsahne
+Salatgurke;VEGETABLE;G520100;false;cucumber
+Salz;SALT;R111000;true;Meersalz|Salzflocken|pinch of salt|salt|Salz und Pfeffer|Salz, Pfeffer|salt and pepper|salt, to taste|Meersalz und frisch gemahlener schwarzer Pfeffer|Salz und frisch geschroteter weißer Pfeffer|Salz und Pfeffer, zerstoßener|Salz, Pfeffer, frisch geriebene Muskatnuss
+Sauerrahm;DAIRY;M172500;false;saure Sahne
+Schalotten;VEGETABLE;G485100;false;Schalotte|Schalotten (insgesamt 300g)|kleine Schalotten (insgesamt 350 g)|Schalotten, fein gehackt
+Schmand;DAIRY;M172700;false;
+Schnittlauch;HERB_FRESH;G081100;false;chives
+Schwarze Bohnen (Dose);VEGETABLE;H740902;false;schwarze Bohnen (Dose)|schwarze Bohnen
+Senf (mittelscharf);PASTE;R132000;false;Senf
+Senfkörner;SPICE_SEED;;false;Braune Senfkörner
+Sesam;NUTS;H420100;false;geröstete weiße oder schwarze Sesamsamen|Sesamsamen
+Skyr;DAIRY;M710100;false;
+Sojasauce;LIQUID;R143000;false;helle Sojasauce|dunkle Sojasauce|japanische Sojasauce|Sojasauce (für das Dressing)
+Sojasauce (süß, Ketjap manis);LIQUID;;false;süße indonesische Sojasauce (Ketjap manis)|Ketjap manis
+Sonnenblumenkerne;NUTS;H430100;false;
+Spätlese (Weißwein lieblich);LIQUID;P230000;false;Spätlese
+Staudensellerie;VEGETABLE;G220100;false;Stangen Staudensellerie|Staudensellerie, fein gewürfelt|Staudensellerie, ersatzweise Knollensellerie|Bleichsellerie
+Süßkartoffel;VEGETABLE;K420100;false;Süßkartoffeln|Suesskartoffel|Geschälte Süßkartoffeln|Geschälte Süßkartoffeln, in 2,5cm große Würfel geschnitten
+Thymian (frisch);HERB_FRESH;;false;Thymian|Thymian (15g)
+Tofu (fest);DEFAULT;H861000;false;fester Tofu|Tofu
+Tomaten;VEGETABLE;G561100;false;Tomate|große reife Tomaten|Reife Tomaten, enthäutet und grob gehackt|reife aromatische Tomaten, ersatzweise gute ganze Dosentomaten
+Tomaten (Dose, stückig);VEGETABLE;G561100;false;gewürfelte Tomaten|Stückige Tomaten (Dose)|Stückige Tomaten (Dose à 400 g)|Dosentomaten|tin chopped tomatoes|Stückige Tomaten
+Tomatenmark;PASTE;R160000;false;
+Vollkornbaguette;DEFAULT;B101000;false;
+Wasser;LIQUID;N110000;true;water|water, to thin
+Weiße Bohnen (Dose, abgetropft);VEGETABLE;H740902;false;weiße Bohnen|gegarte weiße Bohnen|Dosen weiße Bohnen
+Weißwein (trocken);LIQUID;P210000;false;Weißwein, trocken|Weißwein
+Wermut (trocken);LIQUID;P341300;false;trockener weißer Wermut
+Zimt;SPICE_GROUND;;false;
+Zitrone;VEGETABLE;F601100;false;Zitronen|Bio-Zitrone (Saft + Abrieb)|Bio-Zitronen (Saft + Abrieb)|lemon juice
+Zitronenschale (abgerieben);SPICE_GROUND;F601100;false;abgeriebene Schale von unbehandelten Zitronen|abgeriebene Schale von 1 unbehandelten Zitrone
+Zucker;SUGAR;S111000;false;weißer Zucker|Prise Zucker
+Zucker (braun);SUGAR;S112000;false;brauner Zucker
+Zuckerschoten;VEGETABLE;G761100;false;
+Zwiebel;VEGETABLE;G480100;false;Zwiebeln|rote Zwiebeln|Rote Zwiebel|kleine Zwiebel|finely chopped onion|red onion|weiße oder rote Zwiebeln|Zwiebel, fein gewürfelt|Zwiebel, fein gewuerfelt|Zwiebeln (halbiert, in dünnen Scheiben)
+Grüner Spargel;VEGETABLE;G450100;false;grüner Spargel
+Butter oder Margarine;FAT;Q611000;false;
+Muskatnuss;SPICE_GROUND;;true;frisch geriebene Muskatnuss

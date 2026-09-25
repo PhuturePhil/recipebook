@@ -2,178 +2,250 @@
   <div class="ingredients-container">
     <div class="ingredients-header">
       <h1>Zutaten</h1>
-      <button v-if="isAdmin" @click="openCreateModal" class="btn-primary">Neue Zutat</button>
+      <button v-if="isAdmin && tab === 'ingredients'" @click="openCreate" class="btn-primary">Neue Zutat</button>
     </div>
 
-    <div v-if="loading" class="loading">Laden...</div>
-    <div v-else-if="error" class="error-banner">{{ error }}</div>
-    <div v-else-if="entries.length === 0" class="empty">Noch keine Zutaten im Katalog.</div>
+    <div class="tabs">
+      <button :class="['tab', { active: tab === 'ingredients' }]" @click="tab = 'ingredients'">Katalog</button>
+      <button :class="['tab', { active: tab === 'conversions' }]" @click="tab = 'conversions'">Umrechnungen</button>
+      <button v-if="isAdmin" :class="['tab', { active: tab === 'ai' }]" @click="openAiTab">KI-Anfragen</button>
+    </div>
 
-    <div v-else>
-      <div v-for="group in groupedEntries" :key="group.unit" class="unit-group">
-        <h2 class="unit-heading">{{ group.unit || '—' }}</h2>
+    <div v-if="error" class="error-banner">{{ error }}</div>
+
+    <section v-if="tab === 'ingredients'">
+      <div class="filters">
+        <input v-model="search" type="search" placeholder="Zutat oder Schreibweise suchen…" class="search-input" />
+        <select v-model="sourceFilter" class="select">
+          <option value="">Alle Quellen</option>
+          <option value="BLS">BLS</option>
+          <option value="MANUAL">manuell</option>
+          <option value="AI_ESTIMATE">KI-Schätzung</option>
+          <option value="MISSING">ohne Werte</option>
+        </select>
+      </div>
+      <p class="hint">Alle Werte pro 100 g. {{ filtered.length }} von {{ entries.length }} Zutaten.</p>
+
+      <div v-if="loading" class="loading">Laden…</div>
+      <div v-else class="table-scroll">
         <table class="ingredients-table">
           <thead>
             <tr>
-              <th @click="setSort('name')" class="sortable">
-                Name <span class="sort-indicator">{{ sortIndicator('name') }}</span>
-              </th>
-              <th @click="setSort('nutritionKcal')" class="sortable">
-                kcal <span class="sort-indicator">{{ sortIndicator('nutritionKcal') }}</span>
-              </th>
-              <th @click="setSort('nutritionFat')" class="sortable">
-                Fett (g) <span class="sort-indicator">{{ sortIndicator('nutritionFat') }}</span>
-              </th>
-              <th @click="setSort('nutritionProtein')" class="sortable">
-                Protein (g) <span class="sort-indicator">{{ sortIndicator('nutritionProtein') }}</span>
-              </th>
-              <th @click="setSort('nutritionCarbs')" class="sortable">
-                KH (g) <span class="sort-indicator">{{ sortIndicator('nutritionCarbs') }}</span>
-              </th>
-              <th @click="setSort('nutritionFiber')" class="sortable">
-                Ballaststoffe (g) <span class="sort-indicator">{{ sortIndicator('nutritionFiber') }}</span>
-              </th>
+              <th @click="setSort('name')" class="sortable">Name {{ sortIndicator('name') }}</th>
+              <th>Quelle</th>
+              <th @click="setSort('kcal')" class="sortable num">kcal {{ sortIndicator('kcal') }}</th>
+              <th @click="setSort('protein')" class="sortable num">Eiweiß {{ sortIndicator('protein') }}</th>
+              <th @click="setSort('fat')" class="sortable num">Fett {{ sortIndicator('fat') }}</th>
+              <th @click="setSort('carbs')" class="sortable num">KH {{ sortIndicator('carbs') }}</th>
+              <th @click="setSort('fiber')" class="sortable num">Ballastst. {{ sortIndicator('fiber') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in filtered" :key="entry.id" class="clickable-row" @click="openDetail(entry)">
+              <td>
+                {{ entry.name }}
+                <span v-if="entry.referenceName" class="sub">{{ entry.referenceName }}</span>
+              </td>
+              <td><span :class="['source-chip', `source-chip--${entry.source.toLowerCase()}`]">{{ SOURCE_LABELS[entry.source] }}</span></td>
+              <td class="num">{{ fmt(entry.per100g?.kcal, 0) }}</td>
+              <td class="num">{{ fmt(entry.per100g?.protein) }}</td>
+              <td class="num">{{ fmt(entry.per100g?.fat) }}</td>
+              <td class="num">{{ fmt(entry.per100g?.carbs) }}</td>
+              <td class="num">{{ fmt(entry.per100g?.fiber) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section v-if="tab === 'conversions'">
+      <p class="hint">
+        Gramm pro Einheit. Gesucht wird zuerst eine Umrechnung für die Zutat, dann für ihre Zutat-Klasse, dann die
+        allgemeine. Die Einheit „ml“ steht für die Dichte (Gramm pro ml). Stückgewichte pflegst du direkt bei der Zutat.
+      </p>
+      <div class="table-scroll">
+        <table class="ingredients-table">
+          <thead>
+            <tr>
+              <th>Einheit</th>
+              <th>gilt für</th>
+              <th class="num">Gramm</th>
+              <th>Quelle</th>
+              <th>Notiz</th>
               <th v-if="isAdmin"></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="entry in group.entries" :key="entry.id" @click="openDetailModal(entry)" class="clickable-row">
-              <td>{{ entry.name }}</td>
-              <td>{{ fmt(entry.nutritionKcal) }}</td>
-              <td>{{ fmt(entry.nutritionFat) }}</td>
-              <td>{{ fmt(entry.nutritionProtein) }}</td>
-              <td>{{ fmt(entry.nutritionCarbs) }}</td>
-              <td>{{ fmt(entry.nutritionFiber) }}</td>
-              <td v-if="isAdmin" class="actions-cell" @click.stop>
-                <button @click="openEditModal(entry)" class="btn-edit">Bearbeiten</button>
-                <button @click="openDeleteConfirm(entry)" class="btn-delete">Löschen</button>
+            <tr v-for="c in globalConversions" :key="c.id">
+              <td>{{ c.unit }}</td>
+              <td>{{ c.ingredientClass ? classLabel(c.ingredientClass) : 'alle' }}</td>
+              <td class="num">{{ fmt(c.grams) }}</td>
+              <td><span :class="['source-chip', `source-chip--${c.source.toLowerCase()}`]">{{ SOURCE_LABELS[c.source] }}</span></td>
+              <td class="sub">{{ c.note }}</td>
+              <td v-if="isAdmin" class="actions-cell">
+                <button class="btn-edit" @click="editConversion(c)">Bearbeiten</button>
+                <button class="btn-delete" @click="removeConversion(c)">Löschen</button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+      <button v-if="isAdmin" class="btn-secondary add-btn" @click="editConversion({ unit: '', ingredientClass: '', grams: null, note: '' })">
+        Umrechnung hinzufügen
+      </button>
+    </section>
 
-    <div v-if="selectedEntry" class="modal-overlay" @click.self="closeDetailModal">
+    <section v-if="tab === 'ai' && isAdmin">
+      <p class="hint">
+        Die KI wird pro Zutat bzw. Zutat+Einheit höchstens einmal gefragt. Fehlgeschlagene Anfragen werden nicht
+        automatisch wiederholt – nur hier per Hand.
+      </p>
+      <button class="btn-secondary add-btn" :disabled="saving" @click="resolveUnknown">Unbekannte Zutaten jetzt zuordnen</button>
+      <p v-if="aiMessage" class="hint">{{ aiMessage }}</p>
+      <div class="table-scroll">
+        <table class="ingredients-table">
+          <thead>
+            <tr>
+              <th>Zutat</th>
+              <th>Art</th>
+              <th>Status</th>
+              <th>Versuche</th>
+              <th>Letzter Versuch</th>
+              <th>Fehler</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in aiRequests" :key="r.id">
+              <td>{{ r.ingredientName }}<span v-if="r.unit" class="sub">Einheit: {{ r.unit }}</span></td>
+              <td>{{ r.kind === 'NAME_MATCH' ? 'BLS-Zuordnung' : 'Gewicht je Einheit' }}</td>
+              <td><span :class="['status', `status--${r.status.toLowerCase()}`]">{{ AI_STATUS[r.status] }}</span></td>
+              <td class="num">{{ r.attempts }}</td>
+              <td>{{ fmtDate(r.lastAttemptAt) }}</td>
+              <td class="sub">{{ r.error }}</td>
+              <td><button v-if="r.status === 'FAILED'" class="btn-edit" @click="retry(r)">Erneut versuchen</button></td>
+            </tr>
+            <tr v-if="!aiRequests.length"><td colspan="7" class="sub">Keine Anfragen.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div v-if="selected" class="modal-overlay" @click.self="closeDetail">
       <div class="modal-content">
-        <h3>{{ selectedEntry.name }} <span class="unit-label">pro 1 {{ selectedEntry.unit || 'Einheit' }}</span></h3>
+        <div class="modal-head">
+          <h3>{{ selected.name }}</h3>
+          <button class="btn-close" @click="closeDetail" aria-label="Schließen">&times;</button>
+        </div>
+        <div v-if="modalError" class="error-message">{{ modalError }}</div>
+
+        <p class="detail-source">
+          <span :class="['source-chip', `source-chip--${selected.source.toLowerCase()}`]">{{ SOURCE_LABELS[selected.source] }}</span>
+          <template v-if="selected.referenceCode"> BLS {{ selected.referenceCode }} – {{ selected.referenceName }}</template>
+          · Klasse: {{ classLabel(selected.ingredientClass) }}
+          <template v-if="selected.negligible"> · ohne Menge vernachlässigbar</template>
+        </p>
+        <p v-if="selected.note" class="sub">{{ selected.note }}</p>
 
         <table class="detail-table">
           <tbody>
-            <tr>
-              <td>Energie</td>
-              <td>{{ fmt(selectedEntry.nutritionKcal) }} kcal</td>
-            </tr>
-            <tr>
-              <td>Fett</td>
-              <td>{{ fmt(selectedEntry.nutritionFat) }} g</td>
-            </tr>
-            <tr>
-              <td>Protein</td>
-              <td>{{ fmt(selectedEntry.nutritionProtein) }} g</td>
-            </tr>
-            <tr>
-              <td>Kohlenhydrate</td>
-              <td>{{ fmt(selectedEntry.nutritionCarbs) }} g</td>
-            </tr>
-            <tr>
-              <td>Ballaststoffe</td>
-              <td>{{ fmt(selectedEntry.nutritionFiber) }} g</td>
+            <tr v-for="row in VALUE_ROWS" :key="row.label + row.unit">
+              <td>{{ row.label }}</td>
+              <td>{{ fmt(selected.per100g?.[row.key], row.key === 'kcal' || row.key === 'kj' ? 0 : 1) }} {{ row.unit }}</td>
             </tr>
           </tbody>
         </table>
 
-        <div class="modal-actions">
-          <button @click="closeDetailModal" class="btn-secondary">Schließen</button>
+        <h4>Schreibweisen (Aliasse)</h4>
+        <div class="chips">
+          <span v-for="a in selected.aliases" :key="a.id" class="alias-chip">
+            {{ a.alias }}
+            <button v-if="isAdmin" class="chip-remove" @click="removeAlias(a)" title="Entfernen">&times;</button>
+          </span>
+          <span v-if="!selected.aliases.length" class="sub">keine</span>
         </div>
-      </div>
-    </div>
-
-    <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
-      <div class="modal-content">
-        <h3>Zutat bearbeiten</h3>
-        <form @submit.prevent="saveEdit">
-          <div class="form-group">
-            <label>Name</label>
-            <input v-model="editForm.name" type="text" required />
-          </div>
-          <div class="form-group">
-            <label>Einheit</label>
-            <input v-model="editForm.unit" type="text" placeholder="z.B. g, ml, Stück" />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>kcal</label>
-              <input v-model.number="editForm.nutritionKcal" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Fett (g)</label>
-              <input v-model.number="editForm.nutritionFat" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Protein (g)</label>
-              <input v-model.number="editForm.nutritionProtein" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>KH (g)</label>
-              <input v-model.number="editForm.nutritionCarbs" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Ballaststoffe (g)</label>
-              <input v-model.number="editForm.nutritionFiber" type="number" step="0.01" min="0" />
-            </div>
-          </div>
-          <div v-if="modalError" class="error-message">{{ modalError }}</div>
-          <div class="modal-actions">
-            <button type="button" @click="showEditModal = false" class="btn-secondary">Abbrechen</button>
-            <button type="submit" :disabled="saving" class="btn-primary">
-              {{ saving ? 'Speichern...' : 'Speichern' }}
-            </button>
-          </div>
+        <form v-if="isAdmin" class="inline-form" @submit.prevent="addAlias">
+          <input v-model="newAlias" placeholder="weitere Schreibweise" />
+          <button class="btn-secondary" :disabled="!newAlias.trim() || saving">Hinzufügen</button>
         </form>
+
+        <h4>Gewicht je Einheit</h4>
+        <ul class="conversion-list">
+          <li v-for="c in selected.conversions" :key="c.id">
+            1 {{ c.unit }} = {{ fmt(c.grams) }} g
+            <span :class="['source-chip', `source-chip--${c.source.toLowerCase()}`]">{{ SOURCE_LABELS[c.source] }}</span>
+            <span v-if="c.note" class="sub">{{ c.note }}</span>
+            <template v-if="isAdmin">
+              <button class="btn-edit" @click="editConversion(c)">Bearbeiten</button>
+              <button class="btn-delete" @click="removeConversion(c)">Löschen</button>
+            </template>
+          </li>
+          <li v-if="!selected.conversions.length" class="sub">keine zutatenspezifischen Umrechnungen</li>
+        </ul>
+        <button v-if="isAdmin" class="btn-secondary" @click="editConversion({ unit: 'Stück', ingredientId: selected.id, grams: null, note: '' })">
+          Umrechnung hinzufügen
+        </button>
+
+        <template v-if="selected.legacyValues.length">
+          <h4>Altwerte (bis zur Umstellung, KI-Werte pro Einheit)</h4>
+          <ul class="legacy-list">
+            <li v-for="l in selected.legacyValues" :key="l.id">
+              <strong>{{ l.name }}</strong> ({{ l.unit || 'ohne Einheit' }}): {{ fmt(l.kcal) }} kcal pro 1 {{ l.unit || 'Einheit' }}
+              <span class="sub">
+                <template v-if="l.per100g">≙ {{ fmt(l.per100g.kcal, 0) }} kcal / 100 g</template>
+                <template v-else>nicht in Gramm umrechenbar</template>
+              </span>
+              <button v-if="isAdmin && l.per100g" class="btn-edit" @click="adoptLegacy(l)">
+                als manuellen Wert übernehmen
+              </button>
+            </li>
+          </ul>
+        </template>
+
+        <template v-if="isAdmin">
+          <h4>Bearbeiten</h4>
+          <IngredientForm v-model="form" :saving="saving" @submit="saveSelected" />
+          <div class="modal-actions">
+            <button class="btn-delete" @click="removeSelected">Zutat löschen</button>
+          </div>
+        </template>
       </div>
     </div>
 
-    <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+    <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
       <div class="modal-content">
-        <h3>Neue Zutat</h3>
-        <form @submit.prevent="createEntry">
-          <div class="form-group">
-            <label>Name</label>
-            <input v-model="createForm.name" type="text" required />
-          </div>
-          <div class="form-group">
-            <label>Einheit <span class="hint-inline">pro 1 Einheit angeben</span></label>
-            <input v-model="createForm.unit" type="text" placeholder="z.B. g, ml, Stück" />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>kcal</label>
-              <input v-model.number="createForm.nutritionKcal" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Fett (g)</label>
-              <input v-model.number="createForm.nutritionFat" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Protein (g)</label>
-              <input v-model.number="createForm.nutritionProtein" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>KH (g)</label>
-              <input v-model.number="createForm.nutritionCarbs" type="number" step="0.01" min="0" />
-            </div>
-            <div class="form-group">
-              <label>Ballaststoffe (g)</label>
-              <input v-model.number="createForm.nutritionFiber" type="number" step="0.01" min="0" />
-            </div>
-          </div>
-          <div v-if="modalError" class="error-message">{{ modalError }}</div>
+        <div class="modal-head">
+          <h3>Neue Zutat</h3>
+          <button class="btn-close" @click="showCreate = false" aria-label="Schließen">&times;</button>
+        </div>
+        <div v-if="modalError" class="error-message">{{ modalError }}</div>
+        <IngredientForm v-model="form" :saving="saving" @submit="createEntry" />
+      </div>
+    </div>
+
+    <div v-if="conversionForm" class="modal-overlay" @click.self="conversionForm = null">
+      <div class="modal-content modal-content--small">
+        <h3>{{ conversionForm.id ? 'Umrechnung bearbeiten' : 'Umrechnung hinzufügen' }}</h3>
+        <div v-if="conversionError" class="error-message">{{ conversionError }}</div>
+        <form class="stack-form" @submit.prevent="saveConversion">
+          <label>Einheit
+            <input v-model="conversionForm.unit" required placeholder="z. B. Stück, EL, Bund, ml" />
+          </label>
+          <label v-if="!conversionForm.ingredientId">Zutat-Klasse
+            <select v-model="conversionForm.ingredientClass">
+              <option value="">alle Zutaten</option>
+              <option v-for="c in INGREDIENT_CLASSES" :key="c.value" :value="c.value">{{ c.label }}</option>
+            </select>
+          </label>
+          <label>Gramm pro Einheit
+            <input v-model.number="conversionForm.grams" type="number" step="0.01" min="0.01" required />
+          </label>
+          <label>Notiz
+            <input v-model="conversionForm.note" />
+          </label>
           <div class="modal-actions">
-            <button type="button" @click="showCreateModal = false" class="btn-secondary">Abbrechen</button>
-            <button type="submit" :disabled="saving" class="btn-primary">
-              {{ saving ? 'Erstellen...' : 'Erstellen' }}
-            </button>
+            <button type="button" class="btn-secondary" @click="conversionForm = null">Abbrechen</button>
+            <button class="btn-primary" :disabled="saving">Speichern</button>
           </div>
         </form>
       </div>
@@ -185,41 +257,52 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { ingredientCatalogService } from '@/services/ingredientCatalogService'
+import { ingredientCatalogService, INGREDIENT_CLASSES, classLabel } from '@/services/ingredientCatalogService'
+import { SOURCE_LABELS } from '@/services/nutritionService'
+import IngredientForm from '@/components/IngredientForm.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
 
+const VALUE_ROWS = [
+  { key: 'kcal', label: 'Energie', unit: 'kcal' },
+  { key: 'kj', label: 'Energie', unit: 'kJ' },
+  { key: 'fat', label: 'Fett', unit: 'g' },
+  { key: 'carbs', label: 'Kohlenhydrate', unit: 'g' },
+  { key: 'sugar', label: 'davon Zucker', unit: 'g' },
+  { key: 'fiber', label: 'Ballaststoffe', unit: 'g' },
+  { key: 'protein', label: 'Eiweiß', unit: 'g' },
+  { key: 'salt', label: 'Salz', unit: 'g' },
+]
+
+const AI_STATUS = { PENDING: 'wartet', RUNNING: 'läuft', DONE: 'erledigt', FAILED: 'fehlgeschlagen' }
+
+const tab = ref('ingredients')
 const entries = ref([])
+const conversions = ref([])
+const aiRequests = ref([])
 const loading = ref(true)
 const error = ref(null)
 const saving = ref(false)
 const modalError = ref(null)
+const aiMessage = ref(null)
 
+const search = ref('')
+const sourceFilter = ref('')
 const sortKey = ref('name')
 const sortDir = ref('asc')
-const activeFilter = ref(null)
 
-const selectedEntry = ref(null)
-
-const showEditModal = ref(false)
-const editForm = ref({})
-
-const showCreateModal = ref(false)
-const createForm = ref(emptyForm())
-
-function emptyForm() {
-  return { name: '', unit: '', nutritionKcal: null, nutritionFat: null, nutritionProtein: null, nutritionCarbs: null, nutritionFiber: null }
-}
+const selected = ref(null)
+const showCreate = ref(false)
+const form = ref({})
+const newAlias = ref('')
+const conversionForm = ref(null)
+const conversionError = ref(null)
 
 onMounted(async () => {
-  if (route.query.sort) sortKey.value = route.query.sort
-  if (route.query.dir) sortDir.value = route.query.dir
-  if (route.query.filter) {
-    activeFilter.value = route.query.filter.split(',').map(s => s.toLowerCase())
-  }
-  await load()
+  if (route.query.q) search.value = route.query.q
+  await Promise.all([load(), loadConversions()])
 })
 
 async function load() {
@@ -228,120 +311,267 @@ async function load() {
   try {
     entries.value = await ingredientCatalogService.getAll()
   } catch (err) {
-    error.value = err.message || 'Fehler beim Laden.'
+    error.value = err.message
   } finally {
     loading.value = false
   }
 }
 
-const groupedEntries = computed(() => {
-  let result = [...entries.value]
-  if (activeFilter.value) {
-    result = result.filter(e =>
-      activeFilter.value.includes(`${e.name}|${e.unit}`.toLowerCase())
-    )
+async function loadConversions() {
+  try {
+    conversions.value = await ingredientCatalogService.getConversions()
+  } catch (err) {
+    error.value = err.message
   }
-  result.sort((a, b) => {
-    const av = a[sortKey.value]
-    const bv = b[sortKey.value]
+}
+
+async function openAiTab() {
+  tab.value = 'ai'
+  try {
+    aiRequests.value = await ingredientCatalogService.getAiRequests()
+  } catch (err) {
+    error.value = err.message
+  }
+}
+
+const normalize = (s) => (s || '').toLowerCase()
+
+const filtered = computed(() => {
+  const q = normalize(search.value.trim())
+  const result = entries.value.filter(e => {
+    if (sourceFilter.value === 'MISSING') {
+      if (e.per100g) return false
+    } else if (sourceFilter.value && e.source !== sourceFilter.value) {
+      return false
+    }
+    if (!q) return true
+    return normalize(e.name).includes(q)
+      || normalize(e.referenceName).includes(q)
+      || e.aliases.some(a => normalize(a.alias).includes(q))
+  })
+  return result.sort((a, b) => {
+    const av = sortKey.value === 'name' ? a.name : a.per100g?.[sortKey.value]
+    const bv = sortKey.value === 'name' ? b.name : b.per100g?.[sortKey.value]
     if (av == null && bv == null) return 0
     if (av == null) return 1
     if (bv == null) return -1
-    if (typeof av === 'string') {
-      return sortDir.value === 'asc'
-        ? av.localeCompare(bv, 'de')
-        : bv.localeCompare(av, 'de')
-    }
-    return sortDir.value === 'asc' ? av - bv : bv - av
+    const cmp = typeof av === 'string' ? av.localeCompare(bv, 'de') : av - bv
+    return sortDir.value === 'asc' ? cmp : -cmp
   })
-  const map = new Map()
-  for (const entry of result) {
-    const unit = entry.unit || ''
-    if (!map.has(unit)) map.set(unit, [])
-    map.get(unit).push(entry)
-  }
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b, 'de'))
-    .map(([unit, entries]) => ({ unit, entries }))
 })
+
+const globalConversions = computed(() => conversions.value.filter(c => c.ingredientId == null))
 
 function setSort(key) {
   if (sortKey.value === key) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   } else {
     sortKey.value = key
-    sortDir.value = 'asc'
+    sortDir.value = key === 'name' ? 'asc' : 'desc'
   }
 }
 
 function sortIndicator(key) {
-  if (sortKey.value !== key) return '↕'
+  if (sortKey.value !== key) return ''
   return sortDir.value === 'asc' ? '↑' : '↓'
 }
 
-function fmt(val) {
+function fmt(val, digits = 1) {
   if (val == null) return '—'
-  return Number(val).toLocaleString('de-DE', { maximumFractionDigits: 2 })
+  return Number(val).toLocaleString('de-DE', { maximumFractionDigits: digits })
 }
 
-function openDetailModal(entry) {
-  selectedEntry.value = entry
+function fmtDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function toForm(entry) {
+  return {
+    name: entry?.name ?? '',
+    ingredientClass: entry?.ingredientClass ?? 'DEFAULT',
+    source: entry?.source ?? 'MANUAL',
+    referenceCode: entry?.referenceCode ?? '',
+    referenceName: entry?.referenceName ?? '',
+    negligible: entry?.negligible ?? false,
+    kcal: entry?.manualValues?.kcal ?? null,
+    protein: entry?.manualValues?.protein ?? null,
+    fat: entry?.manualValues?.fat ?? null,
+    carbs: entry?.manualValues?.carbs ?? null,
+    fiber: entry?.manualValues?.fiber ?? null,
+    sugar: entry?.manualValues?.sugar ?? null,
+    salt: entry?.manualValues?.salt ?? null,
+    note: entry?.note ?? '',
+  }
+}
+
+function toRequest(f) {
+  const body = {
+    name: f.name,
+    ingredientClass: f.ingredientClass,
+    source: f.source,
+    negligible: f.negligible,
+    note: f.note,
+    referenceCode: f.source === 'BLS' ? f.referenceCode : '',
+  }
+  if (f.source === 'MANUAL') {
+    Object.assign(body, {
+      kcal: f.kcal, protein: f.protein, fat: f.fat, carbs: f.carbs, fiber: f.fiber, sugar: f.sugar, salt: f.salt,
+    })
+  }
+  return body
+}
+
+function replaceEntry(updated) {
+  const idx = entries.value.findIndex(e => e.id === updated.id)
+  if (idx !== -1) entries.value[idx] = updated
+  else entries.value.push(updated)
+  if (selected.value?.id === updated.id) {
+    selected.value = updated
+    form.value = toForm(updated)
+  }
+}
+
+function openDetail(entry) {
+  selected.value = entry
+  form.value = toForm(entry)
+  modalError.value = null
+  newAlias.value = ''
+}
+
+function closeDetail() {
+  selected.value = null
   modalError.value = null
 }
 
-function closeDetailModal() {
-  selectedEntry.value = null
+function openCreate() {
+  form.value = toForm(null)
   modalError.value = null
+  showCreate.value = true
 }
 
-function openEditModal(entry) {
-  editForm.value = { ...entry }
-  modalError.value = null
-  showEditModal.value = true
-}
-
-async function saveEdit() {
+async function run(action) {
   saving.value = true
   modalError.value = null
   try {
-    const updated = await ingredientCatalogService.update(editForm.value.id, editForm.value)
-    const idx = entries.value.findIndex(e => e.id === updated.id)
-    if (idx !== -1) entries.value[idx] = updated
-    showEditModal.value = false
+    return await action()
   } catch (err) {
-    modalError.value = err.message || 'Fehler beim Speichern.'
+    modalError.value = err.message
+    return null
   } finally {
     saving.value = false
   }
 }
 
-function openCreateModal() {
-  createForm.value = emptyForm()
-  modalError.value = null
-  showCreateModal.value = true
+async function saveSelected() {
+  const updated = await run(() => ingredientCatalogService.update(selected.value.id, toRequest(form.value)))
+  if (updated) replaceEntry(updated)
 }
 
 async function createEntry() {
-  saving.value = true
-  modalError.value = null
-  try {
-    const created = await ingredientCatalogService.create(createForm.value)
+  const created = await run(() => ingredientCatalogService.create(toRequest(form.value)))
+  if (created) {
     entries.value.push(created)
-    showCreateModal.value = false
+    showCreate.value = false
+    openDetail(created)
+  }
+}
+
+async function removeSelected() {
+  if (!confirm(`„${selected.value.name}“ wirklich löschen? Rezepte mit dieser Zutat werden dann nicht mehr berechnet.`)) return
+  const id = selected.value.id
+  const ok = await run(async () => {
+    await ingredientCatalogService.delete(id)
+    return true
+  })
+  if (ok) {
+    entries.value = entries.value.filter(e => e.id !== id)
+    closeDetail()
+  }
+}
+
+async function addAlias() {
+  const updated = await run(() => ingredientCatalogService.addAlias(selected.value.id, newAlias.value.trim()))
+  if (updated) {
+    replaceEntry(updated)
+    newAlias.value = ''
+  }
+}
+
+async function removeAlias(alias) {
+  const updated = await run(() => ingredientCatalogService.removeAlias(selected.value.id, alias.id))
+  if (updated) replaceEntry(updated)
+}
+
+async function adoptLegacy(legacy) {
+  const question = `Altwert „${legacy.name}“ (≙ ${fmt(legacy.per100g.kcal, 0)} kcal/100 g) als manuellen Wert übernehmen? `
+    + 'Die BLS-Zuordnung wird dabei ersetzt.'
+  if (!confirm(question)) return
+  const updated = await run(() => ingredientCatalogService.adoptLegacy(selected.value.id, legacy.id))
+  if (updated) replaceEntry(updated)
+}
+
+function editConversion(c) {
+  conversionForm.value = { ...c, ingredientClass: c.ingredientClass ?? '' }
+  conversionError.value = null
+}
+
+async function refreshAfterConversionChange() {
+  await Promise.all([loadConversions(), load()])
+  if (selected.value) {
+    const fresh = entries.value.find(e => e.id === selected.value.id)
+    if (fresh) selected.value = fresh
+  }
+}
+
+async function saveConversion() {
+  saving.value = true
+  conversionError.value = null
+  try {
+    await ingredientCatalogService.saveConversion({
+      ...conversionForm.value,
+      ingredientClass: conversionForm.value.ingredientClass || null,
+    })
+    conversionForm.value = null
+    await refreshAfterConversionChange()
   } catch (err) {
-    modalError.value = err.message || 'Fehler beim Erstellen.'
+    conversionError.value = err.message
   } finally {
     saving.value = false
   }
 }
 
-async function openDeleteConfirm(entry) {
-  if (!confirm(`"${entry.name} (${entry.unit || '—'})" wirklich löschen?`)) return
+async function removeConversion(c) {
+  if (!confirm(`Umrechnung „1 ${c.unit} = ${fmt(c.grams)} g“ löschen?`)) return
   try {
-    await ingredientCatalogService.delete(entry.id)
-    entries.value = entries.value.filter(e => e.id !== entry.id)
+    await ingredientCatalogService.deleteConversion(c.id)
+    await refreshAfterConversionChange()
   } catch (err) {
-    error.value = err.message || 'Fehler beim Löschen.'
+    error.value = err.message
+  }
+}
+
+async function retry(r) {
+  try {
+    await ingredientCatalogService.retryAiRequest(r.id)
+    aiRequests.value = await ingredientCatalogService.getAiRequests()
+  } catch (err) {
+    error.value = err.message
+  }
+}
+
+async function resolveUnknown() {
+  saving.value = true
+  try {
+    const result = await ingredientCatalogService.resolveUnknown()
+    aiMessage.value = result.created
+      ? `${result.created} neue Anfrage(n) angelegt – die Zuordnung läuft im Hintergrund.`
+      : 'Keine neuen Anfragen nötig (oder kein OpenAI-Schlüssel konfiguriert).'
+    aiRequests.value = await ingredientCatalogService.getAiRequests()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    saving.value = false
   }
 }
 </script>
@@ -351,17 +581,72 @@ async function openDeleteConfirm(entry) {
   max-width: 1000px;
   margin: 0 auto;
   padding: 24px;
+  text-align: left;
 }
 
 .ingredients-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .ingredients-header h1 {
   margin: 0;
+  font-size: 2rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  padding: 8px 14px;
+  margin-bottom: -2px;
+  font-weight: 600;
+  color: #a0aec0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab.active {
+  color: #2d3748;
+  border-bottom-color: #4a5568;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #718096;
 }
 
 .btn-primary {
@@ -378,16 +663,21 @@ async function openDeleteConfirm(entry) {
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-secondary {
-  padding: 10px 20px;
+  padding: 8px 16px;
   background: #e2e8f0;
   color: #333;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .btn-secondary:hover { background: #cbd5e0; }
+.btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.add-btn {
+  margin: 12px 0;
+}
 
 .btn-edit {
   padding: 4px 10px;
@@ -397,7 +687,7 @@ async function openDeleteConfirm(entry) {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.8rem;
-  margin-right: 6px;
+  margin-left: 6px;
 }
 
 .btn-edit:hover { background: #bee3f8; }
@@ -410,43 +700,29 @@ async function openDeleteConfirm(entry) {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.8rem;
+  margin-left: 6px;
 }
 
 .btn-delete:hover { background: #fed7d7; }
 
-.loading, .empty {
+.loading {
   text-align: center;
   padding: 48px 24px;
   color: #666;
 }
 
-.error-banner {
-  background: #fed7d7;
-  color: #c53030;
-  padding: 12px 16px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
+.error-banner,
 .error-message {
   background: #fed7d7;
   color: #c53030;
-  padding: 10px;
+  padding: 10px 14px;
   border-radius: 4px;
   margin-bottom: 12px;
 }
 
-.unit-group {
-  margin-bottom: 32px;
-}
-
-.unit-heading {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #4a5568;
-  margin: 0 0 8px 0;
-  padding-bottom: 6px;
-  border-bottom: 2px solid #e2e8f0;
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ingredients-table {
@@ -457,14 +733,21 @@ async function openDeleteConfirm(entry) {
 
 .ingredients-table th,
 .ingredients-table td {
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #edf2f7;
+  vertical-align: top;
 }
 
 .ingredients-table th {
   background: #f7fafc;
   font-weight: 600;
+  color: #4a5568;
+  white-space: nowrap;
+}
+
+.ingredients-table .num {
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -473,107 +756,211 @@ async function openDeleteConfirm(entry) {
   user-select: none;
 }
 
-.sortable:hover { background: #edf2f7; }
-
-.sort-indicator {
-  color: #a0aec0;
-  font-size: 0.75rem;
-  margin-left: 4px;
+.clickable-row {
+  cursor: pointer;
 }
 
-.clickable-row { cursor: pointer; }
-.clickable-row:hover td { background: #f7fafc; }
+.clickable-row:hover {
+  background: #f7fafc;
+}
 
-.actions-cell { white-space: nowrap; }
+.sub {
+  display: block;
+  font-size: 0.75rem;
+  color: #a0aec0;
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.source-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.source-chip--bls { background: #e6fffa; color: #234e52; }
+.source-chip--manual { background: #ebf8ff; color: #2a4365; }
+.source-chip--ai_estimate { background: #fffaf0; color: #7b341e; border: 1px dashed #ed8936; }
+
+.status {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status--failed { color: #c53030; }
+.status--done { color: #276749; }
+.status--pending,
+.status--running { color: #b7791f; }
 
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
+  align-items: flex-start;
   justify-content: center;
-  align-items: center;
   z-index: 1000;
+  overflow-y: auto;
+  padding: 24px 12px;
 }
 
 .modal-content {
   background: white;
+  color: #2d3748;
+  padding: 20px 24px;
   border-radius: 8px;
-  padding: 30px;
-  width: 90%;
-  max-width: 480px;
-  max-height: 90vh;
-  overflow-y: auto;
+  width: 100%;
+  max-width: 640px;
 }
 
-.modal-content h3 {
-  margin: 0 0 20px 0;
-  font-size: 1.25rem;
+.modal-content--small {
+  max-width: 420px;
 }
 
-.unit-label {
-  font-size: 0.875rem;
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.modal-head h3 {
+  margin: 0 0 8px;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
   color: #718096;
-  font-weight: 400;
+}
+
+.modal-content h4 {
+  margin: 20px 0 8px;
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+.detail-source {
+  font-size: 0.85rem;
+  color: #4a5568;
 }
 
 .detail-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
+  font-size: 0.9rem;
 }
 
 .detail-table td {
-  padding: 10px 0;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 5px 8px;
+  border-bottom: 1px solid #edf2f7;
 }
 
-.detail-table td:first-child {
-  color: #4a5568;
-  font-weight: 500;
-  width: 50%;
+.detail-table td:last-child {
+  text-align: right;
+  font-weight: 600;
 }
 
-.detail-table tr:last-child td { border-bottom: none; }
-
-.form-group {
-  margin-bottom: 14px;
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: #4a5568;
+.alias-chip {
+  background: #edf2f7;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 0.8rem;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
+.chip-remove {
+  background: none;
+  border: none;
+  padding: 0 0 0 4px;
+  cursor: pointer;
+  color: #c53030;
+}
+
+.inline-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.inline-form input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e0;
   border-radius: 4px;
-  font-size: 0.9rem;
-  box-sizing: border-box;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+.conversion-list,
+.legacy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+
+.conversion-list li,
+.legacy-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.stack-form {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
-.hint-inline {
-  font-size: 0.75rem;
-  color: #718096;
-  font-weight: 400;
-  margin-left: 4px;
+.stack-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.stack-form input,
+.stack-form select {
+  padding: 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 0.95rem;
 }
 
 .modal-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
   justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+  .ingredients-container {
+    padding: 12px;
+  }
+
+  .ingredients-table th,
+  .ingredients-table td {
+    padding: 6px;
+    font-size: 0.8rem;
+  }
+
+  .modal-content {
+    padding: 16px;
+  }
 }
 </style>

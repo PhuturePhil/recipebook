@@ -14,10 +14,7 @@ public class RecipeSummaryDto {
   private String source;
   private String createdBy;
   private String ingredientNames;
-  private Double nutritionKcal;
-  private Double nutritionFat;
-  private Double nutritionProtein;
-  private Double nutritionFiber;
+  private NutritionSummaryDto nutrition;
 
   public RecipeSummaryDto(Long id, String title, String description, String imageUrl,
       Integer prepTimeMinutes, Integer baseServings, Integer servingsTo, Long ingredientCount) {
@@ -55,12 +52,6 @@ public class RecipeSummaryDto {
   public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
   public String getIngredientNames() { return ingredientNames; }
   public void setIngredientNames(String ingredientNames) { this.ingredientNames = ingredientNames; }
-  public Double getNutritionKcal() { return nutritionKcal; }
-  public void setNutritionKcal(Double nutritionKcal) { this.nutritionKcal = nutritionKcal; }
-  public Double getNutritionFat() { return nutritionFat; }
-  public void setNutritionFat(Double nutritionFat) { this.nutritionFat = nutritionFat; }
-  public Double getNutritionProtein() { return nutritionProtein; }
-  public void setNutritionProtein(Double nutritionProtein) { this.nutritionProtein = nutritionProtein; }
-  public Double getNutritionFiber() { return nutritionFiber; }
-  public void setNutritionFiber(Double nutritionFiber) { this.nutritionFiber = nutritionFiber; }
+  public NutritionSummaryDto getNutrition() { return nutrition; }
+  public void setNutrition(NutritionSummaryDto nutrition) { this.nutrition = nutrition; }
 }

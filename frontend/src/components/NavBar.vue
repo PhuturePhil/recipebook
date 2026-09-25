@@ -32,6 +32,9 @@
           <router-link to="/ingredients" class="navbar__dropdown-item" @click="showMenu = false">
             Zutaten anzeigen
           </router-link>
+          <router-link to="/naehrwerte" class="navbar__dropdown-item" @click="showMenu = false">
+            Nährwerte &amp; Badges erklärt
+          </router-link>
           <router-link v-if="isAdmin" to="/admin/users" class="navbar__dropdown-item" @click="showMenu = false">
             Benutzerverwaltung öffnen
           </router-link>

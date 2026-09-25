@@ -1,6 +1,19 @@
 export const changelog = [
   {
     date: '25.09.2026',
+    title: 'Nährwerte neu berechnet',
+    changes: [
+      'Die Nährwerte stammen jetzt aus dem Bundeslebensmittelschlüssel (BLS), der offiziellen deutschen Nährwertdatenbank, statt aus KI-Schätzungen',
+      'Im Rezeptkopf steht die Kalorienzahl pro Portion, in der Nährwerttabelle zusätzlich Kilojoule, Zucker und Salz',
+      'Unter der Tabelle steht, aus wie vielen Zutaten gerechnet wurde und welche fehlen; unvollständige Werte werden ausgegraut',
+      'Pro Zutat lässt sich aufklappen, wie viel Gramm angenommen wurden und woher der Wert stammt',
+      'Vitamine und Mineralstoffe lassen sich unter „Mikronährstoffe anzeigen“ einblenden',
+      'Die Badges „Energiearm“, „Fettarm“, „Proteinreich“ und „Ballaststoffreich“ folgen jetzt festen Grenzen aus dem EU-Recht; eine Erklärung gibt es im Menü unter „Nährwerte & Badges erklärt“',
+      'Mengen wie „200–250 g“, „½ TL“ oder „8–10 Äpfel“ werden jetzt richtig mitgerechnet',
+    ]
+  },
+  {
+    date: '25.09.2026',
     title: 'Anmelden mit pastoors.cloud',
     changes: [
       'Auf der Anmeldeseite gibt es jetzt den Button "Mit pastoors.cloud anmelden" — ein Konto für alle Familienseiten',
