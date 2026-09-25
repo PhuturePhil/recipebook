@@ -2,7 +2,16 @@
   <div class="recipe-detail">
     <div v-if="store.loading" class="loading">Lädt...</div>
 
-    <div v-else-if="store.error" class="error">{{ store.error }}</div>
+    <div v-else-if="notFound" class="not-found">
+      <h2>Rezept nicht gefunden</h2>
+      <p>Vielleicht wurde es gelöscht, oder der Link ist unvollständig.</p>
+      <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
+    </div>
+
+    <div v-else-if="store.error" class="not-found">
+      <p class="error">{{ store.error }}</p>
+      <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
+    </div>
 
     <div v-else-if="recipe" class="recipe-content">
       <header class="recipe-header">
@@ -94,11 +103,13 @@
       </footer>
 
       <div class="detail-actions">
-        <button class="btn-cancel" @click="goBack">Abbrechen</button>
-        <button class="btn-delete" @click="handleDelete">Löschen</button>
-        <router-link :to="`/recipe/${recipe.id}/edit`" class="btn-edit">
-          Bearbeiten
-        </router-link>
+        <button class="btn-cancel" @click="goBack">Zurück</button>
+        <template v-if="canEdit">
+          <button class="btn-delete" @click="handleDelete">Löschen</button>
+          <router-link :to="`/recipe/${recipe.id}/edit`" class="btn-edit">
+            Bearbeiten
+          </router-link>
+        </template>
       </div>
     </div>
 
@@ -116,6 +127,7 @@ import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useAuthStore } from '@/stores/authStore'
 import { scaleIngredients } from '@/utils/scaleIngredients'
 import ShareModal from '@/components/ShareModal.vue'
 import NutritionPanel from '@/components/NutritionPanel.vue'
@@ -125,14 +137,19 @@ const route = useRoute()
 const router = useRouter()
 const store = useRecipeStore()
 const uiStore = useUiStore()
+const authStore = useAuthStore()
 
 
 
 const recipe = computed(() => store.currentRecipe)
+const canEdit = computed(() =>
+  authStore.isAdmin || (recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
+)
 const currentServings = ref(1)
 const activeTab = ref('ingredients')
 const titleRef = ref(null)
 const showShareModal = ref(false)
+const notFound = ref(false)
 const nutrition = ref(null)
 const nutritionInfo = ref(null)
 const nutritionLoading = ref(false)
@@ -165,7 +182,12 @@ const kcalChipTitle = computed(() => {
 
 onMounted(async () => {
   activeTab.value = 'ingredients'
-  await store.fetchRecipeById(route.params.id)
+  try {
+    await store.fetchRecipeById(route.params.id)
+  } catch (error) {
+    notFound.value = error.status === 404
+    return
+  }
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings
     loadNutrition(recipe.value.id)
@@ -187,6 +209,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // The list is served from cache, so a leftover error would otherwise show up there
+  store.clearError()
   titleObserver?.disconnect()
   uiStore.clearNavTitle()
 })
@@ -259,6 +283,16 @@ const handleDelete = async () => {
 
 .error {
   color: var(--color-error, #e53e3e);
+}
+
+.not-found h2 {
+  margin: 0 0 8px;
+  color: var(--color-text-primary, #333);
+}
+
+.not-found .btn-cancel {
+  display: inline-block;
+  margin-top: 16px;
 }
 
 .recipe-header {

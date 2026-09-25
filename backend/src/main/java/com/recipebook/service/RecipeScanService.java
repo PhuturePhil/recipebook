@@ -2,9 +2,18 @@ package com.recipebook.service;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ConnectTimeoutException;
+import io.netty.handler.timeout.ReadTimeoutException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+
+import java.net.SocketTimeoutException;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,12 +28,25 @@ public class RecipeScanService {
   private final WebClient webClient;
   private final ObjectMapper objectMapper;
 
-  public RecipeScanService(ObjectMapper objectMapper) {
+  private final Duration timeout;
+
+  public RecipeScanService(ObjectMapper objectMapper,
+      @Value("${openai.scan-timeout-seconds:30}") long timeoutSeconds,
+      @Value("${openai.base-url:https://api.openai.com}") String baseUrl) {
+    this.timeout = Duration.ofSeconds(timeoutSeconds);
+    HttpClient http = HttpClient.create()
+      .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000)
+      .responseTimeout(timeout);
     this.webClient = WebClient.builder()
-      .baseUrl("https://api.openai.com")
+      .baseUrl(baseUrl)
+      .clientConnector(new ReactorClientHttpConnector(http))
       .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
       .build();
     this.objectMapper = objectMapper;
+  }
+
+  void setApiKey(String apiKey) {
+    this.apiKey = apiKey;
   }
 
   public RecipeScanResult scanImages(List<Map<String, String>> images) {
@@ -79,16 +101,24 @@ public class RecipeScanService {
       )
     );
 
+    String response;
     try {
-      String response = webClient.post()
+      response = webClient.post()
         .uri("/v1/chat/completions")
         .header("Authorization", "Bearer " + apiKey)
         .header("Content-Type", "application/json")
         .bodyValue(requestBody)
         .retrieve()
         .bodyToMono(String.class)
-        .block();
+        .block(timeout.plusSeconds(5));
+    } catch (RuntimeException e) {
+      if (isTimeout(e)) {
+        throw new ScanTimeoutException("OpenAI hat nicht innerhalb von " + timeout.toSeconds() + " s geantwortet", e);
+      }
+      throw new RuntimeException("Fehler beim Scannen des Rezeptbilds: " + e.getMessage(), e);
+    }
 
+    try {
       JsonNode root = objectMapper.readTree(response);
       String responseContent = root
         .path("choices")
@@ -132,6 +162,25 @@ public class RecipeScanService {
       return result;
     } catch (Exception e) {
       throw new RuntimeException("Fehler beim Scannen des Rezeptbilds: " + e.getMessage(), e);
+    }
+  }
+
+  private static boolean isTimeout(Throwable e) {
+    for (Throwable t = e; t != null; t = t.getCause()) {
+      if (t instanceof TimeoutException || t instanceof ReadTimeoutException
+          || t instanceof ConnectTimeoutException || t instanceof SocketTimeoutException) {
+        return true;
+      }
+      if (t.getMessage() != null && t.getMessage().startsWith("Timeout on blocking read")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static class ScanTimeoutException extends RuntimeException {
+    public ScanTimeoutException(String message, Throwable cause) {
+      super(message, cause);
     }
   }
 

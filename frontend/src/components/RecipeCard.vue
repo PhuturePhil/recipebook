@@ -1,7 +1,7 @@
 <template>
   <div class="recipe-card" @click="navigateToDetail">
-    <div v-if="recipe.imageUrl" class="recipe-card__image">
-      <img :src="recipe.imageUrl" :alt="recipe.title" loading="lazy" />
+    <div v-if="recipe.imageUrl" ref="imageBox" class="recipe-card__image">
+      <img v-if="imageSrc" :src="imageSrc" :alt="recipe.title" loading="lazy" decoding="async" />
     </div>
     <div class="recipe-card__content">
       <h3 class="recipe-card__title">{{ recipe.title }}</h3>
@@ -31,8 +31,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRecipeImage } from '@/composables/useRecipeImage'
 
 const props = defineProps({
   recipe: {
@@ -44,6 +45,9 @@ const props = defineProps({
     default: () => []
   }
 })
+
+const imageBox = ref(null)
+const imageSrc = useRecipeImage(() => props.recipe.imageUrl, imageBox)
 
 const kcalPerServing = computed(() => {
   const kcal = props.recipe.nutrition?.perServing?.kcal

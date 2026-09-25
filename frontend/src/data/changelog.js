@@ -1,6 +1,18 @@
 export const changelog = [
   {
     date: '25.09.2026',
+    title: 'Schneller laden, Suche beim Tippen, Mengen mit Brüchen',
+    changes: [
+      'Die Rezeptliste lädt deutlich schneller, vor allem am Handy: Bilder kommen erst, wenn die Karte ins Bild scrollt, und werden danach zwischengespeichert',
+      'Neue Fotos werden beim Hochladen automatisch verkleinert, vorhandene Bilder wurden einmalig verkleinert',
+      'Mengen wie „1/2“, „½“, „1,5“ oder „200-250“ werden richtig erkannt und beim Umrechnen der Portionen mitgerechnet',
+      'Die Suche filtert schon beim Tippen, Enter ist nicht mehr nötig. Mit Enter oder Komma wird ein Begriff wie bisher als Filter festgehalten',
+      '„Bearbeiten“ und „Löschen“ erscheinen nur noch bei eigenen Rezepten (Admins sehen sie überall). Der Knopf „Abbrechen“ auf der Rezeptseite heißt jetzt „Zurück“',
+      'Nicht vorhandene Rezepte und unbekannte Adressen zeigen eine verständliche Seite statt einer Fehlermeldung oder einer leeren Seite',
+    ]
+  },
+  {
+    date: '25.09.2026',
     title: 'Sicherheit und klarere Fehlermeldungen',
     changes: [
       'Fehlermeldungen des Servers erscheinen jetzt im Klartext, z. B. „Das Rezept wurde nicht gefunden.“ oder „Diese E-Mail-Adresse ist bereits vergeben.“',

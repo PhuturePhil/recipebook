@@ -35,7 +35,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
   }
 
   @Query(value =
-      "SELECT r.id, r.title, r.description, r.image_url AS imageUrl, " +
+      "SELECT r.id, r.title, r.description, " +
+      "CASE WHEN r.image_hash IS NOT NULL THEN CONCAT('/api/recipes/', r.id, '/image?v=', LEFT(r.image_hash, 12)) " +
+      "ELSE r.image_url END AS imageUrl, " +
       "r.prep_time_minutes AS prepTimeMinutes, r.base_servings AS baseServings, r.servings_to AS servingsTo, " +
       "COUNT(i.id) AS ingredientCount, " +
       "r.author, r.source, " +
@@ -57,6 +59,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
   @Query("SELECT DISTINCT i.unit FROM Ingredient i WHERE i.unit IS NOT NULL AND i.unit <> '' ORDER BY i.unit")
   List<String> findDistinctUnits();
 
-  @Query("SELECT r FROM Recipe r WHERE LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(r.description) LIKE LOWER(CONCAT('%', :query, '%'))")
-  List<Recipe> searchByTitleOrDescription(@Param("query") String query);
+  @Query("SELECT r.imageUrl FROM Recipe r WHERE r.id = :recipeId")
+  Optional<String> findImageUrl(@Param("recipeId") Long recipeId);
 }

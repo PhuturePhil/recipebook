@@ -7,16 +7,25 @@ import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
 import com.recipebook.service.RecipeService;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import java.net.URI;
+import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/recipes")
 public class RecipeController {
+
+    private static final Pattern DATA_URL = Pattern.compile("^data:(image/[a-zA-Z0-9.+-]+);base64,(.*)$", Pattern.DOTALL);
 
     private final RecipeService recipeService;
 
@@ -49,9 +58,31 @@ public class RecipeController {
         return recipeService.findDistinctUnits();
     }
 
-    @GetMapping("/search")
-    public List<Recipe> searchRecipes(@RequestParam String q) {
-        return recipeService.search(q);
+    @GetMapping("/{id}/image")
+    public ResponseEntity<byte[]> getImage(@PathVariable Long id, @RequestParam(name = "v", required = false) String version) {
+        String imageUrl = recipeService.findImageUrl(id)
+                .filter(url -> !url.isBlank())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Das Rezept hat kein Bild."));
+        if (imageUrl.startsWith("https://")) {
+            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(imageUrl)).build();
+        }
+        Matcher m = DATA_URL.matcher(imageUrl);
+        if (!m.matches()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Das Rezept hat kein Bild.");
+        }
+        byte[] bytes;
+        try {
+            bytes = Base64.getMimeDecoder().decode(m.group(2));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Das Rezept hat kein Bild.");
+        }
+        CacheControl cache = version != null
+                ? CacheControl.maxAge(Duration.ofDays(365)).cachePrivate().immutable()
+                : CacheControl.noCache().cachePrivate();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(m.group(1)))
+                .cacheControl(cache)
+                .body(bytes);
     }
 
     @PostMapping

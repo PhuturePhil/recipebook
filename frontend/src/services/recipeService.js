@@ -49,6 +49,17 @@ class RecipeService {
     }
   }
 
+  // Recipe images need the auth header, so they are fetched here instead of via <img src>.
+  // The URL carries a content hash, which lets the browser cache answer repeat visits.
+  async getImageObjectUrl(imageUrl) {
+    const url = imageUrl.startsWith('/api/') ? API_BASE_URL + imageUrl.slice(4) : imageUrl
+    const response = await fetch(url, { headers: { ...getAuthHeaders() } })
+    if (!response.ok) {
+      throw await httpError(response)
+    }
+    return URL.createObjectURL(await response.blob())
+  }
+
   async create(recipe) {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes`, {
@@ -100,21 +111,6 @@ class RecipeService {
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error)
-      throw error
-    }
-  }
-
-  async search(query) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/recipes/search?q=${encodeURIComponent(query)}`, {
-        headers: { ...getAuthHeaders() }
-      })
-      if (!response.ok) {
-        throw await httpError(response)
-      }
-      return await response.json()
-    } catch (error) {
-      console.error('Failed to search recipes:', error)
       throw error
     }
   }
