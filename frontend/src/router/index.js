@@ -88,13 +88,11 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  
-  if (!authStore.user && authStore.isAuthenticated) {
-    await authStore.checkAuth()
-  }
-  
+
+  await authStore.init()
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login' })
+    next({ name: 'login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } })
   } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next({ name: 'home' })
   } else if (to.name === 'login' && authStore.isAuthenticated) {

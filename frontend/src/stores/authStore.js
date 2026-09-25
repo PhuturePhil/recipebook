@@ -1,12 +1,15 @@
 import { defineStore } from 'pinia'
 import { authService } from '@/services/authService'
 
+let initPromise = null
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     isAuthenticated: false,
     loading: false,
-    error: null
+    error: null,
+    sessionExpired: false
   }),
 
   getters: {
@@ -29,6 +32,7 @@ export const useAuthStore = defineStore('auth', {
         const data = await authService.login(email, password)
         this.user = data.user
         this.isAuthenticated = true
+        this.sessionExpired = false
         return true
       } catch (error) {
         this.error = error.message
@@ -45,6 +49,7 @@ export const useAuthStore = defineStore('auth', {
         const data = await authService.exchangeOidcTicket(ticket)
         this.user = data.user
         this.isAuthenticated = true
+        this.sessionExpired = false
         return true
       } catch (error) {
         this.error = error.message
@@ -60,9 +65,18 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
     },
 
+    // Restores the session from the stored token once per page load.
+    init() {
+      if (!initPromise) {
+        initPromise = this.checkAuth()
+      }
+      return initPromise
+    },
+
     async checkAuth() {
       if (!authService.isAuthenticated()) {
-        this.isAuthenticated = false
+        this.sessionExpired = !!authService.getToken()
+        this.logout()
         return false
       }
 
@@ -71,8 +85,14 @@ export const useAuthStore = defineStore('auth', {
         this.isAuthenticated = true
         return true
       } catch (error) {
-        this.logout()
-        return false
+        if (error.status === 401 || error.status === 403) {
+          this.sessionExpired = true
+          this.logout()
+          return false
+        }
+        // Server not reachable: keep the locally valid session instead of logging out
+        this.isAuthenticated = true
+        return true
       }
     },
 
