@@ -9,6 +9,7 @@ import com.recipebook.model.Role;
 import com.recipebook.model.User;
 import com.recipebook.repository.InvitationTokenRepository;
 import com.recipebook.repository.PasswordResetTokenRepository;
+import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,20 +27,30 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
 public class AuthService {
 
+    static final int MIN_PASSWORD_LENGTH = 8;
+    static final int LOGIN_LIMIT_PER_ACCOUNT = 5;
+    static final int RESET_MAIL_LIMIT_PER_ACCOUNT = 3;
+    private static final Duration LOGIN_WINDOW = Duration.ofMinutes(1);
+    private static final Duration RESET_MAIL_WINDOW = Duration.ofMinutes(15);
+
     private final UserRepository userRepository;
+    private final RecipeRepository recipeRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final InvitationTokenRepository invitationTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final JavaMailSender mailSender;
+    private final RateLimiter rateLimiter = new RateLimiter();
 
     @Value("${app.url:http://localhost:8080}")
     private String appUrl;
@@ -49,6 +60,7 @@ public class AuthService {
 
     public AuthService(
             UserRepository userRepository,
+            RecipeRepository recipeRepository,
             PasswordResetTokenRepository tokenRepository,
             InvitationTokenRepository invitationTokenRepository,
             PasswordEncoder passwordEncoder,
@@ -56,6 +68,7 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             JavaMailSender mailSender) {
         this.userRepository = userRepository;
+        this.recipeRepository = recipeRepository;
         this.tokenRepository = tokenRepository;
         this.invitationTokenRepository = invitationTokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -68,6 +81,10 @@ public class AuthService {
 
     @Transactional
     public LoginResult login(String email, String password) {
+        if (!rateLimiter.tryAcquire("login:" + normalize(email), LOGIN_LIMIT_PER_ACCOUNT, LOGIN_WINDOW)) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Zu viele Anmeldeversuche fuer dieses Konto. Bitte warte eine Minute.");
+        }
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
         );
@@ -94,6 +111,7 @@ public class AuthService {
             user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             user.setMustChangePassword(true);
         } else {
+            requireValidPassword(password);
             user.setPassword(passwordEncoder.encode(password));
             user.setMustChangePassword(false);
         }
@@ -135,6 +153,15 @@ public class AuthService {
     }
 
     @Transactional
+    public record ProfileUpdateResult(User user, String token) {}
+
+    @Transactional
+    public ProfileUpdateResult updateProfileAndReissueToken(Long userId, UpdateProfileRequest request) {
+        User user = updateProfile(userId, request);
+        return new ProfileUpdateResult(user, jwtService.generateToken(new CustomUserDetails(user)));
+    }
+
+    @Transactional
     public User updateProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
@@ -152,8 +179,7 @@ public class AuthService {
             user.setEmail(request.getEmail());
         }
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setMustChangePassword(false);
+            changePassword(user, request.getPassword());
         }
 
         return userRepository.save(user);
@@ -187,6 +213,12 @@ public class AuthService {
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
+        long recipeCount = recipeRepository.countByUser_Id(id);
+        if (recipeCount > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Der Benutzer hat noch " + recipeCount + (recipeCount == 1 ? " Rezept" : " Rezepte")
+                            + " und kann deshalb nicht geloescht werden.");
+        }
         tokenRepository.deleteByUser(user);
         invitationTokenRepository.deleteByInvitedBy(user);
         userRepository.delete(user);
@@ -211,6 +243,7 @@ public class AuthService {
         if (!invitationToken.isValid()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Der Einladungslink ist ungueltig oder abgelaufen.");
         }
+        requireValidPassword(password);
         User user = register(vorname, nachname, email, password, Role.USER);
         invitationToken.setUsed(true);
         invitationTokenRepository.save(invitationToken);
@@ -219,8 +252,16 @@ public class AuthService {
 
     @Transactional
     public void requestPasswordReset(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer wurde nicht gefunden."));
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        if (!rateLimiter.tryAcquire("reset:" + normalize(email), RESET_MAIL_LIMIT_PER_ACCOUNT, RESET_MAIL_WINDOW)) {
+            return;
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return;
+        }
 
         tokenRepository.deleteByUser(user);
         String token = createPasswordResetToken(user, 1);
@@ -237,12 +278,29 @@ public class AuthService {
         }
 
         User user = resetToken.getUser();
-        user.setPassword(passwordEncoder.encode(newPassword));
-        user.setMustChangePassword(false);
+        changePassword(user, newPassword);
         userRepository.save(user);
 
         resetToken.setUsed(true);
         tokenRepository.save(resetToken);
+    }
+
+    private void changePassword(User user, String newPassword) {
+        requireValidPassword(newPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(false);
+        user.setTokenVersion(user.getTokenVersion() + 1);
+    }
+
+    static void requireValidPassword(String password) {
+        if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Das Passwort muss mindestens " + MIN_PASSWORD_LENGTH + " Zeichen lang sein.");
+        }
+    }
+
+    private static String normalize(String email) {
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String createPasswordResetToken(User user, int validHours) {

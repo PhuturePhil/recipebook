@@ -35,8 +35,8 @@
             v-model="password"
             type="password"
             required
-            minlength="6"
-            placeholder="Mindestens 6 Zeichen"
+            minlength="8"
+            placeholder="Mindestens 8 Zeichen"
           />
         </div>
 

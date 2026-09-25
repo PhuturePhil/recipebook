@@ -35,6 +35,9 @@ public class User {
 
     @Column(unique = true)
     private String oidcSubject;
+
+    @Column(nullable = false)
+    private int tokenVersion = 0;
     
     public User() {}
     
@@ -116,5 +119,13 @@ public class User {
 
     public void setOidcSubject(String oidcSubject) {
         this.oidcSubject = oidcSubject;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion;
+    }
+
+    public void setTokenVersion(int tokenVersion) {
+        this.tokenVersion = tokenVersion;
     }
 }

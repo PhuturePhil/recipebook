@@ -5,6 +5,19 @@ function getAuthHeaders() {
   return token ? { 'Authorization': `Bearer ${token}` } : {}
 }
 
+async function httpError(response) {
+  let message = `HTTP error! status: ${response.status}`
+  try {
+    const body = await response.json()
+    if (body?.message) message = body.message
+  } catch {
+    // keep the generic message when the body is not JSON
+  }
+  const error = new Error(message)
+  error.status = response.status
+  return error
+}
+
 class RecipeService {
   async getAll() {
     try {
@@ -12,7 +25,7 @@ class RecipeService {
         headers: { ...getAuthHeaders() }
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {
@@ -27,7 +40,7 @@ class RecipeService {
         headers: { ...getAuthHeaders() }
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {
@@ -47,7 +60,7 @@ class RecipeService {
         body: JSON.stringify(recipe)
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {
@@ -67,7 +80,7 @@ class RecipeService {
         body: JSON.stringify(recipe)
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {
@@ -83,7 +96,7 @@ class RecipeService {
         headers: { ...getAuthHeaders() }
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error)
@@ -97,7 +110,7 @@ class RecipeService {
         headers: { ...getAuthHeaders() }
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {
@@ -112,7 +125,7 @@ class RecipeService {
         headers: { ...getAuthHeaders() }
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {
@@ -127,7 +140,7 @@ class RecipeService {
         headers: { ...getAuthHeaders() }
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {
@@ -147,7 +160,7 @@ class RecipeService {
         body: JSON.stringify(images)
       })
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw await httpError(response)
       }
       return await response.json()
     } catch (error) {

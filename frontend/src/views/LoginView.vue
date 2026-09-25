@@ -70,7 +70,7 @@
           </div>
           
           <p v-if="resetSuccess" class="success-message">
-            Ein Link wurde an Ihre E-Mail gesendet.
+            Falls ein Konto mit dieser E-Mail existiert, wurde ein Link verschickt.
           </p>
         </form>
       </div>

@@ -17,6 +17,7 @@ public class CustomUserDetails implements UserDetails {
     private final Role role;
     private final boolean enabled;
     private final boolean mustChangePassword;
+    private final int tokenVersion;
 
     public CustomUserDetails(User user) {
         this.id = user.getId();
@@ -27,6 +28,7 @@ public class CustomUserDetails implements UserDetails {
         this.role = user.getRole();
         this.enabled = true;
         this.mustChangePassword = user.isMustChangePassword();
+        this.tokenVersion = user.getTokenVersion();
     }
 
     public Long getId() {
@@ -47,6 +49,10 @@ public class CustomUserDetails implements UserDetails {
 
     public boolean isMustChangePassword() {
         return mustChangePassword;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion;
     }
 
     @Override

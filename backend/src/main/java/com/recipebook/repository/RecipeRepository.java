@@ -2,12 +2,22 @@ package com.recipebook.repository;
 
 import com.recipebook.dto.SourceAuthorDto;
 import com.recipebook.model.Recipe;
+import com.recipebook.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
+
+  long countByUser_Id(Long userId);
+
+  @Query("SELECT i.id FROM Ingredient i WHERE i.recipe.id = :recipeId")
+  List<Long> findIngredientIds(@Param("recipeId") Long recipeId);
+
+  @Query("SELECT r.user FROM Recipe r WHERE r.id = :recipeId")
+  Optional<User> findOwner(@Param("recipeId") Long recipeId);
 
   interface RecipeSummaryProjection {
     Long getId();

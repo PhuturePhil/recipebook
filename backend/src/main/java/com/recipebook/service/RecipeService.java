@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -85,12 +86,21 @@ public class RecipeService {
     
     @Transactional
     public Recipe save(Recipe recipe, User user) {
+        boolean exists = recipe.getId() != null && recipeRepository.existsById(recipe.getId());
+        if (!exists) {
+            recipe.setId(null);
+        }
+        Set<Long> ownIngredientIds = exists ? Set.copyOf(recipeRepository.findIngredientIds(recipe.getId())) : Set.of();
         if (recipe.getIngredients() != null) {
             for (Ingredient ingredient : recipe.getIngredients()) {
+                if (ingredient.getId() != null && !ownIngredientIds.contains(ingredient.getId())) {
+                    ingredient.setId(null);
+                }
                 ingredient.setRecipe(recipe);
             }
         }
-        recipe.setUser(user);
+        User owner = exists ? recipeRepository.findOwner(recipe.getId()).orElse(user) : user;
+        recipe.setUser(owner);
         return recipeRepository.save(recipe);
     }
     

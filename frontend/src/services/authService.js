@@ -32,7 +32,8 @@ class AuthService {
         body: JSON.stringify({ email, password })
       })
       if (!response.ok) {
-        throw new Error('E-Mail-Adresse oder Passwort ist falsch.')
+        const fallback = 'E-Mail-Adresse oder Passwort ist falsch.'
+        throw new Error(response.status === 429 ? await parseError(response, fallback) : fallback)
       }
       const data = await response.json()
       this.setToken(data.token)
@@ -153,6 +154,9 @@ class AuthService {
         const msg = await parseError(response, 'Fehler beim Speichern des Profils.')
         throw new Error(msg)
       }
+      // A password change revokes older tokens, so the server hands out a fresh one
+      const refreshedToken = response.headers.get('X-Refreshed-Token')
+      if (refreshedToken) this.setToken(refreshedToken)
       return await response.json()
     } catch (error) {
       console.error('Profile update failed:', error)

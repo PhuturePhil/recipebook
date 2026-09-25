@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @RestController
@@ -30,17 +31,12 @@ public class RecipeController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Recipe> getRecipeById(@PathVariable Long id) {
-        return recipeService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(findOrThrow(id));
     }
 
     @GetMapping("/{id}/nutrition")
     public ResponseEntity<RecipeNutritionDto> getNutrition(@PathVariable Long id) {
-        return recipeService.findById(id)
-                .map(recipeService::nutrition)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(recipeService.nutrition(findOrThrow(id)));
     }
 
     @GetMapping("/sources")
@@ -60,22 +56,15 @@ public class RecipeController {
 
     @PostMapping
     public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        recipe.setId(null);
         Recipe saved = recipeService.saveForUser(recipe, userDetails);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Recipe> updateRecipe(@PathVariable Long id, @RequestBody Recipe recipe, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (!recipeService.findById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        boolean isAdmin = userDetails.getRole() == Role.ADMIN;
-        boolean isOwner = recipeService.isOwner(id, userDetails.getId());
-
-        if (!isAdmin && !isOwner) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        findOrThrow(id);
+        requireOwnerOrAdmin(id, userDetails, "Du kannst nur deine eigenen Rezepte bearbeiten.");
 
         recipe.setId(id);
         Recipe updated = recipeService.saveForUser(recipe, userDetails);
@@ -84,18 +73,22 @@ public class RecipeController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (!recipeService.findById(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        boolean isAdmin = userDetails.getRole() == Role.ADMIN;
-        boolean isOwner = recipeService.isOwner(id, userDetails.getId());
-
-        if (!isAdmin && !isOwner) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        findOrThrow(id);
+        requireOwnerOrAdmin(id, userDetails, "Du kannst nur deine eigenen Rezepte loeschen.");
 
         recipeService.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private Recipe findOrThrow(Long id) {
+        return recipeService.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Das Rezept wurde nicht gefunden."));
+    }
+
+    private void requireOwnerOrAdmin(Long id, CustomUserDetails userDetails, String message) {
+        boolean isAdmin = userDetails.getRole() == Role.ADMIN;
+        if (!isAdmin && !recipeService.isOwner(id, userDetails.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+        }
     }
 }
