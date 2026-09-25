@@ -1,5 +1,14 @@
 export const changelog = [
   {
+    date: '25.09.2026',
+    title: 'Anmelden mit pastoors.cloud',
+    changes: [
+      'Auf der Anmeldeseite gibt es jetzt den Button "Mit pastoors.cloud anmelden" — ein Konto für alle Familienseiten',
+      'Bestehende Konten werden über die E-Mail-Adresse automatisch verknüpft; Rezepte und Rechte bleiben erhalten',
+      'Die Anmeldung mit E-Mail und Passwort funktioniert weiterhin wie gewohnt',
+    ]
+  },
+  {
     date: '24.09.2026',
     title: 'Rezepte teilen & als PDF speichern',
     changes: [

@@ -32,6 +32,9 @@ public class User {
 
     @Column(nullable = false)
     private boolean mustChangePassword = false;
+
+    @Column(unique = true)
+    private String oidcSubject;
     
     public User() {}
     
@@ -105,5 +108,13 @@ public class User {
 
     public void setMustChangePassword(boolean mustChangePassword) {
         this.mustChangePassword = mustChangePassword;
+    }
+
+    public String getOidcSubject() {
+        return oidcSubject;
+    }
+
+    public void setOidcSubject(String oidcSubject) {
+        this.oidcSubject = oidcSubject;
     }
 }

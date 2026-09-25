@@ -4,12 +4,17 @@ import com.recipebook.dto.*;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.User;
 import com.recipebook.service.AuthService;
+import com.recipebook.service.OidcLoginService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -17,9 +22,17 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private final AuthService authService;
+    private final OidcLoginService oidcLoginService;
 
-    public AuthController(AuthService authService) {
+    @Value("${app.oidc.enabled:false}")
+    private boolean oidcEnabled;
+
+    @Value("${app.url}")
+    private String appUrl;
+
+    public AuthController(AuthService authService, OidcLoginService oidcLoginService) {
         this.authService = authService;
+        this.oidcLoginService = oidcLoginService;
     }
 
     @PostMapping("/login")
@@ -27,6 +40,24 @@ public class AuthController {
         AuthService.LoginResult result = authService.login(request.getEmail(), request.getPassword());
         UserResponse userResponse = toUserResponse(result.user());
         return ResponseEntity.ok(new LoginResponse(result.token(), userResponse));
+    }
+
+    @GetMapping("/oidc/status")
+    public ResponseEntity<Map<String, Boolean>> oidcStatus() {
+        return ResponseEntity.ok(Map.of("enabled", oidcEnabled));
+    }
+
+    @GetMapping("/oidc/authorization/{registrationId}")
+    public ResponseEntity<Void> oidcUnavailable(@PathVariable String registrationId) {
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, appUrl + "/login?oidcError=unavailable")
+                .build();
+    }
+
+    @PostMapping("/oidc/exchange")
+    public ResponseEntity<LoginResponse> oidcExchange(@RequestBody Map<String, String> request) {
+        AuthService.LoginResult result = oidcLoginService.redeemTicket(request.get("ticket"));
+        return ResponseEntity.ok(new LoginResponse(result.token(), toUserResponse(result.user())));
     }
 
     @PostMapping("/register")

@@ -43,6 +43,40 @@ class AuthService {
     }
   }
 
+  async exchangeOidcTicket(ticket) {
+    const response = await fetch(`${API_BASE_URL}/auth/oidc/exchange`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ticket })
+    })
+    if (!response.ok) {
+      const msg = await parseError(response, 'Die Anmeldung ist abgelaufen. Bitte erneut anmelden.')
+      throw new Error(msg)
+    }
+    const data = await response.json()
+    this.setToken(data.token)
+    return data
+  }
+
+  async isOidcEnabled() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/oidc/status`)
+      if (!response.ok) {
+        return false
+      }
+      const data = await response.json()
+      return data.enabled === true
+    } catch {
+      return false
+    }
+  }
+
+  getOidcLoginUrl() {
+    return `${API_BASE_URL}/auth/oidc/authorization/pastoors`
+  }
+
   logout() {
     this.removeToken()
   }

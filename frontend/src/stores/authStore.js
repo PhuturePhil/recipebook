@@ -38,6 +38,22 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async loginWithOidcTicket(ticket) {
+      this.loading = true
+      this.error = null
+      try {
+        const data = await authService.exchangeOidcTicket(ticket)
+        this.user = data.user
+        this.isAuthenticated = true
+        return true
+      } catch (error) {
+        this.error = error.message
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
     logout() {
       authService.logout()
       this.user = null
