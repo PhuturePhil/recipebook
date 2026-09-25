@@ -1,5 +1,6 @@
 package com.recipebook.controller;
 
+import com.recipebook.dto.RecipeNutritionDto;
 import com.recipebook.dto.RecipeSummaryDto;
 import com.recipebook.dto.SourceAuthorDto;
 import com.recipebook.model.CustomUserDetails;
@@ -30,6 +31,14 @@ public class RecipeController {
     @GetMapping("/{id}")
     public ResponseEntity<Recipe> getRecipeById(@PathVariable Long id) {
         return recipeService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/nutrition")
+    public ResponseEntity<RecipeNutritionDto> getNutrition(@PathVariable Long id) {
+        return recipeService.findById(id)
+                .map(recipeService::nutrition)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

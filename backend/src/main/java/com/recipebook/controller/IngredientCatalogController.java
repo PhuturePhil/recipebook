@@ -1,8 +1,11 @@
 package com.recipebook.controller;
 
-import com.recipebook.dto.IngredientCatalogDto;
-import com.recipebook.model.IngredientCatalog;
-import com.recipebook.repository.IngredientCatalogRepository;
+import com.recipebook.dto.IngredientAiRequestDto;
+import com.recipebook.dto.NutritionIngredientDto;
+import com.recipebook.dto.NutritionIngredientRequest;
+import com.recipebook.dto.UnitConversionDto;
+import com.recipebook.service.IngredientAiService;
+import com.recipebook.service.NutritionCatalogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -10,80 +13,102 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ingredient-catalog")
 public class IngredientCatalogController {
 
-    private final IngredientCatalogRepository repository;
+    private final NutritionCatalogService catalogService;
+    private final IngredientAiService aiService;
 
-    public IngredientCatalogController(IngredientCatalogRepository repository) {
-        this.repository = repository;
+    public IngredientCatalogController(NutritionCatalogService catalogService, IngredientAiService aiService) {
+        this.catalogService = catalogService;
+        this.aiService = aiService;
     }
 
     @GetMapping
-    public ResponseEntity<List<IngredientCatalogDto>> getAll() {
-        List<IngredientCatalogDto> result = repository.findAllByOrderByNameAscUnitAsc()
-            .stream()
-            .map(this::toDto)
-            .collect(Collectors.toList());
-        return ResponseEntity.ok(result);
+    public List<NutritionIngredientDto> getAll() {
+        return catalogService.findAll();
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<IngredientCatalogDto> create(@RequestBody IngredientCatalogDto dto) {
-        if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name darf nicht leer sein.");
-        }
-        IngredientCatalog entry = new IngredientCatalog(
-            dto.getName().trim(),
-            dto.getUnit() != null ? dto.getUnit().trim() : "",
-            dto.getNutritionKcal(),
-            dto.getNutritionFat(),
-            dto.getNutritionProtein(),
-            dto.getNutritionCarbs(),
-            dto.getNutritionFiber()
-        );
-        IngredientCatalog saved = repository.save(entry);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(saved));
+    public ResponseEntity<NutritionIngredientDto> create(@RequestBody NutritionIngredientRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(catalogService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<IngredientCatalogDto> update(@PathVariable Long id, @RequestBody IngredientCatalogDto dto) {
-        IngredientCatalog entry = repository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Eintrag nicht gefunden."));
-        if (dto.getName() != null && !dto.getName().isBlank()) {
-            entry.setName(dto.getName().trim());
-        }
-        if (dto.getUnit() != null) {
-            entry.setUnit(dto.getUnit().trim());
-        }
-        entry.setNutritionKcal(dto.getNutritionKcal());
-        entry.setNutritionFat(dto.getNutritionFat());
-        entry.setNutritionProtein(dto.getNutritionProtein());
-        entry.setNutritionCarbs(dto.getNutritionCarbs());
-        entry.setNutritionFiber(dto.getNutritionFiber());
-        return ResponseEntity.ok(toDto(repository.save(entry)));
+    public NutritionIngredientDto update(@PathVariable Long id, @RequestBody NutritionIngredientRequest request) {
+        return catalogService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Eintrag nicht gefunden.");
-        }
-        repository.deleteById(id);
+        catalogService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
-    private IngredientCatalogDto toDto(IngredientCatalog e) {
-        return new IngredientCatalogDto(
-            e.getId(), e.getName(), e.getUnit(),
-            e.getNutritionKcal(), e.getNutritionFat(),
-            e.getNutritionProtein(), e.getNutritionCarbs(), e.getNutritionFiber()
-        );
+    @PostMapping("/{id}/aliases")
+    @PreAuthorize("hasRole('ADMIN')")
+    public NutritionIngredientDto addAlias(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return catalogService.addAlias(id, body.getOrDefault("alias", ""));
+    }
+
+    @DeleteMapping("/{id}/aliases/{aliasId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public NutritionIngredientDto removeAlias(@PathVariable Long id, @PathVariable Long aliasId) {
+        return catalogService.removeAlias(id, aliasId);
+    }
+
+    @PostMapping("/{id}/adopt-legacy/{legacyId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public NutritionIngredientDto adoptLegacy(@PathVariable Long id, @PathVariable Long legacyId) {
+        return catalogService.adoptLegacy(id, legacyId);
+    }
+
+    @GetMapping("/conversions")
+    public List<UnitConversionDto> conversions() {
+        return catalogService.conversions();
+    }
+
+    @PostMapping("/conversions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UnitConversionDto> createConversion(@RequestBody UnitConversionDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(catalogService.saveConversion(null, dto));
+    }
+
+    @PutMapping("/conversions/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public UnitConversionDto updateConversion(@PathVariable Long id, @RequestBody UnitConversionDto dto) {
+        return catalogService.saveConversion(id, dto);
+    }
+
+    @DeleteMapping("/conversions/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteConversion(@PathVariable Long id) {
+        catalogService.deleteConversion(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/ai-requests")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<IngredientAiRequestDto> aiRequests() {
+        return catalogService.aiRequests();
+    }
+
+    @PostMapping("/ai-requests/{id}/retry")
+    @PreAuthorize("hasRole('ADMIN')")
+    public IngredientAiRequestDto retry(@PathVariable Long id) {
+        return aiService.retry(id).map(NutritionCatalogService::toDto)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Anfrage nicht gefunden."));
+    }
+
+    @PostMapping("/ai-requests/resolve-unknown")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Integer> resolveUnknown() {
+        return Map.of("created", aiService.enqueueAllUnresolved());
     }
 }
