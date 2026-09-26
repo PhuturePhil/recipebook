@@ -54,6 +54,11 @@ public class OpenAiChatClient implements OpenAiClient {
 
     @Override
     public JsonNode completeJson(String systemPrompt, JsonNode payload) throws AiCallException {
+        return completeJson(model, systemPrompt, payload);
+    }
+
+    @Override
+    public JsonNode completeJson(String model, String systemPrompt, JsonNode payload) throws AiCallException {
         if (!isConfigured()) throw new AiCallException("Kein OpenAI-API-Key konfiguriert");
         ObjectNode body = objectMapper.createObjectNode();
         body.put("model", model);

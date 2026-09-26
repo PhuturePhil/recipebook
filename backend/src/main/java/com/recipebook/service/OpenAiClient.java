@@ -8,6 +8,8 @@ public interface OpenAiClient {
 
     JsonNode completeJson(String systemPrompt, JsonNode payload) throws AiCallException;
 
+    JsonNode completeJson(String model, String systemPrompt, JsonNode payload) throws AiCallException;
+
     class AiCallException extends Exception {
         public AiCallException(String message) {
             super(message);

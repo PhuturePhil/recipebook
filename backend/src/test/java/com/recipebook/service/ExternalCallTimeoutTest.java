@@ -53,10 +53,10 @@ class ExternalCallTimeoutTest {
         unsplash.setApiKey("test-key");
 
         long start = System.nanoTime();
-        String url = unsplash.findImageUrl("Linsen-Dal");
+        List<StockPhoto> photos = unsplash.search("Linsen-Dal");
         long millis = (System.nanoTime() - start) / 1_000_000;
 
-        assertNull(url);
+        assertTrue(photos.isEmpty());
         assertTrue(millis < 5_000, "took " + millis + " ms");
     }
 

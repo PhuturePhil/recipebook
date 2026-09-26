@@ -26,15 +26,15 @@ public class RecipeService {
     
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
-    private final UnsplashService unsplashService;
+    private final RecipeImageService recipeImageService;
     private final NutritionService nutritionService;
     private final IngredientAiService ingredientAiService;
 
-    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, UnsplashService unsplashService,
+    public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, RecipeImageService recipeImageService,
             NutritionService nutritionService, IngredientAiService ingredientAiService) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
-        this.unsplashService = unsplashService;
+        this.recipeImageService = recipeImageService;
         this.nutritionService = nutritionService;
         this.ingredientAiService = ingredientAiService;
     }
@@ -113,16 +113,19 @@ public class RecipeService {
         User user = userDetails != null
             ? userRepository.findById(userDetails.getId()).orElse(null)
             : null;
-        if (recipe.getId() == null && (recipe.getImageUrl() == null || recipe.getImageUrl().isBlank())) {
-            String imageUrl = unsplashService.findImageUrl(recipe.getTitle());
-            if (imageUrl != null) recipe.setImageUrl(imageUrl);
-        }
         if (recipe.getIngredients() != null) {
             for (Ingredient ingredient : recipe.getIngredients()) {
                 if (ingredient.getName() != null) ingredient.setName(ingredient.getName().trim());
                 if (ingredient.getAmount() != null) ingredient.setAmount(ingredient.getAmount().trim());
                 if (ingredient.getUnit() != null) ingredient.setUnit(ingredient.getUnit().trim());
             }
+        }
+        if (recipe.getId() == null && (recipe.getImageUrl() == null || recipe.getImageUrl().isBlank())) {
+            List<String> ingredientNames = recipe.getIngredients() == null ? List.of() : recipe.getIngredients().stream()
+                .map(Ingredient::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .toList();
+            recipeImageService.findImage(recipe.getTitle(), ingredientNames).ifPresent(recipe::setImageUrl);
         }
         Recipe saved = save(recipe, user);
         ingredientAiService.enqueueForIngredients(saved.getIngredients());

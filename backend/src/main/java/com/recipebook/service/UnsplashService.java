@@ -13,11 +13,14 @@ import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class UnsplashService {
 
   private static final Logger log = LoggerFactory.getLogger(UnsplashService.class);
+  static final int RESULTS = 5;
 
   @Value("${unsplash.api-key:}")
   private String apiKey;
@@ -45,11 +48,15 @@ public class UnsplashService {
     this.apiKey = apiKey;
   }
 
-  public String findImageUrl(String title) {
-    if (apiKey == null || apiKey.isBlank()) return null;
+  public boolean isConfigured() {
+    return apiKey != null && !apiKey.isBlank();
+  }
+
+  public List<StockPhoto> search(String query) {
+    if (!isConfigured()) return List.of();
     try {
       String response = webClient.get()
-        .uri("/search/photos?query={q}&per_page=1&orientation=landscape", title)
+        .uri("/search/photos?query={q}&per_page={n}&orientation=landscape", query, RESULTS)
         .header("Authorization", "Client-ID " + apiKey)
         .retrieve()
         .bodyToMono(String.class)
@@ -60,14 +67,29 @@ public class UnsplashService {
         })
         .blockOptional()
         .orElse(null);
-      if (response == null) return null;
-      JsonNode root = objectMapper.readTree(response);
-      JsonNode first = root.path("results").get(0);
-      if (first == null) return null;
-      return first.path("urls").path("regular").asText(null);
+      if (response == null) return List.of();
+      List<StockPhoto> photos = new ArrayList<>();
+      for (JsonNode result : objectMapper.readTree(response).path("results")) {
+        String url = result.path("urls").path("regular").asText("");
+        if (url.isBlank()) continue;
+        String description = StockPhoto.describe(result, "alt_description", "description");
+        photos.add(new StockPhoto(url, description, result.path("links").path("download_location").asText(null)));
+      }
+      return photos;
     } catch (Exception e) {
       log.warn("Unsplash error: {}", e.getMessage());
-      return null;
+      return List.of();
     }
+  }
+
+  public void trackDownload(StockPhoto photo) {
+    if (!isConfigured() || photo.downloadLocation() == null) return;
+    webClient.get()
+      .uri(photo.downloadLocation())
+      .header("Authorization", "Client-ID " + apiKey)
+      .retrieve()
+      .toBodilessEntity()
+      .timeout(timeout)
+      .subscribe(r -> { }, e -> log.debug("Unsplash download tracking failed: {}", e.getMessage()));
   }
 }

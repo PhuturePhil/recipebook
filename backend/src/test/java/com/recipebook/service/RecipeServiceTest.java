@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +37,9 @@ class RecipeServiceTest {
 
     @Mock
     private IngredientAiService ingredientAiService;
+
+    @Mock
+    private RecipeImageService recipeImageService;
 
     @InjectMocks
     private RecipeService recipeService;
@@ -142,6 +146,55 @@ class RecipeServiceTest {
 
         assertNotNull(result);
         verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    void saveForUser_newRecipeWithoutImageGetsStockPhotoFromTitleAndIngredients() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Linsen-Dal");
+        recipe.setIngredients(new ArrayList<>(List.of(
+            new Ingredient(" rote Linsen ", "200", "g"), new Ingredient("Kokosmilch", "1", "Dose"), new Ingredient(" ", "", ""))));
+        when(recipeImageService.findImage("Linsen-Dal", List.of("rote Linsen", "Kokosmilch")))
+            .thenReturn(Optional.of("data:image/jpeg;base64,AAAA"));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.saveForUser(recipe, null);
+
+        assertEquals("data:image/jpeg;base64,AAAA", result.getImageUrl());
+    }
+
+    @Test
+    void saveForUser_newRecipeStaysWithoutImageWhenNothingFound() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Linsen-Dal");
+        when(recipeImageService.findImage("Linsen-Dal", List.of())).thenReturn(Optional.empty());
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.saveForUser(recipe, null);
+
+        assertNull(result.getImageUrl());
+    }
+
+    @Test
+    void saveForUser_keepsUploadedImageAndSkipsSearch() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Linsen-Dal");
+        recipe.setImageUrl("data:image/jpeg;base64,OWN");
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.saveForUser(recipe, null);
+
+        assertEquals("data:image/jpeg;base64,OWN", result.getImageUrl());
+        verifyNoInteractions(recipeImageService);
+    }
+
+    @Test
+    void saveForUser_existingRecipeWithoutImageIsNotSearched() {
+        when(recipeRepository.save(any(Recipe.class))).thenReturn(testRecipe);
+
+        recipeService.saveForUser(testRecipe, null);
+
+        verifyNoInteractions(recipeImageService);
     }
 
     @Test
