@@ -4,6 +4,7 @@ import com.recipebook.config.JwtAuthenticationFilter;
 import com.recipebook.config.SecurityConfig;
 import com.recipebook.dto.SharedRecipeDto;
 import com.recipebook.dto.SharedRecipeDto.SharedIngredientDto;
+import com.recipebook.model.ImageCredit;
 import com.recipebook.service.CustomUserDetailsService;
 import com.recipebook.service.JwtService;
 import com.recipebook.service.ShareLinkService;
@@ -42,7 +43,8 @@ class ShareControllerTest {
     void getSharedRecipe_shouldBePublicAndOnlyExposeAllowedFields() throws Exception {
         when(shareLinkService.getSharedRecipe("tok")).thenReturn(new SharedRecipeDto(
                 "Linsen-Dhal", 4, List.of(new SharedIngredientDto("Rote Linsen", "250", "g")),
-                List.of("Kochen"), "nach: Made in India"));
+                List.of("Kochen"), "nach: Made in India", true,
+                new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", "https://unsplash.com/photos/x")));
 
         mockMvc.perform(get("/api/share/tok"))
                 .andExpect(status().isOk())
@@ -57,6 +59,10 @@ class ShareControllerTest {
                 .andExpect(jsonPath("$.page").doesNotExist())
                 .andExpect(jsonPath("$.source").doesNotExist())
                 .andExpect(jsonPath("$.imageUrl").doesNotExist())
+                .andExpect(jsonPath("$.hasImage").value(true))
+                .andExpect(jsonPath("$.imageCredit.source").value("unsplash"))
+                .andExpect(jsonPath("$.imageCredit.name").value("Jane Doe"))
+                .andExpect(jsonPath("$.imageCredit.profileUrl").value("https://unsplash.com/@jane"))
                 .andExpect(jsonPath("$.user").doesNotExist())
                 .andExpect(jsonPath("$.id").doesNotExist());
     }
@@ -67,6 +73,32 @@ class ShareControllerTest {
                 .thenThrow(new ResponseStatusException(HttpStatus.GONE));
 
         mockMvc.perform(get("/api/share/old"))
+                .andExpect(status().isGone());
+    }
+
+    @Test
+    void getSharedImage_shouldBePublicAndDecodeDataUrl() throws Exception {
+        when(shareLinkService.getSharedImageUrl("tok")).thenReturn("data:image/jpeg;base64,AAEC");
+
+        mockMvc.perform(get("/api/share/tok/image"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/jpeg"))
+                .andExpect(content().bytes(new byte[] {0, 1, 2}));
+    }
+
+    @Test
+    void getSharedImage_shouldBeNotFoundWithoutImage() throws Exception {
+        when(shareLinkService.getSharedImageUrl("tok")).thenReturn(null);
+
+        mockMvc.perform(get("/api/share/tok/image"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getSharedImage_shouldReturnGoneForExpiredLink() throws Exception {
+        when(shareLinkService.getSharedImageUrl("old")).thenThrow(new ResponseStatusException(HttpStatus.GONE));
+
+        mockMvc.perform(get("/api/share/old/image"))
                 .andExpect(status().isGone());
     }
 

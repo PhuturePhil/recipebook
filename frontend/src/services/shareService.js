@@ -55,6 +55,10 @@ class ShareService {
     }
   }
 
+  getSharedImageUrl(token) {
+    return `${API_BASE_URL}/share/${encodeURIComponent(token)}/image`
+  }
+
   async getSharedRecipe(token) {
     const response = await fetch(`${API_BASE_URL}/share/${encodeURIComponent(token)}`)
     if (!response.ok) {

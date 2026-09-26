@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.model.ImageCredit;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,8 +34,10 @@ class RecipeImageServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private RecipeImageService service;
 
-    private final StockPhoto rawLentils = new StockPhoto("https://img/raw", "dry lentils in a jar", "https://api/dl/raw");
-    private final StockPhoto dal = new StockPhoto("https://img/dal", "a bowl of red lentil dal", "https://api/dl/dal");
+    private final ImageCredit dalCredit =
+        new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", "https://unsplash.com/photos/dal");
+    private final StockPhoto rawLentils = new StockPhoto("https://img/raw", "dry lentils in a jar", "https://api/dl/raw", null);
+    private final StockPhoto dal = new StockPhoto("https://img/dal", "a bowl of red lentil dal", "https://api/dl/dal", dalCredit);
 
     @BeforeEach
     void setUp() {
@@ -42,6 +45,10 @@ class RecipeImageServiceTest {
         when(openAiClient.isConfigured()).thenReturn(true);
         when(unsplash.isConfigured()).thenReturn(true);
         doReturn(Optional.of(IMAGE)).when(service).download(any());
+    }
+
+    private Optional<String> find(String title, List<String> ingredients) {
+        return service.findImage(title, ingredients).map(RecipeImage::dataUrl);
     }
 
     private JsonNode json(String s) {
@@ -56,9 +63,9 @@ class RecipeImageServiceTest {
         when(openAiClient.completeJson(eq(MODEL), eq(RecipeImageService.PICK_PROMPT), any()))
             .thenReturn(json("{\"index\":1}"));
 
-        Optional<String> image = service.findImage("Rote-Linsen-Dal", List.of("rote Linsen", "Kokosmilch"));
+        Optional<RecipeImage> image = service.findImage("Rote-Linsen-Dal", List.of("rote Linsen", "Kokosmilch"));
 
-        assertEquals(Optional.of(IMAGE), image);
+        assertEquals(Optional.of(new RecipeImage(IMAGE, dalCredit)), image);
         verify(service).download(dal);
         verify(unsplash).trackDownload(dal);
         verify(pexels, never()).search(any());
@@ -77,7 +84,7 @@ class RecipeImageServiceTest {
         when(openAiClient.completeJson(eq(MODEL), eq(RecipeImageService.PICK_PROMPT), any()))
             .thenReturn(json("{\"index\":0}"));
 
-        service.findImage("Dal", List.of());
+        find("Dal", List.of());
 
         ArgumentCaptor<JsonNode> payload = ArgumentCaptor.forClass(JsonNode.class);
         verify(openAiClient).completeJson(eq(MODEL), eq(RecipeImageService.PICK_PROMPT), payload.capture());
@@ -96,7 +103,7 @@ class RecipeImageServiceTest {
         when(openAiClient.completeJson(eq(MODEL), eq(RecipeImageService.PICK_PROMPT), any()))
             .thenReturn(json("{\"index\":null}"), json("{\"index\":1}"));
 
-        assertEquals(Optional.of(IMAGE), service.findImage("Dhansak", List.of()));
+        assertEquals(Optional.of(IMAGE), find("Dhansak", List.of()));
         verify(service).download(dal);
     }
 
@@ -105,7 +112,7 @@ class RecipeImageServiceTest {
         when(openAiClient.completeJson(eq(MODEL), eq(RecipeImageService.QUERY_PROMPT), any()))
             .thenReturn(json("{\"queries\":[\"a\",\"b\",\"c\"]}"));
 
-        assertEquals(Optional.empty(), service.findImage("Dal", List.of()));
+        assertEquals(Optional.empty(), find("Dal", List.of()));
         verify(unsplash).search("a");
         verify(unsplash).search("b");
         verify(unsplash, never()).search("c");
@@ -117,7 +124,7 @@ class RecipeImageServiceTest {
             .thenThrow(new OpenAiClient.AiCallException("timeout"));
         when(unsplash.search("Linsen-Dal")).thenReturn(List.of(dal));
 
-        assertEquals(Optional.of(IMAGE), service.findImage("Linsen-Dal", List.of()));
+        assertEquals(Optional.of(IMAGE), find("Linsen-Dal", List.of()));
         verify(openAiClient, never()).completeJson(eq(MODEL), eq(RecipeImageService.PICK_PROMPT), any());
     }
 
@@ -129,7 +136,7 @@ class RecipeImageServiceTest {
         when(openAiClient.completeJson(eq(MODEL), eq(RecipeImageService.PICK_PROMPT), any()))
             .thenThrow(new OpenAiClient.AiCallException("kaputt"));
 
-        assertEquals(Optional.of(IMAGE), service.findImage("Dal", List.of()));
+        assertEquals(Optional.of(IMAGE), find("Dal", List.of()));
         verify(service).download(dal);
     }
 
@@ -138,7 +145,7 @@ class RecipeImageServiceTest {
         when(openAiClient.isConfigured()).thenReturn(false);
         when(unsplash.search("Linsen-Dal")).thenReturn(List.of(dal, rawLentils));
 
-        assertEquals(Optional.of(IMAGE), service.findImage("Linsen-Dal", List.of()));
+        assertEquals(Optional.of(IMAGE), find("Linsen-Dal", List.of()));
         verify(openAiClient, never()).completeJson(any(), any(), any());
         verify(service).download(dal);
     }
@@ -147,10 +154,10 @@ class RecipeImageServiceTest {
     void pexelsIsFallbackWhenUnsplashHasNothing() throws Exception {
         when(openAiClient.completeJson(eq(MODEL), eq(RecipeImageService.QUERY_PROMPT), any()))
             .thenReturn(json("{\"queries\":[\"dal\"]}"));
-        StockPhoto pexelsDal = new StockPhoto("https://pexels/dal", "dal", null);
+        StockPhoto pexelsDal = new StockPhoto("https://pexels/dal", "dal", null, null);
         when(pexels.search("dal")).thenReturn(List.of(pexelsDal));
 
-        assertEquals(Optional.of(IMAGE), service.findImage("Dal", List.of()));
+        assertEquals(Optional.of(IMAGE), find("Dal", List.of()));
         verify(service).download(pexelsDal);
         verify(unsplash, never()).trackDownload(any());
     }
@@ -160,7 +167,7 @@ class RecipeImageServiceTest {
         when(unsplash.isConfigured()).thenReturn(false);
         when(pexels.isConfigured()).thenReturn(false);
 
-        assertEquals(Optional.empty(), service.findImage("Dal", List.of()));
+        assertEquals(Optional.empty(), find("Dal", List.of()));
         verify(openAiClient, never()).completeJson(any(), any(), any());
     }
 
@@ -171,7 +178,7 @@ class RecipeImageServiceTest {
         when(unsplash.search("dal")).thenReturn(List.of(dal));
         doReturn(Optional.empty()).when(service).download(any());
 
-        assertEquals(Optional.empty(), service.findImage("Dal", List.of()));
+        assertEquals(Optional.empty(), find("Dal", List.of()));
         verify(unsplash, never()).trackDownload(any());
     }
 
@@ -180,13 +187,13 @@ class RecipeImageServiceTest {
         when(unsplash.search(any())).thenThrow(new IllegalStateException("boom"));
         when(openAiClient.isConfigured()).thenReturn(false);
 
-        assertEquals(Optional.empty(), service.findImage("Dal", List.of()));
+        assertEquals(Optional.empty(), find("Dal", List.of()));
     }
 
     @Test
     void downloadOnlyAcceptsHttps() {
         RecipeImageService real = new RecipeImageService(openAiClient, unsplash, pexels, objectMapper, MODEL, 1);
-        assertEquals(Optional.empty(), real.download(new StockPhoto("http://localhost:9/x.jpg", "", null)));
-        assertEquals(Optional.empty(), real.download(new StockPhoto("file:///etc/passwd", "", null)));
+        assertEquals(Optional.empty(), real.download(new StockPhoto("http://localhost:9/x.jpg", "", null, null)));
+        assertEquals(Optional.empty(), real.download(new StockPhoto("file:///etc/passwd", "", null, null)));
     }
 }

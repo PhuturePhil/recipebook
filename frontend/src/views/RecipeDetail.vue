@@ -22,9 +22,12 @@
         </div>
       </header>
 
-      <div v-if="recipe.imageUrl" class="recipe-image">
-        <img :src="recipe.imageUrl" :alt="recipe.title" />
-      </div>
+      <figure v-if="recipe.imageUrl" class="recipe-figure">
+        <div class="recipe-image">
+          <img :src="recipe.imageUrl" :alt="recipe.title" />
+        </div>
+        <ImageCredit :credit="recipe.imageCredit" />
+      </figure>
 
       <p v-if="recipe.description" class="recipe-description">
         {{ recipe.description }}
@@ -131,6 +134,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { scaleIngredients } from '@/utils/scaleIngredients'
 import ShareModal from '@/components/ShareModal.vue'
 import NutritionPanel from '@/components/NutritionPanel.vue'
+import ImageCredit from '@/components/ImageCredit.vue'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 
 const route = useRoute()
@@ -442,12 +446,15 @@ const handleDelete = async () => {
   margin-left: 8px;
 }
 
+.recipe-figure {
+  margin: 0 0 24px;
+}
+
 .recipe-image {
   width: 100%;
   max-height: 400px;
   overflow: hidden;
   border-radius: 12px;
-  margin-bottom: 24px;
   background: var(--color-bg-secondary, #f0f0f0);
 }
 

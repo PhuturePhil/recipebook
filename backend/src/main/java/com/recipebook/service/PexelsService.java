@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.model.ImageCredit;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import io.netty.channel.ChannelOption;
@@ -67,7 +68,9 @@ public class PexelsService {
             for (JsonNode photo : objectMapper.readTree(response).path("photos")) {
                 String url = photo.path("src").path("large2x").asText("");
                 if (url.isBlank()) continue;
-                photos.add(new StockPhoto(url, StockPhoto.describe(photo, "alt"), null));
+                ImageCredit credit = new ImageCredit(ImageCredit.PEXELS, StockPhoto.text(photo.path("photographer")),
+                    StockPhoto.text(photo.path("photographer_url")), StockPhoto.text(photo.path("url")));
+                photos.add(new StockPhoto(url, StockPhoto.describe(photo, "alt"), null, credit));
             }
             return photos;
         } catch (Exception e) {

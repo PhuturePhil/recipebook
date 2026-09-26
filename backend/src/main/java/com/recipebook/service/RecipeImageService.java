@@ -23,8 +23,8 @@ import java.util.function.Function;
 /**
  * Sucht für ein neues Rezept ein passendes Stockfoto: die KI formuliert englische Suchbegriffe aus Titel und Zutaten,
  * Unsplash liefert die Top 5 (Pexels nur als Fallback mit eigenem Key), die KI wählt anhand der Bildbeschreibungen.
- * Das Bild wird heruntergeladen, wie ein Upload verkleinert und als data-URL gespeichert. Jeder Fehler endet still
- * ohne Bild.
+ * Das Bild wird heruntergeladen, wie ein Upload verkleinert und als data-URL gespeichert, zusammen mit der
+ * Fotografen-Nennung. Jeder Fehler endet still ohne Bild.
  */
 @Service
 public class RecipeImageService {
@@ -79,12 +79,12 @@ public class RecipeImageService {
             .build();
     }
 
-    public Optional<String> findImage(String title, List<String> ingredients) {
+    public Optional<RecipeImage> findImage(String title, List<String> ingredients) {
         if (title == null || title.isBlank()) return Optional.empty();
         if (!unsplashService.isConfigured() && !pexelsService.isConfigured()) return Optional.empty();
         try {
             List<String> queries = searchQueries(title, ingredients);
-            Optional<String> image = findWith(unsplashService::search, queries, title, ingredients, true);
+            Optional<RecipeImage> image = findWith(unsplashService::search, queries, title, ingredients, true);
             if (image.isEmpty()) image = findWith(pexelsService::search, queries, title, ingredients, false);
             return image;
         } catch (RuntimeException e) {
@@ -93,7 +93,7 @@ public class RecipeImageService {
         }
     }
 
-    private Optional<String> findWith(Function<String, List<StockPhoto>> search, List<String> queries,
+    private Optional<RecipeImage> findWith(Function<String, List<StockPhoto>> search, List<String> queries,
             String title, List<String> ingredients, boolean unsplash) {
         for (String query : queries) {
             List<StockPhoto> candidates = search.apply(query);
@@ -103,7 +103,7 @@ public class RecipeImageService {
             Optional<String> image = download(choice.get());
             if (image.isPresent()) {
                 if (unsplash) unsplashService.trackDownload(choice.get());
-                return image;
+                return Optional.of(new RecipeImage(image.get(), choice.get().credit()));
             }
         }
         return Optional.empty();

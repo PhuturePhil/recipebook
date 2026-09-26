@@ -32,6 +32,10 @@ public class Recipe {
     
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
+
+    @Embedded
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private ImageCredit imageCredit;
     
     private String author;
     
@@ -106,6 +110,14 @@ public class Recipe {
         this.imageUrl = imageUrl;
     }
     
+    public ImageCredit getImageCredit() {
+        return imageCredit;
+    }
+
+    public void setImageCredit(ImageCredit imageCredit) {
+        this.imageCredit = imageCredit;
+    }
+
     public String getAuthor() {
         return author;
     }

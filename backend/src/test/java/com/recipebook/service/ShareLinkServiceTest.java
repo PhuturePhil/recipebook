@@ -2,6 +2,7 @@ package com.recipebook.service;
 
 import com.recipebook.dto.ShareLinkDto;
 import com.recipebook.dto.SharedRecipeDto;
+import com.recipebook.model.ImageCredit;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.ShareLink;
@@ -157,6 +158,52 @@ class ShareLinkServiceTest {
         assertEquals("g", result.getIngredients().get(0).unit());
         assertEquals(List.of("Linsen waschen", "Kochen"), result.getInstructions());
         assertEquals("nach: Made in India", result.getAttribution());
+        assertTrue(result.isHasImage());
+        assertNull(result.getImageCredit());
+    }
+
+    @Test
+    void getSharedRecipe_shouldExposePhotoCredit() {
+        ImageCredit credit = new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", null);
+        recipe.setImageCredit(credit);
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        SharedRecipeDto result = shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm");
+
+        assertEquals(credit, result.getImageCredit());
+    }
+
+    @Test
+    void getSharedRecipe_withoutImageHasNoCredit() {
+        recipe.setImageUrl(null);
+        recipe.setImageCredit(new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", null, null));
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        SharedRecipeDto result = shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm");
+
+        assertFalse(result.isHasImage());
+        assertNull(result.getImageCredit());
+    }
+
+    @Test
+    void getSharedImageUrl_shouldReturnImageOfValidLink() {
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        assertEquals("https://example.com/dhal.jpg", shareLinkService.getSharedImageUrl("abc123DEF456ghi789JKLm"));
+    }
+
+    @Test
+    void getSharedImageUrl_shouldBeGoneAfter30Days() {
+        ShareLink link = linkCreatedAt(NOW);
+        when(shareLinkRepository.findByToken(link.getToken())).thenReturn(Optional.of(link));
+        ShareLinkService later = serviceAt(NOW.plus(Duration.ofDays(ShareLinkService.VALIDITY_DAYS)).plusSeconds(1));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> later.getSharedImageUrl(link.getToken()));
+        assertEquals(HttpStatus.GONE, ex.getStatusCode());
     }
 
     @Test

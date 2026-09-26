@@ -5,6 +5,7 @@ import com.recipebook.dto.RecipeNutritionDto;
 import com.recipebook.dto.RecipeSummaryDto;
 import com.recipebook.dto.SourceAuthorDto;
 import com.recipebook.model.CustomUserDetails;
+import com.recipebook.model.ImageCredit;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.User;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -99,11 +101,22 @@ public class RecipeService {
                 ingredient.setRecipe(recipe);
             }
         }
+        if (recipe.getImageCredit() == null) {
+            recipe.setImageCredit(exists ? keptImageCredit(recipe) : ImageCredit.forUpload(recipe.getImageUrl()));
+        }
         User owner = exists ? recipeRepository.findOwner(recipe.getId()).orElse(user) : user;
         recipe.setUser(owner);
         return recipeRepository.save(recipe);
     }
     
+    private ImageCredit keptImageCredit(Recipe recipe) {
+        String storedImage = recipeRepository.findImageUrl(recipe.getId()).orElse(null);
+        if (Objects.equals(storedImage, recipe.getImageUrl())) {
+            return recipeRepository.findImageCredit(recipe.getId()).orElse(null);
+        }
+        return ImageCredit.forUpload(recipe.getImageUrl());
+    }
+
     @Transactional
     public void deleteById(Long id) {
         recipeRepository.deleteById(id);
@@ -125,7 +138,10 @@ public class RecipeService {
                 .map(Ingredient::getName)
                 .filter(name -> name != null && !name.isBlank())
                 .toList();
-            recipeImageService.findImage(recipe.getTitle(), ingredientNames).ifPresent(recipe::setImageUrl);
+            recipeImageService.findImage(recipe.getTitle(), ingredientNames).ifPresent(image -> {
+                recipe.setImageUrl(image.dataUrl());
+                recipe.setImageCredit(image.credit());
+            });
         }
         Recipe saved = save(recipe, user);
         ingredientAiService.enqueueForIngredients(saved.getIngredients());

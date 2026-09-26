@@ -1,6 +1,7 @@
 package com.recipebook.service;
 
 import com.recipebook.model.CustomUserDetails;
+import com.recipebook.model.ImageCredit;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
@@ -154,13 +155,15 @@ class RecipeServiceTest {
         recipe.setTitle("Linsen-Dal");
         recipe.setIngredients(new ArrayList<>(List.of(
             new Ingredient(" rote Linsen ", "200", "g"), new Ingredient("Kokosmilch", "1", "Dose"), new Ingredient(" ", "", ""))));
+        ImageCredit credit = new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", null);
         when(recipeImageService.findImage("Linsen-Dal", List.of("rote Linsen", "Kokosmilch")))
-            .thenReturn(Optional.of("data:image/jpeg;base64,AAAA"));
+            .thenReturn(Optional.of(new RecipeImage("data:image/jpeg;base64,AAAA", credit)));
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Recipe result = recipeService.saveForUser(recipe, null);
 
         assertEquals("data:image/jpeg;base64,AAAA", result.getImageUrl());
+        assertEquals(credit, result.getImageCredit());
     }
 
     @Test
@@ -319,6 +322,61 @@ class RecipeServiceTest {
         Recipe result = recipeService.save(edited, testUser);
 
         assertEquals(testUser, result.getUser());
+    }
+
+    @Test
+    void save_newRecipeWithImageIsMarkedAsUpload() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Mit Foto");
+        recipe.setImageUrl("data:image/jpeg;base64,BBBB");
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(recipe, testUser);
+
+        assertEquals(new ImageCredit(ImageCredit.UPLOAD, null, null, null), result.getImageCredit());
+    }
+
+    private Recipe editedWithImage(String imageUrl, String storedImageUrl) {
+        Recipe edited = new Recipe();
+        edited.setId(1L);
+        edited.setTitle("Bearbeitet");
+        edited.setImageUrl(imageUrl);
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of());
+        when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
+        when(recipeRepository.findImageUrl(1L)).thenReturn(Optional.ofNullable(storedImageUrl));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+        return edited;
+    }
+
+    @Test
+    void save_updateWithUnchangedImageKeepsStoredCredit() {
+        ImageCredit stored = new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", null);
+        Recipe edited = editedWithImage("data:image/jpeg;base64,AAAA", "data:image/jpeg;base64,AAAA");
+        when(recipeRepository.findImageCredit(1L)).thenReturn(Optional.of(stored));
+
+        Recipe result = recipeService.save(edited, testUser);
+
+        assertEquals(stored, result.getImageCredit());
+    }
+
+    @Test
+    void save_updateWithNewImageReplacesCreditWithUpload() {
+        Recipe edited = editedWithImage("data:image/jpeg;base64,NEW", "data:image/jpeg;base64,AAAA");
+
+        Recipe result = recipeService.save(edited, testUser);
+
+        assertEquals(new ImageCredit(ImageCredit.UPLOAD, null, null, null), result.getImageCredit());
+        verify(recipeRepository, never()).findImageCredit(any());
+    }
+
+    @Test
+    void save_updateWithoutImageDropsCredit() {
+        Recipe edited = editedWithImage("", "data:image/jpeg;base64,AAAA");
+
+        Recipe result = recipeService.save(edited, testUser);
+
+        assertNull(result.getImageCredit());
     }
 
     @Test

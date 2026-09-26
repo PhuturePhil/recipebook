@@ -84,12 +84,20 @@ public class ShareLinkService {
 
     @Transactional(readOnly = true)
     public SharedRecipeDto getSharedRecipe(String token) {
+        return toSharedRecipe(validShareLink(token).getRecipe());
+    }
+
+    public String getSharedImageUrl(String token) {
+        return validShareLink(token).getRecipe().getImageUrl();
+    }
+
+    private ShareLink validShareLink(String token) {
         ShareLink shareLink = shareLinkRepository.findByToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Link ist ungueltig."));
         if (!shareLink.isValidAt(LocalDateTime.now(clock))) {
             throw new ResponseStatusException(HttpStatus.GONE, "Der Link ist abgelaufen oder wurde zurueckgezogen.");
         }
-        return toSharedRecipe(shareLink.getRecipe());
+        return shareLink;
     }
 
     private SharedRecipeDto toSharedRecipe(Recipe recipe) {
@@ -100,7 +108,9 @@ public class ShareLinkService {
         List<String> instructions = recipe.getInstructions() == null ? List.of() : new ArrayList<>(recipe.getInstructions());
         String source = recipe.getSource();
         String attribution = source != null && !source.isBlank() ? "nach: " + source.trim() : null;
-        return new SharedRecipeDto(recipe.getTitle(), recipe.getBaseServings(), ingredients, instructions, attribution);
+        boolean hasImage = recipe.getImageUrl() != null && !recipe.getImageUrl().isBlank();
+        return new SharedRecipeDto(recipe.getTitle(), recipe.getBaseServings(), ingredients, instructions, attribution,
+                hasImage, hasImage ? recipe.getImageCredit() : null);
     }
 
     private ShareLinkDto toDto(ShareLink shareLink) {

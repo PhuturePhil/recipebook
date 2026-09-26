@@ -4,6 +4,7 @@ import com.recipebook.dto.ShareLinkDto;
 import com.recipebook.dto.SharedRecipeDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.service.ShareLinkService;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -43,5 +44,10 @@ public class ShareController {
         return ResponseEntity.ok()
                 .header("X-Robots-Tag", "noindex, nofollow")
                 .body(shareLinkService.getSharedRecipe(token));
+    }
+
+    @GetMapping("/share/{token}/image")
+    public ResponseEntity<byte[]> getSharedImage(@PathVariable String token) {
+        return ImageResponses.of(shareLinkService.getSharedImageUrl(token), CacheControl.noCache().cachePublic());
     }
 }

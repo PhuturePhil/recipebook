@@ -1,6 +1,7 @@
 package com.recipebook.repository;
 
 import com.recipebook.dto.SourceAuthorDto;
+import com.recipebook.model.ImageCredit;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -61,4 +62,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
   @Query("SELECT r.imageUrl FROM Recipe r WHERE r.id = :recipeId")
   Optional<String> findImageUrl(@Param("recipeId") Long recipeId);
+
+  @Query("SELECT r.imageCredit FROM Recipe r WHERE r.id = :recipeId")
+  Optional<ImageCredit> findImageCredit(@Param("recipeId") Long recipeId);
 }

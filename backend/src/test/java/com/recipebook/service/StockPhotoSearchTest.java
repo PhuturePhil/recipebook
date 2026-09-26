@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.model.ImageCredit;
 import com.sun.net.httpserver.HttpServer;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -59,7 +60,8 @@ class StockPhotoSearchTest {
             {"results":[
               {"alt_description":"a bowl of dal","description":"Dal with rice",
                "urls":{"regular":"https://images.unsplash.com/photo-1?w=1080"},
-               "links":{"download_location":"https://api.unsplash.com/photos/1/download"}},
+               "links":{"html":"https://unsplash.com/photos/dal-1","download_location":"https://api.unsplash.com/photos/1/download"},
+               "user":{"name":"Jane Doe","links":{"html":"https://unsplash.com/@jane"}}},
               {"alt_description":null,"description":"Lentils",
                "urls":{"regular":"https://images.unsplash.com/photo-2?w=1080"},"links":{}},
               {"alt_description":"no url","urls":{}}
@@ -69,9 +71,12 @@ class StockPhotoSearchTest {
 
         assertEquals(2, photos.size());
         assertEquals(new StockPhoto("https://images.unsplash.com/photo-1?w=1080", "a bowl of dal | Dal with rice",
-            "https://api.unsplash.com/photos/1/download"), photos.get(0));
+            "https://api.unsplash.com/photos/1/download",
+            new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", "https://unsplash.com/photos/dal-1")),
+            photos.get(0));
         assertEquals("Lentils", photos.get(1).description());
         assertNull(photos.get(1).downloadLocation());
+        assertEquals(new ImageCredit(ImageCredit.UNSPLASH, null, null, null), photos.get(1).credit());
         String request = requests.get(0);
         assertTrue(request.startsWith("/search/photos?"), request);
         assertTrue(request.contains("query=red%20lentil%20dal"), request);
@@ -97,7 +102,7 @@ class StockPhotoSearchTest {
 
     @Test
     void unsplashDownloadIsTracked() throws InterruptedException {
-        unsplash().trackDownload(new StockPhoto("https://img", "", baseUrl() + "/photos/abc/download?ixid=1"));
+        unsplash().trackDownload(new StockPhoto("https://img", "", baseUrl() + "/photos/abc/download?ixid=1", null));
         for (int i = 0; i < 50 && requests.isEmpty(); i++) Thread.sleep(20);
         assertEquals(List.of("/photos/abc/download?ixid=1"), requests);
         assertEquals("Client-ID u-key", authHeaders.get(0));
@@ -106,12 +111,16 @@ class StockPhotoSearchTest {
     @Test
     void pexelsParsesLargeImageAndAlt() {
         body = """
-            {"photos":[{"alt":"Pumpkin risotto in a bowl","src":{"large2x":"https://images.pexels.com/p/1.jpeg?w=1880"}}]}""";
+            {"photos":[{"alt":"Pumpkin risotto in a bowl","src":{"large2x":"https://images.pexels.com/p/1.jpeg?w=1880"},
+              "url":"https://www.pexels.com/photo/risotto-1/","photographer":"Max Muster",
+              "photographer_url":"https://www.pexels.com/@max"}]}""";
         PexelsService pexels = new PexelsService(new ObjectMapper(), "p-key", 5, baseUrl());
 
         List<StockPhoto> photos = pexels.search("pumpkin risotto");
 
-        assertEquals(List.of(new StockPhoto("https://images.pexels.com/p/1.jpeg?w=1880", "Pumpkin risotto in a bowl", null)), photos);
+        assertEquals(List.of(new StockPhoto("https://images.pexels.com/p/1.jpeg?w=1880", "Pumpkin risotto in a bowl", null,
+            new ImageCredit(ImageCredit.PEXELS, "Max Muster", "https://www.pexels.com/@max", "https://www.pexels.com/photo/risotto-1/"))),
+            photos);
         assertTrue(requests.get(0).startsWith("/v1/search?query=pumpkin%20risotto&per_page=5&orientation=landscape"), requests.get(0));
         assertEquals("p-key", authHeaders.get(0));
     }

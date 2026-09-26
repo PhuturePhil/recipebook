@@ -12,6 +12,13 @@
         <p v-if="recipe.attribution" class="recipe-attribution">{{ recipe.attribution }}</p>
       </header>
 
+      <figure v-if="imageSrc" class="recipe-figure">
+        <div class="recipe-image">
+          <img :src="imageSrc" :alt="recipe.title" />
+        </div>
+        <ImageCredit :credit="recipe.imageCredit" />
+      </figure>
+
       <div v-if="!authStore.isAuthenticated" class="guest-hint">
         <p>
           Schön, dass du vorbeischaust! Dieses Rezept wurde mit dir aus dem Familienkochbuch
@@ -59,6 +66,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { shareService } from '@/services/shareService'
 import { scaleIngredients } from '@/utils/scaleIngredients'
+import ImageCredit from '@/components/ImageCredit.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -104,6 +112,10 @@ const decreaseServings = () => {
   }
 }
 
+const imageSrc = computed(() =>
+  recipe.value?.hasImage ? shareService.getSharedImageUrl(route.params.token) : null
+)
+
 const scaledIngredients = computed(() =>
   scaleIngredients(recipe.value?.ingredients, recipe.value?.baseServings, currentServings.value)
 )
@@ -138,6 +150,25 @@ const scaledIngredients = computed(() =>
   font-size: 0.95rem;
   color: var(--color-text-secondary, #666);
   font-style: italic;
+}
+
+.recipe-figure {
+  margin: 0 0 24px;
+}
+
+.recipe-image {
+  width: 100%;
+  max-height: 400px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.recipe-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .guest-hint {

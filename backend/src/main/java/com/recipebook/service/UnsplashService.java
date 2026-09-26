@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.model.ImageCredit;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -73,7 +74,10 @@ public class UnsplashService {
         String url = result.path("urls").path("regular").asText("");
         if (url.isBlank()) continue;
         String description = StockPhoto.describe(result, "alt_description", "description");
-        photos.add(new StockPhoto(url, description, result.path("links").path("download_location").asText(null)));
+        JsonNode user = result.path("user");
+        ImageCredit credit = new ImageCredit(ImageCredit.UNSPLASH, StockPhoto.text(user.path("name")),
+          StockPhoto.text(user.path("links").path("html")), StockPhoto.text(result.path("links").path("html")));
+        photos.add(new StockPhoto(url, description, result.path("links").path("download_location").asText(null), credit));
       }
       return photos;
     } catch (Exception e) {
