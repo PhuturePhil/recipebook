@@ -137,6 +137,7 @@ jobs:
                   APP_URL: https://pastoors.cloud
                   ALLOWED_ORIGIN: https://pastoors.cloud
                   OPENAI_API_KEY: ${OPENAI_API_KEY}
+                  OPENAI_IMAGE_QUERY_MODEL: ${OPENAI_IMAGE_QUERY_MODEL:-gpt-4.1}
                   UNSPLASH_API_KEY: ${UNSPLASH_API_KEY}
                   PEXELS_API_KEY: ${PEXELS_API_KEY:-}
                   SPRING_MAIL_HOST: ${MAIL_HOST}
