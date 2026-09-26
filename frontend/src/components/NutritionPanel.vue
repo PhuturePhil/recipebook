@@ -36,8 +36,9 @@
           <thead>
             <tr>
               <th></th>
-              <th v-if="per100g">pro 100 g</th>
+              <th v-if="per100g">pro 100&nbsp;g</th>
               <th>pro Portion</th>
+              <th class="dv-col" title="Anteil am Tagesbedarf pro Portion">% Tages&shy;bedarf*</th>
             </tr>
           </thead>
           <tbody>
@@ -51,15 +52,26 @@
                 {{ formatKcal(perServing.kcal) }} kcal
                 <span class="kj">{{ formatKcal(perServing.kj) }} kJ</span>
               </td>
+              <td :class="dvClass(macroDailyPercent('kcal', perServing.kcal))">
+                {{ formatPercent(macroDailyPercent('kcal', perServing.kcal)) }}
+              </td>
             </tr>
             <tr v-for="row in macroRows" :key="row.key" :class="{ 'sub-row': row.sub }">
               <td>{{ row.label }}</td>
               <td v-if="per100g">{{ formatRow(row, per100g[row.key]) }} g</td>
               <td>{{ formatRow(row, perServing[row.key]) }} g</td>
+              <td :class="dvClass(macroDailyPercent(row.key, perServing[row.key]))">
+                {{ formatPercent(macroDailyPercent(row.key, perServing[row.key])) }}
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <p class="dv-note">
+        * Anteil der EU-Referenzmenge für einen durchschnittlichen Erwachsenen (8.400 kJ / 2.000 kcal), pro Portion.
+        Ballaststoffe: DGE-Richtwert 30 g.
+      </p>
 
       <p v-if="per100g" :class="['weight-note', { 'weight-note--incomplete': !nutrition.totalGramsComplete }]">
         <template v-if="nutrition.totalGramsComplete">
@@ -122,6 +134,7 @@
               <tr v-for="row in microRows" :key="row.code">
                 <td>{{ row.label }}</td>
                 <td>{{ formatMicro(row.value) }} {{ row.unit }}</td>
+                <td :class="dvClass(row.percent)" title="% Tagesbedarf pro Portion">{{ formatPercent(row.percent) }}</td>
               </tr>
             </tbody>
           </table>
@@ -146,6 +159,9 @@ import { computed } from 'vue'
 import {
   SOURCE_LABELS, STATUS_LABELS, formatKcal, formatGram, formatMicro,
 } from '@/services/nutritionService'
+import {
+  macroDailyPercent, microDailyPercent, formatPercent, percentLevel,
+} from '@/utils/dailyValue'
 
 const props = defineProps({
   nutrition: {
@@ -185,8 +201,10 @@ const microRows = computed(() => {
   const meta = props.info?.micronutrients ?? []
   return meta
     .filter(m => micros[m.code] != null)
-    .map(m => ({ ...m, value: micros[m.code] }))
+    .map(m => ({ ...m, value: micros[m.code], percent: microDailyPercent(m.code, micros[m.code], m.unit) }))
 })
+
+const dvClass = (percent) => ['dv', `dv--${percentLevel(percent)}`]
 
 const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
 
@@ -292,6 +310,36 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
 
 .nutrition-table--muted td:not(:first-child) {
   color: var(--color-text-muted, #a0aec0);
+}
+
+.nutrition-table .dv-col,
+.nutrition-table .dv {
+  text-align: right;
+}
+
+.nutrition-table .dv-col {
+  white-space: normal;
+}
+
+.nutrition-table td.dv--high { color: #2f855a; }
+.nutrition-table td.dv--medium { color: #2b6cb0; }
+.nutrition-table td.dv--low,
+.nutrition-table td.dv--none {
+  color: var(--color-text-muted, #a0aec0);
+}
+
+.nutrition-table td.dv--none {
+  font-weight: 400;
+}
+
+.nutrition-table--muted td.dv {
+  color: var(--color-text-muted, #a0aec0);
+}
+
+.dv-note {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #999);
 }
 
 .sub-row td:first-child {
@@ -418,7 +466,7 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
   color: var(--color-text-secondary, #666);
 }
 
-.micro-table td {
+.micro-table td:first-child {
   white-space: normal;
 }
 
@@ -436,8 +484,14 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
 @media (max-width: 600px) {
   .nutrition-table th,
   .nutrition-table td {
-    padding: 6px 6px;
+    padding: 6px 4px;
     font-size: 0.85rem;
+  }
+
+  .nutrition-table th {
+    font-size: 0.7rem;
+    letter-spacing: 0;
+    white-space: normal;
   }
 
   .breakdown__main {
