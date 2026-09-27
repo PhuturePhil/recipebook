@@ -1,6 +1,7 @@
 """One-off: shrink uploaded recipe images (data URLs in recipes.image_url) to at most 1600 px, JPEG 80.
 
 Usage: DATABASE_URL=postgresql://user:pass@host/db python shrink_recipe_images.py [--apply]
+(or leave DATABASE_URL unset and use PGHOST/PGUSER/PGPASSWORD/PGDATABASE)
 Without --apply it only reports what it would do. Needs Pillow and psycopg.
 Uploads made before the client-side resize were stored as full phone photos (~3000 px, up to 5 MB).
 """
@@ -36,7 +37,7 @@ def shrink(raw: bytes) -> tuple[bytes, tuple[int, int], tuple[int, int]]:
 def main() -> None:
     apply = "--apply" in sys.argv
     total_before = total_after = 0
-    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+    with psycopg.connect(os.environ.get("DATABASE_URL", "")) as conn:
         rows = conn.execute(
             "SELECT id, image_url FROM recipes WHERE image_url LIKE 'data:%' ORDER BY id"
         ).fetchall()

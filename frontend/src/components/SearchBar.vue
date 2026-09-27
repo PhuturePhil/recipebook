@@ -7,7 +7,7 @@
           :value="inputValue"
           type="text"
           aria-label="Rezepte durchsuchen"
-          placeholder="Suchen… (Komma = neuer Begriff)"
+          placeholder="Rezept oder Zutat suchen…"
           @input="handleInput"
           @focus="focused = true"
           @blur="focused = false"
