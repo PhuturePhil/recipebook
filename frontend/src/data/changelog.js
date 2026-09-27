@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Link zur Originalseite',
+    changes: [
+      'Rezepte haben ein eigenes Feld „Link (Website)“ unter der Quelle. Ein Link ohne http:// bekommt beim Verlassen des Felds automatisch https:// davor; ist er unvollständig, sagt das Formular, was fehlt',
+      'Rezeptseite und geteilte Seite zeigen den Link bei der Quelle als Domain mit Pfeil-Symbol, z. B. „zeit.de“. Er öffnet sich in einem neuen Tab. Im PDF steht die vollständige Adresse',
+      'Bei neun Rezepten stand der Link bisher in der Beschreibung. Er ist jetzt ins neue Feld umgezogen, die Beschreibungen sind sonst unverändert',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Zutatengruppen',
     changes: [
       'Zutaten lassen sich in Gruppen wie „Salsa“ oder „Für den Teig“ gliedern. Im Formular legt „+ Gruppe“ eine Überschrift an; sie lässt sich umbenennen und mit ↑/↓ verschieben. Wird sie gelöscht, bleiben die Zutaten erhalten und gehören zur Gruppe darüber',

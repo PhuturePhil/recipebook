@@ -220,6 +220,24 @@
             >{{ item.source }}</li>
           </ul>
         </div>
+        <div class="source-url-field">
+          <input
+            ref="sourceUrlRef"
+            v-model="formData.sourceUrl"
+            type="url"
+            inputmode="url"
+            placeholder="Link (Website)"
+            aria-label="Link (Website)"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            :aria-invalid="showSourceUrlError ? 'true' : 'false'"
+            :aria-describedby="showSourceUrlError ? 'source-url-error' : null"
+            @blur="onSourceUrlBlur"
+            @invalid="sourceUrlTouched = true"
+          />
+          <p v-if="showSourceUrlError" id="source-url-error" class="field-error" role="alert">{{ sourceUrlError }}</p>
+        </div>
         <input
           v-model="formData.page"
           type="text"
@@ -530,6 +548,7 @@ import {
   recognitionHint
 } from '@/utils/ingredientSuggest'
 import { sourceSuggestions, authorSuggestions, sourcesOfAuthor } from '@/utils/recipeSources'
+import { completeSourceUrl, sourceUrlProblem } from '@/utils/sourceUrl'
 import {
   DRAFT_DELAY_MS,
   draftKey,
@@ -582,6 +601,7 @@ const formData = ref({
   author: '',
   source: '',
   page: '',
+  sourceUrl: '',
   tags: [],
   ingredients: [emptyIngredient()],
   instructions: ['']
@@ -681,6 +701,19 @@ const onSourceFieldKeydown = (event) => {
     activeSourceField.value = null
   }
 }
+
+// Link: https:// wird beim Verlassen ergänzt; die Meldung erscheint erst danach bzw. beim Speichern
+const sourceUrlRef = ref(null)
+const sourceUrlTouched = ref(false)
+const sourceUrlError = computed(() => sourceUrlProblem(formData.value.sourceUrl))
+const showSourceUrlError = computed(() => sourceUrlTouched.value && !!sourceUrlError.value)
+
+const onSourceUrlBlur = () => {
+  formData.value.sourceUrl = completeSourceUrl(formData.value.sourceUrl)
+  sourceUrlTouched.value = true
+}
+
+watch([sourceUrlError, sourceUrlRef], ([message, el]) => el?.setCustomValidity(message), { immediate: true })
 
 const selectUnit = (index, value) => {
   formData.value.ingredients[index].unit = value
@@ -926,6 +959,7 @@ watch(
         author: newRecipe.author || '',
         source: newRecipe.source || '',
         page: newRecipe.page || '',
+        sourceUrl: newRecipe.sourceUrl || '',
         tags: [...(newRecipe.tags ?? [])],
         ingredients: newRecipe.ingredients?.length
           ? ingredientsToRows(newRecipe.ingredients)
@@ -1639,6 +1673,16 @@ const handleSubmit = () => {
   border-radius: 6px;
   font-size: 1rem;
   box-sizing: border-box;
+}
+
+.source-url-field input[aria-invalid='true'] {
+  border-color: var(--color-error, #e53e3e);
+}
+
+.field-error {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: var(--color-error, #e53e3e);
 }
 
 .ingredient-row {

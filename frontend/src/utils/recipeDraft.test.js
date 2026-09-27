@@ -39,6 +39,7 @@ const emptyForm = () => ({
   author: '',
   source: '',
   page: '',
+  sourceUrl: '',
   ingredients: [emptyIngredient()],
   instructions: ['']
 })
@@ -110,6 +111,18 @@ test('restoring fills missing fields and never leaves the lists empty', () => {
   assert.equal(restored.baseServings, 4)
   assert.deepEqual(restored.ingredients, [{ name: 'Ei', amount: '', unit: '' }])
   assert.deepEqual(restored.instructions, [''])
+})
+
+test('the link to the original is part of the draft; older drafts without it keep the form value', () => {
+  const storage = memoryStorage()
+  const form = { ...emptyForm(), sourceUrl: 'https://www.zeit.de/rezept' }
+  saveDraft(storage, 'k', form, 1000)
+  assert.equal(loadDraft(storage, 'k').data.sourceUrl, 'https://www.zeit.de/rezept')
+  assert.equal(draftDiffers(loadDraft(storage, 'k'), emptyForm()), true)
+
+  const { sourceUrl, ...older } = { ...emptyForm(), title: 'Alt' }
+  const restored = restoreDraft({ savedAt: 1, data: older }, { ...emptyForm(), sourceUrl: 'https://biancazapatka.com/x' })
+  assert.equal(restored.sourceUrl, 'https://biancazapatka.com/x')
 })
 
 test('autosave saves changes, forgets a draft once nothing is changed, and waits while a draft is offered', () => {

@@ -81,11 +81,12 @@
         >#{{ tag }}</button>
       </div>
 
-      <div v-if="recipe.author || recipe.source" class="recipe-source">
+      <div v-if="recipe.author || recipe.source || sourceDomain(recipe.sourceUrl)" class="recipe-source">
         <span class="source-label">Quelle:</span>
-        <span v-if="recipe.author" class="source-author">{{ recipe.author }}</span>
+        <span v-if="recipe.author" :class="['source-author', { 'source-author--sep': recipe.source }]">{{ recipe.author }}</span>
         <span v-if="recipe.source" class="source-name">{{ recipe.source }}</span>
         <span v-if="recipe.page" class="source-page">Seite {{ recipe.page }}</span>
+        <SourceLink :href="recipe.sourceUrl" class="source-url" />
       </div>
 
       <div class="servings-control">
@@ -178,6 +179,8 @@ import NutritionPanel from '@/components/NutritionPanel.vue'
 import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 import TranslationBanner from '@/components/TranslationBanner.vue'
+import SourceLink from '@/components/SourceLink.vue'
+import { sourceDomain } from '@/utils/sourceUrl'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 import { recipeService } from '@/services/recipeService'
 import {
@@ -597,7 +600,7 @@ const handleDelete = async () => {
   color: var(--color-text-primary, #333);
 }
 
-.source-author::after {
+.source-author--sep::after {
   content: ' - ';
 }
 
@@ -608,6 +611,14 @@ const handleDelete = async () => {
 .source-page {
   color: var(--color-text-muted, #999);
   margin-left: 8px;
+}
+
+.source-url {
+  margin-left: 8px;
+}
+
+.source-label + .source-url {
+  margin-left: 0;
 }
 
 .recipe-figure {

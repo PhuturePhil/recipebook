@@ -10,7 +10,10 @@
       <header class="recipe-header">
         <h1>{{ recipe.title }}</h1>
         <TranslationBanner v-if="banner" :banner="banner" @show-original="setLanguage('original')" />
-        <p v-if="recipe.attribution" class="recipe-attribution">{{ recipe.attribution }}</p>
+        <p v-if="recipe.attribution || sourceDomain(recipe.sourceUrl)" class="recipe-attribution">
+          <span v-if="recipe.attribution">{{ recipe.attribution }}</span>
+          <SourceLink :href="recipe.sourceUrl" :class="{ 'source-url': recipe.attribution }" />
+        </p>
         <p v-if="recipe.tags?.length" class="recipe-tags">
           <span v-for="tag in recipe.tags" :key="tag" class="recipe-tag">#{{ tag }}</span>
         </p>
@@ -95,6 +98,8 @@ import { GERMAN, sharedLanguage, writeLanguagePreference, translationBanner } fr
 import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 import TranslationBanner from '@/components/TranslationBanner.vue'
+import SourceLink from '@/components/SourceLink.vue'
+import { sourceDomain } from '@/utils/sourceUrl'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -251,6 +256,10 @@ const ingredientSections = computed(() => groupSections(scaledIngredients.value)
   font-size: 0.95rem;
   color: var(--color-text-secondary, #666);
   font-style: italic;
+}
+
+.source-url {
+  margin-left: 8px;
 }
 
 .screen-toggle-spacing {
