@@ -59,8 +59,9 @@ class ShareService {
     return `${API_BASE_URL}/share/${encodeURIComponent(token)}/image`
   }
 
-  async getSharedRecipe(token) {
-    const response = await fetch(`${API_BASE_URL}/share/${encodeURIComponent(token)}`)
+  async getSharedRecipe(token, lang = null) {
+    const query = lang ? `?lang=${encodeURIComponent(lang)}` : ''
+    const response = await fetch(`${API_BASE_URL}/share/${encodeURIComponent(token)}${query}`)
     if (!response.ok) {
       const error = new Error(`HTTP error! status: ${response.status}`)
       error.status = response.status

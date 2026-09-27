@@ -13,7 +13,7 @@
 
       <template v-else-if="shareLink">
         <div class="share-link-row">
-          <input :value="shareLink.url" readonly class="share-link-input" ref="shareLinkInput" />
+          <input :value="shownUrl" readonly class="share-link-input" ref="shareLinkInput" />
           <button @click="copyLink" class="btn-copy">{{ copied ? 'Kopiert!' : 'Link kopieren' }}</button>
         </div>
         <p class="expires">Gültig bis {{ formatDate(shareLink.expiresAt) }}</p>
@@ -37,13 +37,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { shareService } from '@/services/shareService'
 
 const props = defineProps({
   recipeId: {
     type: [Number, String],
     required: true,
+  },
+  // Turns the stored link into the one to hand out, e.g. with ?lang= for English recipes
+  decorateUrl: {
+    type: Function,
+    default: (url) => url,
   },
 })
 
@@ -55,6 +60,7 @@ const busy = ref(false)
 const copied = ref(false)
 const error = ref(null)
 const shareLinkInput = ref(null)
+const shownUrl = computed(() => (shareLink.value ? props.decorateUrl(shareLink.value.url) : ''))
 
 onMounted(async () => {
   try {
@@ -97,7 +103,7 @@ async function handleRevoke() {
 
 async function copyLink() {
   try {
-    await navigator.clipboard.writeText(shareLink.value.url)
+    await navigator.clipboard.writeText(shownUrl.value)
     copied.value = true
     setTimeout(() => { copied.value = false }, 2000)
   } catch {

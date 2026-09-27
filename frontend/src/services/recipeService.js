@@ -49,6 +49,17 @@ class RecipeService {
     }
   }
 
+  // German version of an English recipe; the first call may take a few seconds while it is translated
+  async getTranslation(id, lang = 'de') {
+    const response = await fetch(`${API_BASE_URL}/recipes/${id}/translation?lang=${encodeURIComponent(lang)}`, {
+      headers: { ...getAuthHeaders() }
+    })
+    if (!response.ok) {
+      throw await httpError(response)
+    }
+    return await response.json()
+  }
+
   // Recipe images need the auth header, so they are fetched here instead of via <img src>.
   // The URL carries a content hash, which lets the browser cache answer repeat visits.
   async getImageObjectUrl(imageUrl) {

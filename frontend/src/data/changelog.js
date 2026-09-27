@@ -1,6 +1,16 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Englische Rezepte auf Deutsch',
+    changes: [
+      'Englische Rezepte erscheinen jetzt auf Deutsch: Titel, Beschreibung, Zutaten und Schritte werden beim ersten Öffnen einmal übersetzt (dauert ein paar Sekunden) und danach gespeichert',
+      'Amerikanische Maße werden dabei umgerechnet: cup → ml, oz und lb → g, inch → cm, °F → °C. Die Portionen-Umrechnung funktioniert mit den umgerechneten Mengen',
+      'Oben auf der Rezeptseite schaltet „Deutsch / Original“ zwischen Übersetzung und englischem Original um. Die Wahl gilt für alle englischen Rezepte und bleibt auf dem Gerät gespeichert',
+      'PDF und geteilte Links folgen der gewählten Sprache; auf der geteilten Seite gibt es denselben Schalter. Wird das Original bearbeitet, entsteht die Übersetzung beim nächsten Öffnen neu',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Sprache pro Rezept',
     changes: [
       'Jedes Rezept kennt jetzt seine Sprache (Deutsch oder Englisch). Beim Speichern erkennt die App sie automatisch aus Titel, Zutaten und Schritten',

@@ -13,25 +13,42 @@
       <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
     </div>
 
+    <div v-else-if="waitingForTranslation" class="loading">Rezept wird ins Deutsche übersetzt…</div>
+
     <div v-else-if="recipe" class="recipe-content">
       <header class="recipe-header">
-        <h1 ref="titleRef">{{ recipe.title }}</h1>
+        <h1 ref="titleRef">{{ shown.title }}</h1>
         <div class="recipe-tools">
+          <div v-if="translatable" class="language-toggle" role="group" aria-label="Sprache des Rezepts">
+            <button
+              type="button"
+              :class="['lang-btn', { active: languagePref === 'de' }]"
+              :aria-pressed="languagePref === 'de'"
+              @click="setLanguage('de')"
+            >Deutsch</button>
+            <button
+              type="button"
+              :class="['lang-btn', { active: languagePref === 'original' }]"
+              :aria-pressed="languagePref === 'original'"
+              @click="setLanguage('original')"
+            >Original</button>
+          </div>
           <button class="btn-tool" @click="showShareModal = true">Teilen</button>
           <button class="btn-tool" @click="printRecipe">Als PDF speichern</button>
           <KeepScreenOnToggle />
         </div>
+        <p v-if="translationNote" class="translation-note">{{ translationNote }}</p>
       </header>
 
       <figure v-if="recipe.imageUrl" class="recipe-figure">
         <div class="recipe-image">
-          <img :src="recipe.imageUrl" :alt="recipe.title" />
+          <img :src="recipe.imageUrl" :alt="shown.title" />
         </div>
         <ImageCredit :credit="recipe.imageCredit" />
       </figure>
 
-      <p v-if="recipe.description" class="recipe-description">
-        {{ recipe.description }}
+      <p v-if="shown.description" class="recipe-description">
+        {{ shown.description }}
       </p>
 
       <div class="recipe-meta">
@@ -92,10 +109,10 @@
         </template>
       </section>
 
-      <section v-if="recipe.instructions?.length" class="recipe-section">
+      <section v-if="shown.instructions?.length" class="recipe-section">
         <h2>Zubereitung</h2>
         <ol class="instructions-list">
-          <li v-for="(instruction, index) in recipe.instructions" :key="index">
+          <li v-for="(instruction, index) in shown.instructions" :key="index">
             {{ instruction }}
           </li>
         </ol>
@@ -122,12 +139,17 @@
       <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
     </div>
 
-    <ShareModal v-if="showShareModal && recipe" :recipe-id="recipe.id" @close="showShareModal = false" />
+    <ShareModal
+      v-if="showShareModal && recipe"
+      :recipe-id="recipe.id"
+      :decorate-url="shareLinkFor"
+      @close="showShareModal = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -138,6 +160,15 @@ import NutritionPanel from '@/components/NutritionPanel.vue'
 import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
+import { recipeService } from '@/services/recipeService'
+import {
+  readLanguagePreference,
+  writeLanguagePreference,
+  isTranslatable,
+  wantsTranslation,
+  applyTranslation,
+  shareUrl,
+} from '@/utils/recipeLanguage'
 
 const route = useRoute()
 const router = useRouter()
@@ -161,6 +192,52 @@ const nutritionInfo = ref(null)
 const nutritionLoading = ref(false)
 const nutritionError = ref(null)
 let titleObserver = null
+
+const languagePref = ref(readLanguagePreference())
+const translation = ref(null)
+const translationLoading = ref(false)
+const translatable = computed(() => isTranslatable(recipe.value))
+const shown = computed(() =>
+  wantsTranslation(recipe.value, languagePref.value) ? applyTranslation(recipe.value, translation.value) : recipe.value
+)
+// Only the very first translation of a recipe takes a few seconds; until then the page waits instead of flashing English
+const waitingForTranslation = computed(() =>
+  wantsTranslation(recipe.value, languagePref.value) && translationLoading.value && !translation.value
+)
+const translationNote = computed(() =>
+  wantsTranslation(recipe.value, languagePref.value) && translation.value && translation.value.status !== 'translated'
+    ? 'Die Übersetzung ist gerade nicht verfügbar – hier steht das Original.'
+    : ''
+)
+
+const loadTranslation = async () => {
+  if (!wantsTranslation(recipe.value, languagePref.value) || translation.value?.status === 'translated') return
+  if (translationLoading.value) return
+  translationLoading.value = true
+  translation.value = null
+  try {
+    translation.value = await recipeService.getTranslation(recipe.value.id, 'de')
+  } catch {
+    translation.value = { status: 'unavailable' }
+  } finally {
+    translationLoading.value = false
+  }
+}
+
+const setLanguage = async (value) => {
+  languagePref.value = value
+  writeLanguagePreference(value)
+  await loadTranslation()
+}
+
+const shareLinkFor = (url) => shareUrl(url, recipe.value, languagePref.value)
+
+// The heading is rendered anew after the translation wait, so the observer follows the element
+watch(titleRef, (el, previous) => {
+  if (!titleObserver) return
+  if (previous) titleObserver.unobserve(previous)
+  if (el) titleObserver.observe(el)
+})
 
 const loadNutrition = async (id) => {
   nutritionLoading.value = true
@@ -197,13 +274,15 @@ onMounted(async () => {
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings
     loadNutrition(recipe.value.id)
+    await loadTranslation()
+    await nextTick()
   }
 
   if (titleRef.value) {
     titleObserver = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting && recipe.value?.title) {
-          uiStore.setNavTitle(recipe.value.title)
+        if (!entry.isIntersecting && shown.value?.title) {
+          uiStore.setNavTitle(shown.value.title)
         } else {
           uiStore.clearNavTitle()
         }
@@ -240,14 +319,14 @@ const decreaseServings = () => {
 }
 
 const scaledIngredients = computed(() =>
-  scaleIngredients(recipe.value?.ingredients, recipe.value?.baseServings, currentServings.value)
+  scaleIngredients(shown.value?.ingredients, recipe.value?.baseServings, currentServings.value)
 )
 
 const printRecipe = async () => {
   activeTab.value = 'ingredients'
   await nextTick()
   const originalTitle = document.title
-  document.title = recipe.value.title
+  document.title = shown.value.title
   window.addEventListener('afterprint', () => { document.title = originalTitle }, { once: true })
   window.print()
 }
@@ -303,6 +382,38 @@ const handleDelete = async () => {
 
 .recipe-header {
   margin-bottom: 24px;
+}
+
+.language-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.lang-btn {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--color-text-secondary, #666);
+  cursor: pointer;
+}
+
+.lang-btn + .lang-btn {
+  border-left: 1px solid var(--color-border, #ddd);
+}
+
+.lang-btn.active {
+  background: var(--color-primary, #4a5568);
+  color: white;
+}
+
+.translation-note {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  color: #744210;
 }
 
 .recipe-header h1 {
@@ -652,6 +763,7 @@ const handleDelete = async () => {
   }
 
   .recipe-tools,
+  .translation-note,
   .detail-actions,
   .servings-control,
   .tab-btn:not(.active) {

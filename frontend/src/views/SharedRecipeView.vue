@@ -10,6 +10,21 @@
       <header class="recipe-header">
         <h1>{{ recipe.title }}</h1>
         <p v-if="recipe.attribution" class="recipe-attribution">{{ recipe.attribution }}</p>
+        <div v-if="recipe.sourceLanguage === 'en'" class="language-toggle" role="group" aria-label="Sprache des Rezepts">
+          <button
+            type="button"
+            :class="['lang-btn', { active: languagePref === 'de' }]"
+            :aria-pressed="languagePref === 'de'"
+            @click="setLanguage('de')"
+          >Deutsch</button>
+          <button
+            type="button"
+            :class="['lang-btn', { active: languagePref === 'original' }]"
+            :aria-pressed="languagePref === 'original'"
+            @click="setLanguage('original')"
+          >Original</button>
+        </div>
+        <p v-if="translationNote" class="translation-note">{{ translationNote }}</p>
         <KeepScreenOnToggle class="screen-toggle-spacing" />
       </header>
 
@@ -67,6 +82,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { shareService } from '@/services/shareService'
 import { scaleIngredients } from '@/utils/scaleIngredients'
+import { GERMAN, sharedLanguage, writeLanguagePreference } from '@/utils/recipeLanguage'
 import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 
@@ -77,6 +93,32 @@ const recipe = ref(null)
 const loading = ref(true)
 const errorMessage = ref(null)
 const currentServings = ref(1)
+const languagePref = ref(sharedLanguage(route.query.lang))
+
+const translationNote = computed(() =>
+  languagePref.value === GERMAN && recipe.value?.translationStatus === 'unavailable'
+    ? 'Die Übersetzung ist gerade nicht verfügbar – hier steht das Original.'
+    : ''
+)
+
+const fetchRecipe = () =>
+  shareService.getSharedRecipe(route.params.token, languagePref.value === GERMAN ? GERMAN : null)
+
+const setLanguage = async (value) => {
+  if (value === languagePref.value) return
+  languagePref.value = value
+  writeLanguagePreference(value)
+  loading.value = true
+  try {
+    const servings = currentServings.value
+    recipe.value = await fetchRecipe()
+    currentServings.value = servings
+    document.title = `${recipe.value.title} – Pastoors Familienrezepte`
+  } catch {
+    // keep what is shown; the link itself still works
+  }
+  loading.value = false
+}
 
 const originalTitle = document.title
 let robotsMeta = null
@@ -88,7 +130,7 @@ onMounted(async () => {
   document.head.appendChild(robotsMeta)
 
   try {
-    recipe.value = await shareService.getSharedRecipe(route.params.token)
+    recipe.value = await fetchRecipe()
     currentServings.value = recipe.value.baseServings || 1
     document.title = `${recipe.value.title} – Pastoors Familienrezepte`
   } catch (error) {
@@ -135,6 +177,39 @@ const scaledIngredients = computed(() =>
   text-align: center;
   padding: 48px 24px;
   color: var(--color-text-secondary, #666);
+}
+
+.language-toggle {
+  display: inline-flex;
+  margin-top: 8px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.lang-btn {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--color-text-secondary, #666);
+  cursor: pointer;
+}
+
+.lang-btn + .lang-btn {
+  border-left: 1px solid var(--color-border, #ddd);
+}
+
+.lang-btn.active {
+  background: var(--color-primary, #4a5568);
+  color: white;
+}
+
+.translation-note {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  color: #744210;
 }
 
 .recipe-header {
