@@ -1,6 +1,17 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Rezepteingabe: Zutatenliste einfügen, Entwürfe, Umsortieren',
+    changes: [
+      'Eine kopierte Zutatenliste lässt sich in eine Zutatenzeile einfügen. Jede Zeile wird eine eigene Zutat, Menge und Einheit werden erkannt, z. B. „200 g Zwiebeln“ oder „½ TL Salz“. Zeilen ohne Menge wie „Salz und Pfeffer“ landen komplett im Namen',
+      '„Als Text bearbeiten“ zeigt alle Zutaten als Text mit einer Zutat pro Zeile. Nach „Übernehmen“ werden daraus wieder einzelne Zeilen',
+      'Eingaben werden laufend als Entwurf auf dem Gerät gesichert. Nach Neuladen, Absturz oder abgelaufener Anmeldung fragt das Formular „Entwurf von … wiederherstellen?“. Nach dem Speichern wird der Entwurf gelöscht',
+      'Beim Neuladen oder Schließen des Tabs kommt deshalb keine Nachfrage mehr. Wer innerhalb der App weggeht, wird weiterhin gefragt, und wer bestätigt, verwirft damit auch den Entwurf',
+      'Zutaten und Arbeitsschritte lassen sich mit den Pfeilen ↑/↓ verschieben, per Tastatur mit Alt+↑/↓',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Display bleibt beim Kochen an',
     changes: [
       'Auf der Rezeptseite und bei geteilten Rezepten geht das Display nicht mehr von selbst aus, solange das Rezept offen ist',

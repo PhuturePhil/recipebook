@@ -32,6 +32,15 @@ export function addIngredientBelow(ingredients, index) {
   return next
 }
 
+// Moves a row one step up (-1) or down (+1); returns its new index, or -1 at the edge
+export function moveRow(rows, index, delta) {
+  const target = index + delta
+  if (index < 0 || index >= rows.length || target < 0 || target >= rows.length) return -1
+  const [row] = rows.splice(index, 1)
+  rows.splice(target, 0, row)
+  return target
+}
+
 export function preventsImplicitSubmit(event) {
   if (event.key !== 'Enter' || event.isComposing) return false
   const target = event.target

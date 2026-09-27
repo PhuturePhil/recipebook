@@ -50,15 +50,18 @@ let leaveConfirmed = false
 
 const hasUnsavedChanges = () => !leaveConfirmed && !!formRef.value?.isDirty()
 
-function onBeforeUnload(event) {
-  if (!hasUnsavedChanges()) return
-  event.preventDefault()
-  event.returnValue = ''
-}
-
-onBeforeRouteLeave(() => {
+// Reloading or closing the tab needs no prompt: the form keeps a draft and offers it again.
+// Leaving inside the app is a deliberate step, so it still asks, and confirming throws the draft away.
+// An expired session is the exception: the draft stays so nothing is lost after logging in again.
+onBeforeRouteLeave((to) => {
   if (!hasUnsavedChanges()) return true
-  return confirm('Ungespeicherte Änderungen verwerfen?')
+  if (to.name === 'login') {
+    formRef.value?.saveDraftNow()
+    return true
+  }
+  if (!confirm('Ungespeicherte Änderungen verwerfen?')) return false
+  formRef.value?.discardDraft()
+  return true
 })
 
 const titleRef = ref(null)
@@ -94,7 +97,6 @@ function onTitleChange(title) {
 }
 
 onMounted(async () => {
-  window.addEventListener('beforeunload', onBeforeUnload)
   if (isEdit.value) {
     try {
       await store.fetchRecipeById(route.params.id)
@@ -112,7 +114,6 @@ watch(recipe, (r) => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('beforeunload', onBeforeUnload)
   titleObserver?.disconnect()
   uiStore.clearNavTitle()
 })
@@ -124,6 +125,7 @@ const handleSubmit = async (recipeData) => {
     : store.createRecipe(recipeData))
   uiStore.hideLoading()
   if (!ok) return
+  formRef.value?.discardDraft()
   leaveConfirmed = true
   router.push(`/recipe/${isEdit.value ? route.params.id : result.id}`)
 }

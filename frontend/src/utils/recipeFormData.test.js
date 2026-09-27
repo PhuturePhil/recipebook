@@ -6,6 +6,7 @@ import {
   isIngredientNameRequired,
   isInstructionRequired,
   addIngredientBelow,
+  moveRow,
   preventsImplicitSubmit,
   formSnapshot,
   runSave
@@ -96,4 +97,27 @@ test('a successful save clears a previous error and returns the result', async (
   const outcome = await runSave(state, async () => ({ id: 7 }))
   assert.deepEqual(outcome, { ok: true, result: { id: 7 } })
   assert.deepEqual(state, { saving: false, error: '' })
+})
+
+test('moving a row up or down swaps it with its neighbour and reports the new position', () => {
+  const steps = ['Schneiden', 'Anbraten', 'Würzen']
+  assert.equal(moveRow(steps, 2, -1), 1)
+  assert.deepEqual(steps, ['Schneiden', 'Würzen', 'Anbraten'])
+  assert.equal(moveRow(steps, 0, 1), 1)
+  assert.deepEqual(steps, ['Würzen', 'Schneiden', 'Anbraten'])
+})
+
+test('moving keeps the row object itself', () => {
+  const zwiebel = { name: 'Zwiebel', amount: '1', unit: '' }
+  const rows = [{ name: 'Öl', amount: '2', unit: 'EL' }, zwiebel]
+  moveRow(rows, 1, -1)
+  assert.equal(rows[0], zwiebel)
+})
+
+test('rows at the edge do not move', () => {
+  const rows = ['a', 'b']
+  assert.equal(moveRow(rows, 0, -1), -1)
+  assert.equal(moveRow(rows, 1, 1), -1)
+  assert.equal(moveRow(rows, 5, -1), -1)
+  assert.deepEqual(rows, ['a', 'b'])
 })
