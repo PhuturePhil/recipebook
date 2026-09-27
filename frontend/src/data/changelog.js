@@ -8,6 +8,7 @@ export const changelog = [
       'Eingaben werden laufend als Entwurf auf dem Gerät gesichert. Nach Neuladen, Absturz oder abgelaufener Anmeldung fragt das Formular „Entwurf von … wiederherstellen?“. Nach dem Speichern wird der Entwurf gelöscht',
       'Beim Neuladen oder Schließen des Tabs kommt deshalb keine Nachfrage mehr. Wer innerhalb der App weggeht, wird weiterhin gefragt, und wer bestätigt, verwirft damit auch den Entwurf',
       'Zutaten und Arbeitsschritte lassen sich mit den Pfeilen ↑/↓ verschieben, per Tastatur mit Alt+↑/↓',
+      'Die Reihenfolge der Zutaten bleibt beim Speichern jetzt zuverlässig erhalten. Bisher konnten bearbeitete Zutaten ans Ende der Liste rutschen. Zwei betroffene Rezepte zeigen wieder die ursprünglich eingegebene Reihenfolge',
     ]
   },
   {

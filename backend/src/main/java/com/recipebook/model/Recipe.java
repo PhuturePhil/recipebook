@@ -22,9 +22,11 @@ public class Recipe {
     @ElementCollection
     @CollectionTable(name = "recipe_instructions", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "step", columnDefinition = "TEXT")
+    @OrderColumn(name = "sort_order")
     private List<String> instructions;
     
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderColumn(name = "sort_order")
     private List<Ingredient> ingredients;
     
     @Column(nullable = false)
