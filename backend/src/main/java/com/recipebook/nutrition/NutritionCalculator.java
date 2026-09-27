@@ -70,9 +70,8 @@ public final class NutritionCalculator {
 
     public static IngredientBreakdown calculateLine(IngredientLine line, NutritionReference ref) {
         ParsedIngredient parsed = QuantityParser.parse(line.amount(), line.unit(), line.name());
-        String lookupName = parsed.name().isBlank() ? line.name() : parsed.name();
-        Optional<IngredientDefinition> match = ref.match(lookupName);
-        if (match.isEmpty() && !lookupName.equals(line.name())) match = ref.match(line.name());
+        String lookupName = lookupName(line, parsed);
+        Optional<IngredientDefinition> match = match(line, parsed, ref);
 
         if (match.isEmpty()) {
             Optional<AiRequestState> ai = ref.nameRequest(lookupName);
@@ -125,6 +124,26 @@ public final class NutritionCalculator {
 
         NutrientTotals nutrients = NutrientTotals.of(def.per100g(), grams);
         return result(line, parsed, def, IngredientStatus.CALCULATED, null, null, grams, basis, nutrients);
+    }
+
+    /**
+     * Katalog-Eintrag, mit dem eine Zutatenzeile gerechnet wird – dieselbe Zuordnung wie in der Berechnung.
+     */
+    public static Optional<IngredientDefinition> match(IngredientLine line, NutritionReference ref) {
+        if (line.name() == null || line.name().isBlank()) return Optional.empty();
+        return match(line, QuantityParser.parse(line.amount(), line.unit(), line.name()), ref);
+    }
+
+    private static Optional<IngredientDefinition> match(IngredientLine line, ParsedIngredient parsed,
+        NutritionReference ref) {
+        String lookupName = lookupName(line, parsed);
+        Optional<IngredientDefinition> match = ref.match(lookupName);
+        if (match.isEmpty() && !lookupName.equals(line.name())) match = ref.match(line.name());
+        return match;
+    }
+
+    private static String lookupName(IngredientLine line, ParsedIngredient parsed) {
+        return parsed.name().isBlank() ? line.name() : parsed.name();
     }
 
     private static IngredientBreakdown result(IngredientLine line, ParsedIngredient parsed, IngredientDefinition def,

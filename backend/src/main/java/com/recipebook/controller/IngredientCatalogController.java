@@ -1,10 +1,14 @@
 package com.recipebook.controller;
 
 import com.recipebook.dto.IngredientAiRequestDto;
+import com.recipebook.dto.IngredientRecognitionDto;
 import com.recipebook.dto.NutritionIngredientDto;
 import com.recipebook.dto.NutritionIngredientRequest;
 import com.recipebook.dto.UnitConversionDto;
+import com.recipebook.nutrition.IngredientLine;
+import com.recipebook.nutrition.IngredientSuggestions;
 import com.recipebook.service.IngredientAiService;
+import com.recipebook.service.IngredientSuggestionService;
 import com.recipebook.service.NutritionCatalogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,15 +25,29 @@ public class IngredientCatalogController {
 
     private final NutritionCatalogService catalogService;
     private final IngredientAiService aiService;
+    private final IngredientSuggestionService suggestionService;
 
-    public IngredientCatalogController(NutritionCatalogService catalogService, IngredientAiService aiService) {
+    public IngredientCatalogController(NutritionCatalogService catalogService, IngredientAiService aiService,
+            IngredientSuggestionService suggestionService) {
         this.catalogService = catalogService;
         this.aiService = aiService;
+        this.suggestionService = suggestionService;
     }
 
     @GetMapping
     public List<NutritionIngredientDto> getAll() {
         return catalogService.findAll();
+    }
+
+    @GetMapping("/suggestions")
+    public List<IngredientSuggestions.Suggestion> suggestions(@RequestParam(name = "q", defaultValue = "") String query,
+            @RequestParam(name = "limit", required = false) Integer limit) {
+        return suggestionService.suggest(query, limit);
+    }
+
+    @PostMapping("/recognize")
+    public List<IngredientRecognitionDto> recognize(@RequestBody List<IngredientLine> lines) {
+        return suggestionService.recognize(lines);
     }
 
     @PostMapping

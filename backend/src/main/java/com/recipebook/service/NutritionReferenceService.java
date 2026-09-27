@@ -2,10 +2,12 @@ package com.recipebook.service;
 
 import com.recipebook.model.IngredientAiRequest;
 import com.recipebook.model.NutritionIngredient;
+import com.recipebook.model.NutritionIngredientAlias;
 import com.recipebook.model.ReferenceFood;
 import com.recipebook.nutrition.AiRequestState;
 import com.recipebook.nutrition.ConversionRule;
 import com.recipebook.nutrition.IngredientDefinition;
+import com.recipebook.nutrition.IngredientSuggestions;
 import com.recipebook.nutrition.NutrientProfile;
 import com.recipebook.nutrition.NutritionReference;
 import com.recipebook.nutrition.NutritionSource;
@@ -16,6 +18,7 @@ import com.recipebook.repository.ReferenceFoodRepository;
 import com.recipebook.repository.UnitConversionRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +41,7 @@ public class NutritionReferenceService {
 
     private volatile NutritionReference cached;
     private volatile List<ReferenceFoodRepository.NameView> referenceNames;
+    private volatile List<IngredientSuggestions.Entry> suggestionEntries;
 
     public NutritionReferenceService(NutritionIngredientRepository ingredientRepository,
             NutritionIngredientAliasRepository aliasRepository, UnitConversionRepository conversionRepository,
@@ -65,6 +69,24 @@ public class NutritionReferenceService {
 
     public void invalidate() {
         cached = null;
+        suggestionEntries = null;
+    }
+
+    /**
+     * Katalognamen und kurze Aliasse als Grundlage für die Vorschläge im Zutatenfeld; gecacht wie der Katalog.
+     */
+    public List<IngredientSuggestions.Entry> suggestionEntries() {
+        List<IngredientSuggestions.Entry> entries = suggestionEntries;
+        if (entries == null) {
+            List<IngredientSuggestions.Entry> loaded = new ArrayList<>();
+            ingredientRepository.findAll().forEach(i -> loaded.add(new IngredientSuggestions.Entry(i.getName(), false)));
+            aliasRepository.findAll().stream().map(NutritionIngredientAlias::getAlias)
+                .filter(IngredientSuggestions::isSuggestibleAlias)
+                .forEach(a -> loaded.add(new IngredientSuggestions.Entry(a.trim(), true)));
+            entries = List.copyOf(loaded);
+            suggestionEntries = entries;
+        }
+        return entries;
     }
 
     public List<ReferenceFoodRepository.NameView> referenceNames() {
