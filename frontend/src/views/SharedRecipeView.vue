@@ -10,6 +10,7 @@
       <header class="recipe-header">
         <h1>{{ recipe.title }}</h1>
         <p v-if="recipe.attribution" class="recipe-attribution">{{ recipe.attribution }}</p>
+        <KeepScreenOnToggle class="screen-toggle-spacing" />
       </header>
 
       <figure v-if="imageSrc" class="recipe-figure">
@@ -67,6 +68,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { shareService } from '@/services/shareService'
 import { scaleIngredients } from '@/utils/scaleIngredients'
 import ImageCredit from '@/components/ImageCredit.vue'
+import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -150,6 +152,10 @@ const scaledIngredients = computed(() =>
   font-size: 0.95rem;
   color: var(--color-text-secondary, #666);
   font-style: italic;
+}
+
+.screen-toggle-spacing {
+  margin-top: 12px;
 }
 
 .recipe-figure {

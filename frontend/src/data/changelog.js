@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Display bleibt beim Kochen an',
+    changes: [
+      'Auf der Rezeptseite und bei geteilten Rezepten geht das Display nicht mehr von selbst aus, solange das Rezept offen ist',
+      'Der Knopf „Display bleibt an“ oben am Rezept schaltet das ab. Die Einstellung merkt sich jedes Gerät',
+      'Im Energiesparmodus kann der Browser das Anbleiben verweigern, dann wirkt der Knopf blasser. Ältere Browser zeigen den Knopf gar nicht',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Rezepteingabe: weniger Stolperfallen',
     changes: [
       'Enter speichert das Rezept nicht mehr versehentlich. In einer Zutatenzeile legt Enter eine neue Zeile darunter an und springt hinein, gespeichert wird nur über den Knopf',

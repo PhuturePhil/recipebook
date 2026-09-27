@@ -19,6 +19,7 @@
         <div class="recipe-tools">
           <button class="btn-tool" @click="showShareModal = true">Teilen</button>
           <button class="btn-tool" @click="printRecipe">Als PDF speichern</button>
+          <KeepScreenOnToggle />
         </div>
       </header>
 
@@ -135,6 +136,7 @@ import { scaleIngredients } from '@/utils/scaleIngredients'
 import ShareModal from '@/components/ShareModal.vue'
 import NutritionPanel from '@/components/NutritionPanel.vue'
 import ImageCredit from '@/components/ImageCredit.vue'
+import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 
 const route = useRoute()
@@ -611,6 +613,7 @@ const handleDelete = async () => {
 
 .recipe-tools {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }
