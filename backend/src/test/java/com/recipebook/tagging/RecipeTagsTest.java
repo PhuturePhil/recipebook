@@ -41,6 +41,12 @@ class RecipeTagsTest {
     }
 
     @Test
+    void fromAnswerDropsMeaninglessTags() throws Exception {
+        assertEquals(List.of("Curry"),
+            RecipeTags.fromAnswer(mapper.readTree("{\"tags\": [\"Hauptgericht\", \"Curry\", \"vegetarisch\", \"Schnell\"]}"), 4));
+    }
+
+    @Test
     void fromAnswerToleratesUnusableAnswers() throws Exception {
         assertTrue(RecipeTags.fromAnswer(mapper.readTree("{\"tags\": \"Suppe\"}"), 4).isEmpty());
         assertTrue(RecipeTags.fromAnswer(mapper.readTree("{\"kategorien\": [\"Suppe\"]}"), 4).isEmpty());

@@ -211,7 +211,7 @@ public class RecipeService {
         if (tags.isEmpty()) {
             List<String> names = recipe.getIngredients() == null ? List.of() : recipe.getIngredients().stream()
                 .map(Ingredient::getName).filter(Objects::nonNull).toList();
-            tags = recipeTagService.suggest(recipe.getTitle(), names);
+            tags = recipeTagService.suggest(recipe.getTitle(), names, recipe.getInstructions());
         }
         recipe.setTags(new ArrayList<>(tags));
     }

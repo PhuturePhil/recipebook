@@ -82,6 +82,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
   @Query(value = "SELECT tag FROM recipe_tags WHERE recipe_id = :recipeId ORDER BY sort_order", nativeQuery = true)
   List<String> findTags(@Param("recipeId") Long recipeId);
 
+  @Query(value = "SELECT step FROM recipe_instructions WHERE recipe_id = :recipeId ORDER BY sort_order", nativeQuery = true)
+  List<String> findSteps(@Param("recipeId") Long recipeId);
+
   @Query(value = "SELECT DISTINCT tag FROM recipe_tags", nativeQuery = true)
   List<String> findDistinctTags();
 

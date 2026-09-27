@@ -36,29 +36,41 @@ class RecipeTagServiceTest {
         TransactionTemplate tx = mock(TransactionTemplate.class);
         when(tx.execute(any())).thenAnswer(inv -> ((TransactionCallback<?>) inv.getArgument(0)).doInTransaction(null));
         when(ai.isConfigured()).thenReturn(true);
-        service = new RecipeTagService(ai, mapper, recipes, tx, new SyncTaskExecutor(), "gpt-4.1-mini", true);
+        service = new RecipeTagService(ai, mapper, recipes, tx, new SyncTaskExecutor(), "gpt-4.1", true);
     }
 
     private void aiAnswers(String json) throws Exception {
-        when(ai.complete(eq("gpt-4.1-mini"), anyString(), any(), anyInt(), any(Duration.class)))
-            .thenReturn(new OpenAiClient.AiAnswer(mapper.readTree(json), "gpt-4.1-mini", 250, 12));
+        when(ai.complete(eq("gpt-4.1"), anyString(), any(), anyInt(), any(Duration.class)))
+            .thenReturn(new OpenAiClient.AiAnswer(mapper.readTree(json), "gpt-4.1", 250, 12));
     }
 
     @Test
     void suggestReturnsNormalizedTags() throws Exception {
         aiAnswers("{\"tags\": [\"suppe\", \"Indisch\", \"Linsen\", \"Winter\", \"Eintopf\"]}");
-        assertEquals(List.of("Suppe", "Indisch", "Linsen", "Winter"), service.suggest("Dal", List.of("Linsen")));
+        assertEquals(List.of("Suppe", "Indisch", "Linsen", "Winter"), service.suggest("Dal", List.of("Linsen"), List.of("Linsen kochen.")));
+    }
+
+    @Test
+    void payloadCarriesShortenedSteps() throws Exception {
+        aiAnswers("{\"tags\": [\"Suppe\"]}");
+        service.suggest("Dal", List.of("Linsen"), List.of("x".repeat(500), "y".repeat(500)));
+
+        var payload = org.mockito.ArgumentCaptor.forClass(tools.jackson.databind.JsonNode.class);
+        verify(ai).complete(eq("gpt-4.1"), anyString(), payload.capture(), anyInt(), any(Duration.class));
+        assertEquals("Dal", payload.getValue().path("title").asText());
+        assertEquals("Linsen", payload.getValue().path("ingredients").get(0).asText());
+        assertEquals(600, payload.getValue().path("steps").asText().length());
     }
 
     @Test
     void suggestIsEmptyWhenAiFailsOrIsMissing() throws Exception {
         when(ai.complete(anyString(), anyString(), any(), anyInt(), any(Duration.class)))
             .thenThrow(new OpenAiClient.AiCallException("Zeitüberschreitung"));
-        assertTrue(service.suggest("Dal", List.of("Linsen")).isEmpty());
+        assertTrue(service.suggest("Dal", List.of("Linsen"), List.of("Linsen kochen.")).isEmpty());
 
         when(ai.isConfigured()).thenReturn(false);
-        assertTrue(service.suggest("Dal", List.of("Linsen")).isEmpty());
-        assertTrue(service.suggest(" ", List.of()).isEmpty());
+        assertTrue(service.suggest("Dal", List.of("Linsen"), List.of("Linsen kochen.")).isEmpty());
+        assertTrue(service.suggest(" ", List.of(), null).isEmpty());
     }
 
     @Test

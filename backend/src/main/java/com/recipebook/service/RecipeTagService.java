@@ -28,16 +28,25 @@ public class RecipeTagService {
     private static final Logger log = LoggerFactory.getLogger(RecipeTagService.class);
     private static final int MAX_SUGGESTED = 4;
     private static final int MAX_TOKENS = 80;
+    private static final int MAX_STEP_CHARS = 600;
     private static final Duration CALL_TIMEOUT = Duration.ofSeconds(15);
 
     static final String PROMPT = """
         Du vergibst Kategorien für ein Rezept aus einem vegetarischen Familienkochbuch.
-        Eingabe: JSON mit title und ingredients (Zutatennamen, evtl. englisch).
-        Wähle 2 bis 4 Tags, die beim Stöbern helfen: Gerichtsart (z. B. Suppe, Curry, Pasta, Salat, Ofengericht),
-        Mahlzeit (z. B. Frühstück, Dessert, Beilage) oder Küche (z. B. Indisch, Italienisch).
+        Eingabe: JSON mit title, ingredients (Zutatennamen, evtl. englisch) und steps (Anfang der Zubereitung).
+        Wähle 2 bis 4 Tags, die beim Stöbern helfen: Gerichtsart, Mahlzeit oder Küche.
         Nimm bevorzugt Begriffe aus dieser Liste: %s.
-        Nur wenn davon nichts passt, einen eigenen kurzen deutschen Begriff (ein Wort, Substantiv oder Adjektiv).
-        Keine Nährwert- oder Zeitangaben wie "Schnell", "Gesund", "Proteinreich", nicht "Vegetarisch".
+        Nur wenn davon nichts passt, einen eigenen kurzen deutschen Begriff (ein Wort).
+        Jeder Tag muss eindeutig zutreffen – lieber 2 treffende als 4 mit einem fraglichen. Im Zweifel weglassen.
+        - Hauptgerichte (mit Sättigungsbeilage, Fisch, Tofu, Hülsenfrüchten als Hauptsache) sind NIE "Beilage".
+          "Beilage" nur für Gerichte, die man neben einem Hauptgericht isst (z. B. Ofengemüse ohne Eiweißkomponente, Kartoffelsalat).
+        - Pasta nur bei Nudeln, Reis bei Reis- und Risottogerichten.
+        - Ofengericht / Auflauf: nur wenn das Gericht hauptsächlich im Ofen gart; Pfannengericht nur bei Pfanne/Wok.
+        - Frühstück: nur für typische Frühstücksgerichte. Dessert, Kuchen: nur süß. Backen: Teig oder Gebäck, auch herzhaft (Quiche, Flammkuchen).
+        - Snack: kleine Gerichte für zwischendurch. Grillen: nur wenn gegrillt wird.
+        - Küche nur bei klarer Herkunft des Gerichts (Dal, Dhansak → Indisch; Bolognese, Risotto → Italienisch; Shakshuka → Orientalisch).
+        - Vegan nur, wenn keine tierischen Zutaten (Ei, Milchprodukte, Honig, Fisch) vorkommen.
+        Keine Nährwert- oder Zeitangaben wie "Schnell", "Gesund", "Proteinreich", nicht "Vegetarisch", keine Jahreszeiten.
         Antwort nur als JSON: {"tags": ["...", "..."]}
         """.formatted(String.join(", ", RecipeTags.VOCABULARY));
 
@@ -55,7 +64,7 @@ public class RecipeTagService {
 
     public RecipeTagService(OpenAiClient openAiClient, ObjectMapper objectMapper, RecipeRepository recipeRepository,
             TransactionTemplate transactionTemplate, @Qualifier("nutritionAiExecutor") TaskExecutor executor,
-            @Value("${openai.tag-model:gpt-4.1-mini}") String model,
+            @Value("${openai.tag-model:gpt-4.1}") String model,
             @Value("${app.tags.backfill-on-startup:true}") boolean backfillOnStartup) {
         this.openAiClient = openAiClient;
         this.objectMapper = objectMapper;
@@ -66,14 +75,14 @@ public class RecipeTagService {
         this.backfillOnStartup = backfillOnStartup;
     }
 
-    public List<String> suggest(String title, List<String> ingredientNames) {
-        return suggestWithUsage(title, ingredientNames).tags();
+    public List<String> suggest(String title, List<String> ingredientNames, List<String> steps) {
+        return suggestWithUsage(title, ingredientNames, steps).tags();
     }
 
-    Suggestion suggestWithUsage(String title, List<String> ingredientNames) {
+    Suggestion suggestWithUsage(String title, List<String> ingredientNames, List<String> steps) {
         if (!openAiClient.isConfigured() || title == null || title.isBlank()) return Suggestion.NONE;
         try {
-            OpenAiClient.AiAnswer answer = openAiClient.complete(model, PROMPT, payload(title, ingredientNames),
+            OpenAiClient.AiAnswer answer = openAiClient.complete(model, PROMPT, payload(title, ingredientNames, steps),
                 MAX_TOKENS, CALL_TIMEOUT);
             List<String> tags = RecipeTags.fromAnswer(answer.json(), MAX_SUGGESTED);
             log.info("Tags für \"{}\" mit {}: {} ({} Prompt- + {} Antwort-Tokens)", title, answer.model(), tags,
@@ -110,7 +119,7 @@ public class RecipeTagService {
             String title = recipeRepository.findById(id).map(r -> r.getTitle()).orElse(null);
             List<String> names = recipeRepository.findIngredientRows(id).stream()
                 .map(RecipeRepository.StoredIngredient::getName).filter(Objects::nonNull).toList();
-            Suggestion suggestion = suggestWithUsage(title, names);
+            Suggestion suggestion = suggestWithUsage(title, names, recipeRepository.findSteps(id));
             promptTokens += suggestion.promptTokens();
             completionTokens += suggestion.completionTokens();
             if (suggestion.tags().isEmpty()) continue;
@@ -128,13 +137,15 @@ public class RecipeTagService {
         return tagged;
     }
 
-    private ObjectNode payload(String title, List<String> ingredientNames) {
+    private ObjectNode payload(String title, List<String> ingredientNames, List<String> steps) {
         ObjectNode p = objectMapper.createObjectNode();
         p.put("title", title);
         ArrayNode ingredients = p.putArray("ingredients");
         if (ingredientNames != null) {
             ingredientNames.stream().filter(n -> n != null && !n.isBlank()).limit(40).forEach(ingredients::add);
         }
+        String text = steps == null ? "" : String.join(" ", steps.stream().filter(Objects::nonNull).toList()).trim();
+        p.put("steps", text.length() > MAX_STEP_CHARS ? text.substring(0, MAX_STEP_CHARS) : text);
         return p;
     }
 }

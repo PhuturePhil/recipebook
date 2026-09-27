@@ -553,7 +553,8 @@ class RecipeServiceTest {
         testRecipe.setId(null);
         testRecipe.setTags(new ArrayList<>());
         testRecipe.setIngredients(new ArrayList<>(List.of(new Ingredient("Linsen", "200", "g"))));
-        when(recipeTagService.suggest("Test Recipe", List.of("Linsen"))).thenReturn(List.of("Curry", "Indisch"));
+        testRecipe.setInstructions(new ArrayList<>(List.of("Linsen kochen.")));
+        when(recipeTagService.suggest("Test Recipe", List.of("Linsen"), List.of("Linsen kochen."))).thenReturn(List.of("Curry", "Indisch"));
 
         recipeService.applyTags(testRecipe);
 

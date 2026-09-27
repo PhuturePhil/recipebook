@@ -20,7 +20,10 @@ public final class RecipeTags {
     public static final List<String> VOCABULARY = List.of(
         "Suppe", "Eintopf", "Curry", "Pasta", "Reis", "Salat", "Bowl", "Ofengericht", "Auflauf", "Pfannengericht",
         "Frühstück", "Backen", "Kuchen", "Brot", "Dessert", "Snack", "Beilage", "Dip", "Soße", "Grillen",
-        "Asiatisch", "Italienisch", "Indisch", "Orientalisch", "Mexikanisch", "Vegan", "Kinder", "Vorrat");
+        "Asiatisch", "Italienisch", "Indisch", "Orientalisch", "Mexikanisch", "Vegan");
+
+    // Sagt beim Stöbern nichts aus oder doppelt die Badges; die KI vergibt sie trotz Anweisung gelegentlich
+    private static final List<String> NOT_SUGGESTED = List.of("vegetarisch", "hauptgericht", "schnell", "gesund");
 
     private static final Map<String, String> CANONICAL = new LinkedHashMap<>();
 
@@ -51,7 +54,7 @@ public final class RecipeTags {
         if (tags == null || !tags.isArray()) return new ArrayList<>();
         List<String> raw = new ArrayList<>();
         for (JsonNode tag : tags) {
-            if (tag.isTextual()) raw.add(tag.asText());
+            if (tag.isTextual() && !NOT_SUGGESTED.contains(key(tag.asText().trim()))) raw.add(tag.asText());
         }
         List<String> normalized = normalize(raw);
         return new ArrayList<>(normalized.subList(0, Math.min(limit, normalized.size())));
