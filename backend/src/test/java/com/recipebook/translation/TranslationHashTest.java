@@ -61,4 +61,26 @@ class TranslationHashTest {
         other.setLanguage("en");
         assertEquals(base, TranslationHash.of(other));
     }
+
+    @Test
+    void groupNamesChangeTheHash() {
+        Recipe grouped = recipe();
+        grouped.getIngredients().get(1).setGroupName("Dressing");
+        Recipe renamed = recipe();
+        renamed.getIngredients().get(1).setGroupName("For the dressing");
+        Recipe moved = recipe();
+        moved.getIngredients().get(0).setGroupName("Dressing");
+
+        String base = TranslationHash.of(recipe());
+        String hash = TranslationHash.of(grouped);
+        assertNotEquals(base, hash);
+        assertNotEquals(hash, TranslationHash.of(renamed));
+        assertNotEquals(hash, TranslationHash.of(moved));
+    }
+
+    @Test
+    void recipesWithoutGroupsKeepTheirHash() {
+        // Wert vor Einführung der Gruppen: gespeicherte Übersetzungen ohne Gruppen bleiben gültig
+        assertEquals("b2ab0352011f43144f66075c39cf0bcf2ca67492bffe132fe692fa73512ef271", TranslationHash.of(recipe()));
+    }
 }

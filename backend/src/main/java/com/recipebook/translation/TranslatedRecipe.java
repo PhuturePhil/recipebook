@@ -25,7 +25,10 @@ public record TranslatedRecipe(
     public static final String ORIGINAL = "original";
     public static final String UNAVAILABLE = "unavailable";
 
-    public record Line(String amount, String unit, String name) {
+    public record Line(String amount, String unit, String name, String group) {
+        public Line(String amount, String unit, String name) {
+            this(amount, unit, name, null);
+        }
     }
 
     public boolean translated() {
@@ -34,7 +37,7 @@ public record TranslatedRecipe(
 
     public static TranslatedRecipe original(Recipe recipe, String status) {
         List<Line> lines = recipe.getIngredients() == null ? List.of() : recipe.getIngredients().stream()
-            .map(i -> new Line(i.getAmount(), i.getUnit(), i.getName())).toList();
+            .map(i -> new Line(i.getAmount(), i.getUnit(), i.getName(), i.getGroupName())).toList();
         List<String> steps = recipe.getInstructions() == null ? List.of() : List.copyOf(recipe.getInstructions());
         String language = recipe.getLanguage() == null ? RecipeLanguage.GERMAN : recipe.getLanguage();
         return new TranslatedRecipe(recipe.getId(), language, language, status, recipe.getTitle(),

@@ -93,6 +93,10 @@ public final class RecipeValidator {
             if (ingredient.getUnit() != null && ingredient.getUnit().trim().length() > MAX_TEXT) {
                 errors.add(error(field + ".unit", row + ": Die Einheit ist zu lang."));
             }
+            if (ingredient.getGroupName() != null && ingredient.getGroupName().length() > Ingredient.MAX_GROUP_NAME) {
+                errors.add(error(field + ".groupName",
+                    row + ": Der Gruppenname darf höchstens " + Ingredient.MAX_GROUP_NAME + " Zeichen lang sein."));
+            }
         }
         if (kept.size() > MAX_INGREDIENTS) {
             errors.add(error("ingredients", "Ein Rezept kann höchstens " + MAX_INGREDIENTS + " Zutaten haben."));

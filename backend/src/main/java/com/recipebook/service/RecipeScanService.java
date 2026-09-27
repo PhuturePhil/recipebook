@@ -61,7 +61,7 @@ public class RecipeScanService {
         "servingsTo": null,
         "prepTimeMinutes": null,
         "ingredients": [
-          {"name": "Zutat", "amount": "200", "unit": "g"}
+          {"name": "Zutat", "amount": "200", "unit": "g", "group": null}
         ],
         "instructions": [
           "Schritt 1",
@@ -76,6 +76,9 @@ public class RecipeScanService {
       - Behalte die Originalsprache des Rezepts bei
       - Uebernimm Texte IMMER woertlich, fasse niemals zusammen
       - Falls Mengenangaben fehlen, lasse amount und unit leer
+      - Ist die Zutatenliste in der Vorlage in Gruppen mit eigener Ueberschrift unterteilt (z.B. "Fuer die Salsa:", "Teig", "Dressing"),
+        trage die Ueberschrift ohne Doppelpunkt als group bei jeder Zutat dieser Gruppe ein, in der Reihenfolge der Vorlage.
+        Die Ueberschrift selbst ist KEINE Zutat. Ohne Gruppen in der Vorlage bleibt group bei allen Zutaten null
       - Falls baseServings nicht erkennbar, setze 4
       - servingsTo ist die obere Grenze der Personenanzahl, falls angegeben (z.B. "4-6 Personen" -> baseServings=4, servingsTo=6), sonst null
       - prepTimeMinutes ist die Zubereitungszeit in Minuten als ganze Zahl, sonst null. Stunden in Minuten umrechnen (z.B. 1,5 Stunden = 90)

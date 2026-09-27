@@ -6,7 +6,9 @@ import com.recipebook.translation.TranslatedRecipe.Line;
 import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Prüft die KI-Antwort streng gegen das Original (gleich viele Zutaten und Schritte, Titel und Namen vorhanden) und
@@ -38,13 +40,15 @@ public final class TranslationParser {
                 + " statt " + originalIngredients.size());
         }
         List<Line> lines = new ArrayList<>();
+        Map<String, String> groups = new HashMap<>();
         for (int i = 0; i < originalIngredients.size(); i++) {
             JsonNode row = ingredients.get(i);
             String name = text(row.path("name"));
             if (name == null || name.isBlank()) throw new InvalidTranslationException("Zutat " + (i + 1) + " ohne Namen");
             UnitConverter.Quantity q = UnitConverter.ingredient(blankToNull(text(row.path("amount"))),
                 blankToNull(text(row.path("unit"))));
-            lines.add(new Line(q.amount(), q.unit(), name.trim()));
+            lines.add(new Line(q.amount(), q.unit(), name.trim(),
+                group(originalIngredients.get(i).getGroupName(), blankToNull(text(row.path("group"))), groups)));
         }
 
         List<String> originalSteps = original.getInstructions() == null ? List.of() : original.getInstructions();
@@ -63,6 +67,13 @@ public final class TranslationParser {
         String description = blankToNull(text(json.path("description")));
         return new Parsed(title.trim(), description == null ? null : UnitConverter.text(description.trim()), lines,
             instructions);
+    }
+
+    // Eine Gruppe des Originals bekommt überall denselben übersetzten Namen, sonst zerfiele sie in der Anzeige.
+    // Fehlt die Übersetzung, bleibt der Originalname stehen.
+    private static String group(String original, String translated, Map<String, String> groups) {
+        if (original == null) return null;
+        return groups.computeIfAbsent(original, o -> translated == null ? o : translated);
     }
 
     private static String text(JsonNode node) {

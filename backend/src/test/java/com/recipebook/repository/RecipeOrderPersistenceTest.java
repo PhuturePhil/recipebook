@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -145,5 +146,35 @@ class RecipeOrderPersistenceTest {
         Recipe saved = recipeService.save(update, null);
         assertEquals(loaded.getCreatedAt(), saved.getCreatedAt());
         assertEquals(loaded.getCreatedAt(), reload(loaded.getId()).getCreatedAt());
+    }
+
+    @Test
+    void groupNamesAreStoredWithTheRowsAndFollowAMove() {
+        Recipe loaded = createRecipe();
+        List<Long> ids = loaded.getIngredients().stream().map(Ingredient::getId).toList();
+        Ingredient a = ingredient(ids.get(0), "Aaa");
+        Ingredient b = ingredient(ids.get(1), "Bbb");
+        Ingredient c = ingredient(ids.get(2), "Ccc");
+        b.setGroupName(" Salsa ");
+        c.setGroupName("Salsa");
+        recipeService.save(asSentByForm(loaded, List.of(a, b, c), loaded.getInstructions()), null);
+
+        Recipe grouped = reload(loaded.getId());
+        assertEquals(Arrays.asList(null, "Salsa", "Salsa"), groups(grouped));
+
+        Ingredient movedC = ingredient(ids.get(2), "Ccc");
+        movedC.setGroupName("Salsa");
+        Ingredient movedB = ingredient(ids.get(1), "Bbb");
+        movedB.setGroupName("");
+        recipeService.save(asSentByForm(grouped, List.of(movedC, ingredient(ids.get(0), "Aaa"), movedB),
+            grouped.getInstructions()), null);
+
+        Recipe reloaded = reload(loaded.getId());
+        assertEquals(List.of("Ccc", "Aaa", "Bbb"), names(reloaded));
+        assertEquals(Arrays.asList("Salsa", null, null), groups(reloaded));
+    }
+
+    private static List<String> groups(Recipe recipe) {
+        return recipe.getIngredients().stream().map(Ingredient::getGroupName).toList();
     }
 }

@@ -187,4 +187,43 @@ class RecipeValidatorTest {
         Recipe unset = recipe("Dal");
         RecipeValidator.validate(unset);
     }
+
+    @Test
+    void groupNameIsTrimmedAndBlankMeansNoGroup() {
+        Recipe r = recipe("Quesadillas");
+        Ingredient salsa = new Ingredient("Tomaten", "2", "Stück");
+        salsa.setGroupName("  Salsa ");
+        Ingredient none = new Ingredient("Salz", "", "");
+        none.setGroupName("   ");
+        r.setIngredients(new ArrayList<>(List.of(salsa, none)));
+
+        RecipeValidator.validate(r);
+
+        assertEquals("Salsa", r.getIngredients().get(0).getGroupName());
+        assertNull(r.getIngredients().get(1).getGroupName());
+    }
+
+    @Test
+    void rejectsOverlongGroupName() {
+        Recipe r = recipe("Quesadillas");
+        r.getIngredients().get(0).setGroupName("x".repeat(Ingredient.MAX_GROUP_NAME + 1));
+
+        RecipeValidationException ex = invalid(r);
+
+        assertEquals(List.of("ingredients[0].groupName"), fields(ex));
+        r.getIngredients().get(0).setGroupName("x".repeat(Ingredient.MAX_GROUP_NAME));
+        RecipeValidator.validate(r);
+    }
+
+    @Test
+    void rowWithOnlyAGroupNameCountsAsEmpty() {
+        Recipe r = recipe("Quesadillas");
+        Ingredient onlyGroup = new Ingredient("", "", "");
+        onlyGroup.setGroupName("Salsa");
+        r.setIngredients(new ArrayList<>(List.of(new Ingredient("Tortillas", "8", "Stück"), onlyGroup)));
+
+        RecipeValidator.validate(r);
+
+        assertEquals(1, r.getIngredients().size());
+    }
 }

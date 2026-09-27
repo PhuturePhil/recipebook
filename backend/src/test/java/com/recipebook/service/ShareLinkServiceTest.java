@@ -343,4 +343,18 @@ class ShareLinkServiceTest {
         assertEquals("original", result.getTranslationStatus());
         verifyNoInteractions(translationService);
     }
+
+    @Test
+    void getSharedRecipe_shouldExposeIngredientGroups() {
+        Ingredient salsa = new Ingredient("Tomaten", "2", "Stück");
+        salsa.setGroupName("Salsa");
+        recipe.setIngredients(List.of(new Ingredient("Tortillas", "8", "Stück"), salsa));
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        SharedRecipeDto result = shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm");
+
+        assertNull(result.getIngredients().get(0).groupName());
+        assertEquals("Salsa", result.getIngredients().get(1).groupName());
+    }
 }

@@ -48,9 +48,9 @@ public class RecipeTranslationService {
 
     static final String PROMPT = """
         Du übersetzt englische Rezepte für ein deutsches Familienkochbuch ins Deutsche.
-        Eingabe: JSON mit title, description, ingredients (Liste mit amount, unit, name) und instructions (Liste).
+        Eingabe: JSON mit title, description, ingredients (Liste mit amount, unit, name und optional group) und instructions (Liste).
         Antworte NUR mit einem JSON-Objekt:
-        {"title": "...", "description": "...", "ingredients": [{"amount": "...", "unit": "...", "name": "..."}], "instructions": ["..."]}
+        {"title": "...", "description": "...", "ingredients": [{"amount": "...", "unit": "...", "name": "...", "group": "..."}], "instructions": ["..."]}
         Regeln:
         - Genau so viele Zutaten und Schritte wie im Original, in derselben Reihenfolge. Nichts zusammenfassen, nichts weglassen, nichts ergänzen.
         - amount: die Zahl aus dem Original unverändert übernehmen (auch Brüche wie 1/2 oder Spannen wie 2-3), leer lassen, wenn sie leer ist.
@@ -60,6 +60,8 @@ public class RecipeTranslationService {
         - name: der im deutschen Kochbuch übliche Zutatenname, das Lebensmittel zuerst und Zusätze nach einem Komma,
           z. B. "finely chopped onion" → "Zwiebel, fein gehackt", "tin chopped tomatoes" → "Tomaten, gehackt (Dose)".
           Deutsche Standardbegriffe verwenden (runner beans → Stangenbohnen, butter beans → Butterbohnen, soured cream → saure Sahne).
+        - group: Überschrift der Zutatengruppe (z. B. "For the dressing" → "Für das Dressing", "Salsa" → "Salsa") übersetzen;
+          gleiche Gruppe immer gleich übersetzen. Fehlt group im Original, group weglassen.
         - instructions und description: natürliches Deutsch im Kochbuchstil (Infinitiv, z. B. "Die Zwiebel fein hacken.").
           Temperaturen in °F und Längen in inch als Zahl mit Einheit stehen lassen (z. B. "350 °F", "1 inch") – die App rechnet sie um.
           Mengen, die schon metrisch sind, unverändert übernehmen.
@@ -245,10 +247,11 @@ public class RecipeTranslationService {
         ArrayNode ingredients = p.putArray("ingredients");
         if (recipe.getIngredients() != null) {
             for (Ingredient i : recipe.getIngredients()) {
-                ingredients.addObject()
+                ObjectNode row = ingredients.addObject()
                     .put("amount", i.getAmount() == null ? "" : i.getAmount())
                     .put("unit", i.getUnit() == null ? "" : i.getUnit())
                     .put("name", i.getName() == null ? "" : i.getName());
+                if (i.getGroupName() != null) row.put("group", i.getGroupName());
             }
         }
         ArrayNode steps = p.putArray("instructions");

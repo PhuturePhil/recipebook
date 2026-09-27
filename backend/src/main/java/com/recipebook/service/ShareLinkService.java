@@ -116,7 +116,7 @@ public class ShareLinkService {
 
     private SharedRecipeDto toSharedRecipe(Recipe recipe, TranslatedRecipe content) {
         List<SharedIngredientDto> ingredients = content.ingredients().stream()
-                .map(i -> new SharedIngredientDto(i.name(), i.amount(), i.unit()))
+                .map(i -> new SharedIngredientDto(i.name(), i.amount(), i.unit(), i.group()))
                 .toList();
         List<String> instructions = new ArrayList<>(content.instructions());
         String source = recipe.getSource();

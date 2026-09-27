@@ -233,6 +233,36 @@ class RecipeControllerTest {
     }
 
     @Test
+    void createRecipe_passesIngredientGroupsThroughTrimmed() throws Exception {
+        when(recipeService.saveForUser(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Quesadillas\",\"ingredients\":["
+                                + "{\"name\":\"Tortillas\",\"amount\":\"8\",\"unit\":\"Stück\",\"groupName\":\" Quesadillas \"},"
+                                + "{\"name\":\"Tomaten\",\"amount\":\"2\",\"unit\":\"Stück\",\"groupName\":\"Salsa\"},"
+                                + "{\"name\":\"Salz\",\"groupName\":\"\"}]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ingredients[0].groupName").value("Quesadillas"))
+                .andExpect(jsonPath("$.ingredients[1].groupName").value("Salsa"))
+                .andExpect(jsonPath("$.ingredients[2].groupName").doesNotExist());
+    }
+
+    @Test
+    void createRecipe_withOverlongGroupNameIsRejected() throws Exception {
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\",\"ingredients\":[{\"name\":\"Linsen\",\"groupName\":\""
+                                + "x".repeat(101) + "\"}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("ingredients[0].groupName"));
+
+        verify(recipeService, never()).saveForUser(any(), any());
+    }
+
+    @Test
     void createRecipe_withZeroServingsIsRejected() throws Exception {
         mockMvc.perform(post("/api/recipes")
                         .with(user(principal(5, Role.USER)))

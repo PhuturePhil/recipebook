@@ -10,7 +10,7 @@ import java.util.HexFormat;
 import java.util.List;
 
 /**
- * SHA-256 über alle übersetzten Felder des Originals (Titel, Beschreibung, Zutaten in Reihenfolge, Schritte) plus
+ * SHA-256 über alle übersetzten Felder des Originals (Titel, Beschreibung, Zutaten samt Gruppe in Reihenfolge, Schritte) plus
  * Übersetzungsversion. Weicht der gespeicherte Hash ab, ist die Übersetzung veraltet und wird neu erzeugt.
  */
 public final class TranslationHash {
@@ -31,6 +31,11 @@ public final class TranslationHash {
             field(sb, i.getAmount());
             field(sb, i.getUnit());
             field(sb, i.getName());
+            // Nur Zutaten mit Gruppe tragen sie bei, damit Übersetzungen von Rezepten ohne Gruppen gültig bleiben
+            if (i.getGroupName() != null) {
+                sb.append("|g");
+                field(sb, i.getGroupName());
+            }
         }
         List<String> steps = recipe.getInstructions() == null ? List.of() : recipe.getInstructions();
         sb.append("|s").append(steps.size());

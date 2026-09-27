@@ -51,5 +51,9 @@ public class SharedRecipeDto {
   public List<String> getTags() { return tags; }
   public void setTags(List<String> tags) { this.tags = tags == null ? List.of() : List.copyOf(tags); }
 
-  public record SharedIngredientDto(String name, String amount, String unit) {}
+  public record SharedIngredientDto(String name, String amount, String unit, String groupName) {
+    public SharedIngredientDto(String name, String amount, String unit) {
+      this(name, amount, unit, null);
+    }
+  }
 }

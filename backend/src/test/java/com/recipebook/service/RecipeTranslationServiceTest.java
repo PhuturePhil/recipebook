@@ -297,4 +297,60 @@ class RecipeTranslationServiceTest {
             @Override public String getIngredients() { return ingredients; }
         };
     }
+
+    @Test
+    void groupNamesAreSentTranslatedAndKeptConsistent() throws Exception {
+        recipe.getIngredients().get(1).setGroupName("For the dressing");
+        recipe.getIngredients().get(2).setGroupName("For the dressing");
+        aiAnswers("""
+            {"title": "Türkische grüne Bohnen", "description": "",
+             "ingredients": [
+               {"amount": "400", "unit": "g", "name": "Stangenbohnen", "group": "Bohnen"},
+               {"amount": "1", "unit": "cup", "name": "Olivenöl", "group": "Für das Dressing"},
+               {"amount": "2", "unit": "tablespoons", "name": "Rotweinessig", "group": "Dressing"}],
+             "instructions": ["Vorheizen.", "Garen."]}
+            """);
+
+        TranslatedRecipe result = service.translate(recipe, "de");
+
+        assertEquals(java.util.Arrays.asList(null, "Für das Dressing", "Für das Dressing"),
+            result.ingredients().stream().map(TranslatedRecipe.Line::group).toList());
+        var payload = org.mockito.ArgumentCaptor.forClass(tools.jackson.databind.node.ObjectNode.class);
+        verify(ai).complete(anyString(), anyString(), payload.capture(), anyInt(), any(Duration.class));
+        assertTrue(payload.getValue().path("ingredients").get(0).path("group").isMissingNode());
+        assertEquals("For the dressing", payload.getValue().path("ingredients").get(1).path("group").asText());
+        assertTrue(row.get().getIngredients().contains("\"group\":\"Für das Dressing\""));
+        assertEquals(result.ingredients(), service.translate(recipe, "de").ingredients(), "gespeicherte Gruppen");
+    }
+
+    @Test
+    void missingGroupTranslationKeepsTheOriginalGroupName() throws Exception {
+        recipe.getIngredients().get(2).setGroupName("Dressing");
+        aiAnswers(ANSWER);
+
+        TranslatedRecipe result = service.translate(recipe, "de");
+
+        assertEquals("Dressing", result.ingredients().get(2).group());
+        assertNull(result.ingredients().get(0).group());
+    }
+
+    @Test
+    void storedTranslationsWithoutGroupFieldStayReadable() throws Exception {
+        aiAnswers(ANSWER);
+        service.translate(recipe, "de");
+        row.get().setIngredients("[{\"amount\":\"400\",\"unit\":\"g\",\"name\":\"Stangenbohnen\"}]");
+
+        TranslatedRecipe again = service.translate(recipe, "de");
+
+        assertEquals(List.of(new TranslatedRecipe.Line("400", "g", "Stangenbohnen")), again.ingredients());
+    }
+
+    @Test
+    void changedGroupMakesTheTranslationStale() throws Exception {
+        aiAnswers(ANSWER);
+        service.translate(recipe, "de");
+        recipe.getIngredients().get(0).setGroupName("Beans");
+
+        assertTrue(service.current(recipe, "de").isEmpty());
+    }
 }

@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "ingredients")
 public class Ingredient {
+
+    public static final int MAX_GROUP_NAME = 100;
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,7 +24,10 @@ public class Ingredient {
     private String amount;
     
     private String unit;
-    
+
+    @Column(name = "group_name", length = MAX_GROUP_NAME)
+    private String groupName;
+
     public Ingredient() {}
     
     public Ingredient(String name, String amount, String unit) {
@@ -69,5 +74,13 @@ public class Ingredient {
     
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName == null || groupName.isBlank() ? null : groupName.trim();
     }
 }
