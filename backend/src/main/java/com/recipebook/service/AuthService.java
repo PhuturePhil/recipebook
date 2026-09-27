@@ -41,6 +41,8 @@ public class AuthService {
     static final int RESET_MAIL_LIMIT_PER_ACCOUNT = 3;
     private static final Duration LOGIN_WINDOW = Duration.ofMinutes(1);
     private static final Duration RESET_MAIL_WINDOW = Duration.ofMinutes(15);
+    static final String SSO_ONLY_MESSAGE =
+            "Dein Konto ist mit pastoors.cloud verknüpft. Bitte mit pastoors.cloud anmelden.";
 
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
@@ -57,6 +59,12 @@ public class AuthService {
 
     @Value("${spring.mail.username:}")
     private String mailFrom;
+
+    @Value("${app.oidc.enabled:false}")
+    private boolean oidcEnabled;
+
+    @Value("${app.auth.password-login-for-sso-users:false}")
+    private boolean passwordLoginForSsoUsers;
 
     public AuthService(
             UserRepository userRepository,
@@ -84,6 +92,9 @@ public class AuthService {
         if (!rateLimiter.tryAcquire("login:" + normalize(email), LOGIN_LIMIT_PER_ACCOUNT, LOGIN_WINDOW)) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "Zu viele Anmeldeversuche fuer dieses Konto. Bitte warte eine Minute.");
+        }
+        if (email != null && userRepository.findByEmailIgnoreCase(email.trim()).filter(this::isSsoOnly).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, SSO_ONLY_MESSAGE);
         }
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
@@ -259,7 +270,7 @@ public class AuthService {
             return;
         }
         User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null) {
+        if (user == null || isSsoOnly(user)) {
             return;
         }
 
@@ -278,11 +289,18 @@ public class AuthService {
         }
 
         User user = resetToken.getUser();
+        if (isSsoOnly(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, SSO_ONLY_MESSAGE);
+        }
         changePassword(user, newPassword);
         userRepository.save(user);
 
         resetToken.setUsed(true);
         tokenRepository.save(resetToken);
+    }
+
+    boolean isSsoOnly(User user) {
+        return oidcEnabled && !passwordLoginForSsoUsers && user.getOidcSubject() != null;
     }
 
     private void changePassword(User user, String newPassword) {

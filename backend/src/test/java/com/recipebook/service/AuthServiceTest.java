@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -205,5 +206,80 @@ class AuthServiceTest {
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, ex.getStatusCode());
         verify(authenticationManager, times(AuthService.LOGIN_LIMIT_PER_ACCOUNT)).authenticate(any());
+    }
+
+    private void linkWithSso(boolean passwordLoginForSsoUsers) {
+        ReflectionTestUtils.setField(authService, "oidcEnabled", true);
+        ReflectionTestUtils.setField(authService, "passwordLoginForSsoUsers", passwordLoginForSsoUsers);
+        user.setOidcSubject("sub-anna");
+    }
+
+    @Test
+    void login_shouldRejectSsoLinkedUserWithHint() {
+        linkWithSso(false);
+        when(userRepository.findByEmailIgnoreCase("Anna@test.de")).thenReturn(Optional.of(user));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> authService.login(" Anna@test.de ", "pw"));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertEquals(AuthService.SSO_ONLY_MESSAGE, ex.getReason());
+        verifyNoInteractions(authenticationManager, jwtService);
+    }
+
+    @Test
+    void login_shouldAllowSsoLinkedUserWhenEmergencySwitchIsOn() {
+        linkWithSso(true);
+        when(userRepository.findByEmailIgnoreCase("anna@test.de")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("anna@test.de")).thenReturn(Optional.of(user));
+        when(jwtService.generateToken(any())).thenReturn("jwt");
+
+        assertEquals("jwt", authService.login("anna@test.de", "pw").token());
+        verify(authenticationManager).authenticate(any());
+    }
+
+    @Test
+    void login_shouldAllowSsoLinkedUserWhenOidcIsDisabled() {
+        user.setOidcSubject("sub-anna");
+        when(userRepository.findByEmail("anna@test.de")).thenReturn(Optional.of(user));
+        when(jwtService.generateToken(any())).thenReturn("jwt");
+
+        assertEquals("jwt", authService.login("anna@test.de", "pw").token());
+    }
+
+    @Test
+    void login_shouldKeepPasswordLoginForUnlinkedUser() {
+        ReflectionTestUtils.setField(authService, "oidcEnabled", true);
+        when(userRepository.findByEmailIgnoreCase("anna@test.de")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("anna@test.de")).thenReturn(Optional.of(user));
+        when(jwtService.generateToken(any())).thenReturn("jwt");
+
+        assertEquals("jwt", authService.login("anna@test.de", "pw").token());
+        verify(authenticationManager).authenticate(any());
+    }
+
+    @Test
+    void requestPasswordReset_shouldNotSendMailToSsoLinkedUser() {
+        linkWithSso(false);
+        when(userRepository.findByEmail("anna@test.de")).thenReturn(Optional.of(user));
+
+        authService.requestPasswordReset("anna@test.de");
+
+        verifyNoInteractions(mailSender);
+        verify(tokenRepository, never()).save(any());
+    }
+
+    @Test
+    void resetPassword_shouldRejectSsoLinkedUser() {
+        linkWithSso(false);
+        PasswordResetToken token = new PasswordResetToken("tok", user, LocalDateTime.now().plusHours(1));
+        when(tokenRepository.findByToken("tok")).thenReturn(Optional.of(token));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> authService.resetPassword("tok", "12345678"));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertFalse(token.isUsed());
+        verify(userRepository, never()).save(any());
     }
 }

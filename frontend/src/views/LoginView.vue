@@ -8,10 +8,11 @@
 
       <template v-if="oidcEnabled">
         <a :href="oidcLoginUrl" class="oidc-button">Mit pastoors.cloud anmelden</a>
-        <div class="divider"><span>oder mit E-Mail und Passwort</span></div>
+        <p class="oidc-hint">Für die Familie – ein Login für alles auf pastoors.cloud.</p>
+        <div class="divider"><span>Anmelden mit E-Mail</span></div>
       </template>
       
-      <form @submit.prevent="handleLogin">
+      <form @submit.prevent="handleLogin" :class="{ 'email-login-secondary': oidcEnabled }">
         
         <div class="form-group">
           <label for="email">E-Mail</label>
@@ -49,6 +50,9 @@
       <div class="modal-content">
         <h3>Passwort zurücksetzen</h3>
         <p>Geben Sie Ihre E-Mail ein, um einen Reset-Link zu erhalten.</p>
+        <p v-if="oidcEnabled" class="reset-sso-hint">
+          Wer sich mit pastoors.cloud anmeldet, braucht hier kein Passwort – bitte oben „Mit pastoors.cloud anmelden“ nutzen.
+        </p>
         
         <form @submit.prevent="handlePasswordReset">
           <div class="form-group">
@@ -138,6 +142,10 @@ async function handleLogin() {
     router.push(redirectTarget())
   } else {
     error.value = authStore.error || 'Anmeldung fehlgeschlagen'
+    if (authStore.error && authStore.error.includes('pastoors.cloud')) {
+      password.value = ''
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
   
   loading.value = false
@@ -238,14 +246,54 @@ button:disabled {
 .oidc-button {
   display: block;
   width: 100%;
-  padding: 12px;
+  padding: 16px 12px;
   background: #2c3e50;
   color: white;
-  border-radius: 4px;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 600;
   text-align: center;
   text-decoration: none;
   transition: background 0.2s;
+}
+
+.oidc-hint {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.email-login-secondary .form-group {
+  margin-bottom: 12px;
+}
+
+.email-login-secondary label {
+  font-size: 0.85rem;
+}
+
+.email-login-secondary input {
+  padding: 9px;
+  font-size: 0.95rem;
+}
+
+.email-login-secondary button {
+  padding: 9px;
+  font-size: 0.95rem;
+  background: white;
+  color: #2d3748;
+  border: 1px solid #4a5568;
+}
+
+.email-login-secondary button:hover:not(:disabled) {
+  background: #edf2f7;
+}
+
+.reset-sso-hint {
+  font-size: 0.85rem;
+  background: #edf2f7;
+  padding: 8px 10px;
+  border-radius: 4px;
 }
 
 .oidc-button:hover {

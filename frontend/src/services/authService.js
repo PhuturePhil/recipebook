@@ -33,7 +33,8 @@ class AuthService {
       })
       if (!response.ok) {
         const fallback = 'E-Mail-Adresse oder Passwort ist falsch.'
-        throw new Error(response.status === 429 ? await parseError(response, fallback) : fallback)
+        const useServerMessage = response.status === 429 || response.status === 403
+        throw new Error(useServerMessage ? await parseError(response, fallback) : fallback)
       }
       const data = await response.json()
       this.setToken(data.token)

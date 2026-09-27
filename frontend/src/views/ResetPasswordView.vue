@@ -77,7 +77,9 @@ async function handleSubmit() {
     await authService.resetPassword(token.value, password.value)
     success.value = true
   } catch (err) {
-    error.value = 'Fehler beim Zurücksetzen des Passworts. Der Link ist möglicherweise abgelaufen.'
+    error.value = err.message?.includes('pastoors.cloud')
+      ? err.message
+      : 'Fehler beim Zurücksetzen des Passworts. Der Link ist möglicherweise abgelaufen.'
   } finally {
     loading.value = false
   }
