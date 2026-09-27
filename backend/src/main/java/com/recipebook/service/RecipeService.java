@@ -12,6 +12,7 @@ import com.recipebook.model.User;
 import com.recipebook.nutrition.RecipeNutrition;
 import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.RecipeRepository.RecipeSummaryProjection;
+import com.recipebook.repository.RecipeRepository.StoredIngredient;
 import com.recipebook.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -70,10 +71,6 @@ public class RecipeService {
         return recipeRepository.findDistinctSourceAuthorPairs();
     }
 
-    public List<String> findDistinctUnits() {
-        return recipeRepository.findDistinctUnits();
-    }
-
     public List<Recipe> findAll() {
         return recipeRepository.findAll();
     }
@@ -92,11 +89,17 @@ public class RecipeService {
         if (!exists) {
             recipe.setId(null);
         }
-        Set<Long> ownIngredientIds = exists ? Set.copyOf(recipeRepository.findIngredientIds(recipe.getId())) : Set.of();
+        Map<Long, StoredIngredient> stored = exists
+            ? recipeRepository.findIngredientRows(recipe.getId()).stream()
+                .collect(Collectors.toMap(StoredIngredient::getId, Function.identity()))
+            : Map.of();
         if (recipe.getIngredients() != null) {
             for (Ingredient ingredient : recipe.getIngredients()) {
-                if (ingredient.getId() != null && !ownIngredientIds.contains(ingredient.getId())) {
+                if (ingredient.getId() != null && !stored.containsKey(ingredient.getId())) {
                     ingredient.setId(null);
+                }
+                if (ingredient.getId() == null || !unchanged(ingredient, stored.get(ingredient.getId()))) {
+                    ingredient.setUnit(IngredientUnits.normalize(ingredient.getUnit()));
                 }
                 ingredient.setRecipe(recipe);
             }
@@ -109,6 +112,17 @@ public class RecipeService {
         return recipeRepository.save(recipe);
     }
     
+    // Rows saved again without an edit keep their unit as stored; only new or edited rows get the unified spelling
+    private static boolean unchanged(Ingredient ingredient, StoredIngredient stored) {
+        return sameText(ingredient.getName(), stored.getName())
+            && sameText(ingredient.getAmount(), stored.getAmount())
+            && sameText(ingredient.getUnit(), stored.getUnit());
+    }
+
+    private static boolean sameText(String a, String b) {
+        return Objects.equals(a == null ? "" : a.trim(), b == null ? "" : b.trim());
+    }
+
     private ImageCredit keptImageCredit(Recipe recipe) {
         String storedImage = recipeRepository.findImageUrl(recipe.getId()).orElse(null);
         if (Objects.equals(storedImage, recipe.getImageUrl())) {

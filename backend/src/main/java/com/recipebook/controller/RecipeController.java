@@ -6,6 +6,7 @@ import com.recipebook.dto.SourceAuthorDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
+import com.recipebook.service.IngredientUnits;
 import com.recipebook.service.RecipeService;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -48,7 +49,7 @@ public class RecipeController {
 
     @GetMapping("/units")
     public List<String> getUnits() {
-        return recipeService.findDistinctUnits();
+        return IngredientUnits.SUGGESTED;
     }
 
     @GetMapping("/{id}/image")

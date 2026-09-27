@@ -14,8 +14,15 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
   long countByUser_Id(Long userId);
 
-  @Query("SELECT i.id FROM Ingredient i WHERE i.recipe.id = :recipeId")
-  List<Long> findIngredientIds(@Param("recipeId") Long recipeId);
+  interface StoredIngredient {
+    Long getId();
+    String getAmount();
+    String getUnit();
+    String getName();
+  }
+
+  @Query("SELECT i.id AS id, i.amount AS amount, i.unit AS unit, i.name AS name FROM Ingredient i WHERE i.recipe.id = :recipeId")
+  List<StoredIngredient> findIngredientRows(@Param("recipeId") Long recipeId);
 
   @Query("SELECT r.user FROM Recipe r WHERE r.id = :recipeId")
   Optional<User> findOwner(@Param("recipeId") Long recipeId);
@@ -56,9 +63,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       "FROM Recipe r WHERE r.source IS NOT NULL AND r.source <> '' " +
       "GROUP BY r.source, r.author ORDER BY r.source")
   List<SourceAuthorDto> findDistinctSourceAuthorPairs();
-
-  @Query("SELECT DISTINCT i.unit FROM Ingredient i WHERE i.unit IS NOT NULL AND i.unit <> '' ORDER BY i.unit")
-  List<String> findDistinctUnits();
 
   @Query("SELECT r.imageUrl FROM Recipe r WHERE r.id = :recipeId")
   Optional<String> findImageUrl(@Param("recipeId") Long recipeId);

@@ -300,7 +300,7 @@ class RecipeServiceTest {
         edited.setId(1L);
         edited.setTitle("Bearbeitet");
         when(recipeRepository.existsById(1L)).thenReturn(true);
-        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of());
+        when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of());
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -315,7 +315,7 @@ class RecipeServiceTest {
         edited.setId(1L);
         edited.setTitle("Ohne Besitzer");
         when(recipeRepository.existsById(1L)).thenReturn(true);
-        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of());
+        when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of());
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.empty());
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -342,7 +342,7 @@ class RecipeServiceTest {
         edited.setTitle("Bearbeitet");
         edited.setImageUrl(imageUrl);
         when(recipeRepository.existsById(1L)).thenReturn(true);
-        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of());
+        when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of());
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
         when(recipeRepository.findImageUrl(1L)).thenReturn(Optional.ofNullable(storedImageUrl));
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -390,7 +390,7 @@ class RecipeServiceTest {
         foreign.setId(777L);
         edited.setIngredients(List.of(own, foreign));
         when(recipeRepository.existsById(1L)).thenReturn(true);
-        when(recipeRepository.findIngredientIds(1L)).thenReturn(List.of(10L, 11L));
+        when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of(stored(10L, "1", "g", "a"), stored(11L, "1", "g", "b")));
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -400,5 +400,64 @@ class RecipeServiceTest {
         assertEquals(10L, result.getIngredients().get(0).getId());
         assertNull(result.getIngredients().get(1).getId());
         assertSame(result, result.getIngredients().get(1).getRecipe());
+    }
+
+    private record Stored(Long id, String amount, String unit, String name) implements RecipeRepository.StoredIngredient {
+        public Long getId() { return id; }
+        public String getAmount() { return amount; }
+        public String getUnit() { return unit; }
+        public String getName() { return name; }
+    }
+
+    private static RecipeRepository.StoredIngredient stored(Long id, String amount, String unit, String name) {
+        return new Stored(id, amount, unit, name);
+    }
+
+    private static Ingredient ingredient(Long id, String amount, String unit, String name) {
+        Ingredient i = new Ingredient(name, amount, unit);
+        i.setId(id);
+        return i;
+    }
+
+    @Test
+    void save_newRecipeGetsUnifiedUnits() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Neu");
+        recipe.setIngredients(new ArrayList<>(List.of(
+            ingredient(null, "2", "St", "Zwiebeln"),
+            ingredient(null, "1", "tablespoon", "Öl"),
+            ingredient(null, "1", "daumengroßes Stück", "Ingwer"),
+            ingredient(null, null, null, "Salz"))));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(recipe, testUser);
+
+        assertEquals(Arrays.asList("Stück", "EL", "daumengroßes Stück", null),
+            result.getIngredients().stream().map(Ingredient::getUnit).toList());
+        verify(recipeRepository, never()).findIngredientRows(any());
+    }
+
+    @Test
+    void save_updateKeepsUntouchedRowsAndUnifiesNewAndEditedOnes() {
+        Recipe edited = new Recipe();
+        edited.setId(1L);
+        edited.setTitle("Bearbeitet");
+        edited.setIngredients(new ArrayList<>(List.of(
+            ingredient(10L, "2", "St", "Zwiebeln"),
+            ingredient(11L, "3", "Teel.", "Kreuzkümmel"),
+            ingredient(12L, "1", "Dosen", "Kichererbsen"),
+            ingredient(null, "1", "Dosen", "Tomaten"))));
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of(
+            stored(10L, "2", "St", "Zwiebeln"),
+            stored(11L, "2", "Teel.", "Kreuzkümmel"),
+            stored(12L, "1", "Dosen", "Kichererbsen ")));
+        when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(edited, testUser);
+
+        assertEquals(List.of("St", "TL", "Dosen", "Dose"),
+            result.getIngredients().stream().map(Ingredient::getUnit).toList());
     }
 }

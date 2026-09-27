@@ -201,4 +201,13 @@ class RecipeControllerTest {
                 .andExpect(status().is4xxClientError());
         verify(recipeService, never()).findAll();
     }
+
+    @Test
+    void units_areTheCuratedList() throws Exception {
+        mockMvc.perform(get("/api/recipes/units").with(user(principal(5, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("g"))
+                .andExpect(jsonPath("$[7]").value("Stück"))
+                .andExpect(jsonPath("$.length()").value(18));
+    }
 }
