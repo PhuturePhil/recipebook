@@ -13,18 +13,14 @@
         />
         <span v-if="badges.length || inputValue" class="search-clear-all" @click="clearAll">&times;</span>
       </div>
-      <select
-        class="search-sort"
-        :class="{ 'search-sort--active': store.sortMode !== 'default' }"
-        :value="store.sortMode"
-        aria-label="Sortierung"
-        title="Sortierung"
-        @change="store.setSortMode($event.target.value)"
-      >
-        <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
-          {{ option.value === 'default' ? 'Sortieren' : option.label }}
-        </option>
-      </select>
+      <label class="search-sort" :class="{ 'search-sort--active': store.sortMode !== 'default' }" title="Sortierung">
+        <span aria-hidden="true">⇅{{ sortShort ? ` ${sortShort}` : '' }}</span>
+        <select :value="store.sortMode" aria-label="Sortierung" @change="store.setSortMode($event.target.value)">
+          <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+      </label>
     </div>
     <div v-if="badges.length" class="search-badges">
       <span v-for="(badge, index) in badges" :key="index" class="search-badge">
@@ -36,7 +32,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { SORT_OPTIONS } from '@/utils/recipeSearch'
 
@@ -44,6 +40,7 @@ const store = useRecipeStore()
 const badges = ref([])
 const inputValue = ref('')
 const LIVE_SEARCH_DELAY_MS = 200
+const sortShort = computed(() => SORT_OPTIONS.find((o) => o.value === store.sortMode)?.short ?? '')
 let liveSearchTimer = null
 
 onMounted(() => {
@@ -138,19 +135,32 @@ const clearAll = () => {
 }
 
 .search-sort {
+  position: relative;
   flex: 0 0 auto;
-  max-width: 9.5rem;
-  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 10px;
   border: 1px solid var(--color-border, #ddd);
   border-radius: 8px;
   background: var(--color-bg-card, #fff);
   color: var(--color-text-muted, #999);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.search-sort:focus {
-  outline: none;
+.search-sort select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.search-sort:focus-within {
   border-color: var(--color-primary, #4a5568);
 }
 

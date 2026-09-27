@@ -4,10 +4,10 @@ const TIME_REGEX = /^([<>])\s*(\d+)$/
 const EXCLUDE_PREFIX = /^(?:-\s*|ohne\s+)/i
 
 export const SORT_OPTIONS = [
-  { value: 'default', label: 'Standard' },
-  { value: 'newest', label: 'Neueste zuerst' },
-  { value: 'prepTime', label: 'Zubereitungszeit' },
-  { value: 'kcal', label: 'kcal pro Portion' },
+  { value: 'default', label: 'Standard', short: '' },
+  { value: 'newest', label: 'Neueste zuerst', short: 'Neu' },
+  { value: 'prepTime', label: 'Zubereitungszeit', short: 'Zeit' },
+  { value: 'kcal', label: 'kcal pro Portion', short: 'kcal' },
 ]
 
 export const normalizeText = (text) =>
