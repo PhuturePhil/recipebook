@@ -104,10 +104,14 @@
         </div>
 
         <ul v-if="activeTab === 'ingredients'" class="ingredients-list">
-          <li v-for="(ingredient, index) in scaledIngredients" :key="index">
-            <span class="ingredient-amount">{{ ingredient.amount }} {{ ingredient.unit }}</span>
-            <span class="ingredient-name">{{ ingredient.name }}</span>
-          </li>
+          <template v-for="(section, sIndex) in ingredientSections" :key="sIndex">
+            <li v-if="section.group" class="ingredient-group-title">{{ section.group }}</li>
+            <li v-else-if="sIndex > 0" class="ingredient-group-gap" aria-hidden="true"></li>
+            <li v-for="(ingredient, index) in section.items" :key="`${sIndex}-${index}`">
+              <span class="ingredient-amount">{{ ingredient.amount }} {{ ingredient.unit }}</span>
+              <span class="ingredient-name">{{ ingredient.name }}</span>
+            </li>
+          </template>
         </ul>
 
         <template v-if="activeTab === 'nutrition'">
@@ -167,6 +171,7 @@ import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { scaleIngredients } from '@/utils/scaleIngredients'
+import { groupSections } from '@/utils/ingredientGroups'
 import { tagSearchTerm } from '@/utils/recipeTags'
 import ShareModal from '@/components/ShareModal.vue'
 import NutritionPanel from '@/components/NutritionPanel.vue'
@@ -343,6 +348,8 @@ const decreaseServings = () => {
 const scaledIngredients = computed(() =>
   scaleIngredients(shown.value?.ingredients, recipe.value?.baseServings, currentServings.value)
 )
+
+const ingredientSections = computed(() => groupSections(scaledIngredients.value))
 
 const printRecipe = async () => {
   activeTab.value = 'ingredients'
@@ -696,6 +703,29 @@ const handleDelete = async () => {
 
 .ingredients-list li:last-child {
   border-bottom: none;
+}
+
+.ingredients-list li.ingredient-group-title {
+  display: block;
+  padding: 16px 0 6px;
+  font-weight: 700;
+  color: var(--color-text-primary, #333);
+  border-bottom: 1px solid var(--color-border, #ddd);
+  break-after: avoid;
+}
+
+.ingredients-list li.ingredient-group-title:first-child {
+  padding-top: 4px;
+}
+
+.ingredients-list li:has(+ .ingredient-group-title),
+.ingredients-list li:has(+ .ingredient-group-gap) {
+  border-bottom: none;
+}
+
+.ingredients-list li.ingredient-group-gap {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border, #ddd);
 }
 
 .ingredient-amount {

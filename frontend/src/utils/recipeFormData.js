@@ -1,22 +1,27 @@
+import { groupRow, isGroupRow, rowsToIngredients } from './ingredientGroups.js'
+
 export const emptyIngredient = () => ({ name: '', amount: '', unit: '' })
 
 const blank = (value) => !String(value ?? '').trim()
 
+// Group headings are never blank ingredient rows
 export const isBlankIngredient = (ingredient) =>
-  blank(ingredient?.name) && blank(ingredient?.amount) && blank(ingredient?.unit)
+  !isGroupRow(ingredient) && blank(ingredient?.name) && blank(ingredient?.amount) && blank(ingredient?.unit)
 
 export function cleanRecipeData(formData) {
   return {
     ...formData,
-    ingredients: formData.ingredients.filter((i) => !isBlankIngredient(i)),
+    ingredients: rowsToIngredients(formData.ingredients).filter((i) => !isBlankIngredient(i)),
     instructions: formData.instructions.filter((i) => !blank(i))
   }
 }
 
 export function isIngredientNameRequired(ingredients, index) {
   const ingredient = ingredients[index]
+  if (isGroupRow(ingredient)) return false
   if (!isBlankIngredient(ingredient)) return true
-  return ingredients.every(isBlankIngredient) && index === 0
+  const rows = ingredients.filter((row) => !isGroupRow(row))
+  return rows.every(isBlankIngredient) && ingredient === rows[0]
 }
 
 export function isInstructionRequired(instructions, index) {
@@ -30,6 +35,18 @@ export function addIngredientBelow(ingredients, index) {
   if (next < ingredients.length && isBlankIngredient(ingredients[next])) return next
   ingredients.splice(next, 0, emptyIngredient())
   return next
+}
+
+// "+ Gruppe": a new heading at the end with an empty row below it; an empty last row is reused for that.
+// Returns the index of the heading.
+export function addGroupRow(rows) {
+  const last = rows.length - 1
+  if (last >= 0 && isBlankIngredient(rows[last])) {
+    rows.splice(last, 0, groupRow())
+    return last
+  }
+  rows.push(groupRow(), emptyIngredient())
+  return rows.length - 2
 }
 
 // Moves a row one step up (-1) or down (+1); returns its new index, or -1 at the edge

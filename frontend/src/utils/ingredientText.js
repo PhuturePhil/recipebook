@@ -1,4 +1,5 @@
 import { emptyIngredient, isBlankIngredient } from './recipeFormData.js'
+import { groupAt, groupRow, isGroupRow, parseGroupHeading } from './ingredientGroups.js'
 
 // Unit spellings recognised when splitting a pasted line; mirrors the synonyms of UnitNormalizer in the backend.
 // The unit is kept as written, only recognised.
@@ -70,11 +71,21 @@ export function parseIngredientLine(line, extraUnits = []) {
   return { amount, unit: unit.replace(/[.:,]+$/, ''), name }
 }
 
+// Lines like "Salsa:", "### Salsa" or "**Salsa**" become group headings { group: 'Salsa' }; a list title
+// ("Zutaten:") is dropped
 export function parseIngredientText(text, extraUnits = []) {
-  return String(text ?? '')
-    .split(/\r?\n/)
-    .map((line) => parseIngredientLine(line, extraUnits))
-    .filter((ingredient) => !isBlankIngredient(ingredient))
+  const rows = []
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    const heading = parseGroupHeading(line.replace(BULLET, ''), (t) => AMOUNT.test(t))
+    if (heading === '') continue
+    if (heading !== null) {
+      rows.push(groupRow(heading))
+      continue
+    }
+    const ingredient = parseIngredientLine(line, extraUnits)
+    if (!isBlankIngredient(ingredient)) rows.push(ingredient)
+  }
+  return rows
 }
 
 export const ingredientToLine = (ingredient) =>
@@ -83,13 +94,25 @@ export const ingredientToLine = (ingredient) =>
     .filter(Boolean)
     .join(' ')
 
-export const ingredientsToText = (ingredients) =>
-  ingredients.filter((i) => !isBlankIngredient(i)).map(ingredientToLine).join('\n')
+// Group headings become "Salsa:" lines with an empty line above; a heading without name ("no group") stays a gap
+export function ingredientsToText(rows) {
+  const lines = []
+  for (const row of rows) {
+    if (isGroupRow(row)) {
+      if (lines.length) lines.push('')
+      if (row.group.trim()) lines.push(`${row.group.trim()}:`)
+    } else if (!isBlankIngredient(row)) {
+      lines.push(ingredientToLine(row))
+    }
+  }
+  return lines.join('\n').trim()
+}
 
 // Rows that come back unchanged from the text editor keep their original object (and id)
 export function ingredientsFromText(text, previous = [], extraUnits = []) {
-  const pool = previous.filter((i) => !isBlankIngredient(i))
+  const pool = previous.filter((i) => !isGroupRow(i) && !isBlankIngredient(i))
   const rows = parseIngredientText(text, extraUnits).map((parsed) => {
+    if (isGroupRow(parsed)) return parsed
     const line = ingredientToLine(parsed)
     const index = pool.findIndex((old) => ingredientToLine(old) === line)
     return index >= 0 ? { ...pool.splice(index, 1)[0] } : parsed
@@ -115,10 +138,11 @@ export function insertPastedIngredients(ingredients, index, text, extraUnits = [
     return index
   }
   if (!parsed.length) return -1
-  if (rowIsEmpty) {
-    ingredients.splice(index, 1, ...parsed)
-    return index + parsed.length - 1
-  }
-  ingredients.splice(index + 1, 0, ...parsed)
-  return index + parsed.length
+  const start = rowIsEmpty ? index : index + 1
+  const inserted = [...parsed]
+  // Pasted headings must not pull the rows below into the pasted group: they keep the group they had
+  const next = ingredients[index + 1]
+  if (parsed.some(isGroupRow) && next && !isGroupRow(next)) inserted.push(groupRow(groupAt(ingredients, index)))
+  ingredients.splice(start, rowIsEmpty ? 1 : 0, ...inserted)
+  return start + parsed.length - 1
 }

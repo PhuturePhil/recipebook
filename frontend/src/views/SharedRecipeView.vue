@@ -61,10 +61,14 @@
       <section v-if="recipe.ingredients?.length" class="recipe-section">
         <h2>Zutaten</h2>
         <ul class="ingredients-list">
-          <li v-for="(ingredient, index) in scaledIngredients" :key="index">
-            <span class="ingredient-amount">{{ ingredient.amount }} {{ ingredient.unit }}</span>
-            <span class="ingredient-name">{{ ingredient.name }}</span>
-          </li>
+          <template v-for="(section, sIndex) in ingredientSections" :key="sIndex">
+            <li v-if="section.group" class="ingredient-group-title">{{ section.group }}</li>
+            <li v-else-if="sIndex > 0" class="ingredient-group-gap" aria-hidden="true"></li>
+            <li v-for="(ingredient, index) in section.items" :key="`${sIndex}-${index}`">
+              <span class="ingredient-amount">{{ ingredient.amount }} {{ ingredient.unit }}</span>
+              <span class="ingredient-name">{{ ingredient.name }}</span>
+            </li>
+          </template>
         </ul>
       </section>
 
@@ -86,6 +90,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { shareService } from '@/services/shareService'
 import { scaleIngredients } from '@/utils/scaleIngredients'
+import { groupSections } from '@/utils/ingredientGroups'
 import { GERMAN, sharedLanguage, writeLanguagePreference, translationBanner } from '@/utils/recipeLanguage'
 import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
@@ -171,6 +176,8 @@ const imageSrc = computed(() =>
 const scaledIngredients = computed(() =>
   scaleIngredients(recipe.value?.ingredients, recipe.value?.baseServings, currentServings.value)
 )
+
+const ingredientSections = computed(() => groupSections(scaledIngredients.value))
 </script>
 
 <style scoped>
@@ -370,6 +377,29 @@ const scaledIngredients = computed(() =>
 
 .ingredients-list li:last-child {
   border-bottom: none;
+}
+
+.ingredients-list li.ingredient-group-title {
+  display: block;
+  padding: 16px 0 6px;
+  font-weight: 700;
+  color: var(--color-text-primary, #333);
+  border-bottom: 1px solid var(--color-border, #ddd);
+  break-after: avoid;
+}
+
+.ingredients-list li.ingredient-group-title:first-child {
+  padding-top: 4px;
+}
+
+.ingredients-list li:has(+ .ingredient-group-title),
+.ingredients-list li:has(+ .ingredient-group-gap) {
+  border-bottom: none;
+}
+
+.ingredients-list li.ingredient-group-gap {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border, #ddd);
 }
 
 .ingredient-amount {

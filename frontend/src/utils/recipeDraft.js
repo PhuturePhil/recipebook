@@ -1,4 +1,5 @@
 import { emptyIngredient, formSnapshot } from './recipeFormData.js'
+import { groupRow, isGroupRow } from './ingredientGroups.js'
 
 export const DRAFT_DELAY_MS = 2000
 
@@ -63,7 +64,7 @@ export function restoreDraft(draft, defaults) {
   return {
     ...data,
     ingredients: Array.isArray(data.ingredients) && data.ingredients.length
-      ? data.ingredients.map((i) => ({ ...emptyIngredient(), ...i }))
+      ? data.ingredients.map((i) => (isGroupRow(i) ? groupRow(i.group) : { ...emptyIngredient(), ...i }))
       : [emptyIngredient()],
     instructions: Array.isArray(data.instructions) && data.instructions.length
       ? data.instructions.map((i) => String(i ?? ''))

@@ -239,14 +239,44 @@
           placeholder="Eine Zutat pro Zeile, z. B.&#10;200 g Zwiebeln&#10;1/2 TL Salz&#10;Salz und Pfeffer"
           aria-label="Zutaten als Text, eine pro Zeile"
         ></textarea>
-        <p class="ingredient-text-hint">Eine Zutat pro Zeile. Menge und Einheit am Zeilenanfang werden beim Übernehmen automatisch erkannt.</p>
+        <p class="ingredient-text-hint">Eine Zutat pro Zeile. Menge und Einheit am Zeilenanfang werden beim Übernehmen automatisch erkannt. Eine Zeile wie „Salsa:“ beginnt eine Gruppe.</p>
         <div class="ingredient-text-actions">
           <button type="button" class="btn-add" @click="closeIngredientText(false)">Abbrechen</button>
           <button type="button" class="btn-apply-text" @click="closeIngredientText(true)">Übernehmen</button>
         </div>
       </div>
       <template v-else>
-        <div v-for="(ingredient, index) in formData.ingredients" :key="index" class="ingredient-row">
+        <template v-for="(ingredient, index) in formData.ingredients" :key="index">
+        <div v-if="isGroupRow(ingredient)" class="ingredient-row ingredient-group-row">
+          <input
+            v-model="ingredient.group"
+            type="text"
+            class="ingredient-group-input"
+            placeholder="Gruppe, z. B. Salsa (leer = ohne Gruppe)"
+            :maxlength="MAX_GROUP_NAME"
+            aria-label="Name der Zutatengruppe"
+            @keydown.enter="onIngredientEnter($event, index)"
+            @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
+            @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
+          />
+          <div class="row-actions">
+            <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="index === 0" @click="moveIngredient(index, -1, $event)" title="Gruppe nach oben" aria-label="Gruppe nach oben">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="index === formData.ingredients.length - 1" @click="moveIngredient(index, 1, $event)" title="Gruppe nach unten" aria-label="Gruppe nach unten">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeIngredient(index)" title="Gruppe entfernen (Zutaten bleiben)" aria-label="Gruppe entfernen, Zutaten bleiben">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div v-else class="ingredient-row">
           <div class="amount-input-wrapper">
             <input
               v-model="ingredient.amount"
@@ -395,9 +425,13 @@
             </button>
           </div>
         </div>
+        </template>
         <div class="ingredient-buttons">
           <button type="button" class="btn-add" @click="addIngredient">
             + Zutat hinzufügen
+          </button>
+          <button type="button" class="btn-add" @click="addGroup">
+            + Gruppe
           </button>
           <button type="button" class="btn-add" @click="openIngredientText">
             Als Text bearbeiten
@@ -473,6 +507,7 @@ import {
   isIngredientNameRequired,
   isInstructionRequired,
   addIngredientBelow,
+  addGroupRow,
   moveRow,
   preventsImplicitSubmit,
   formSnapshot,
@@ -481,6 +516,7 @@ import {
   autoLanguageLabel
 } from '@/utils/recipeFormData'
 import { ingredientsFromText, ingredientsToText, insertPastedIngredients } from '@/utils/ingredientText'
+import { MAX_GROUP_NAME, ingredientsToRows, isGroupRow } from '@/utils/ingredientGroups'
 import {
   SUGGEST_LIMIT,
   SUGGEST_DELAY_MS,
@@ -906,7 +942,7 @@ watch(
         page: newRecipe.page || '',
         tags: [...(newRecipe.tags ?? [])],
         ingredients: newRecipe.ingredients?.length
-          ? newRecipe.ingredients.map((i) => ({ ...i }))
+          ? ingredientsToRows(newRecipe.ingredients)
           : [emptyIngredient()],
         instructions: newRecipe.instructions?.length
           ? [...newRecipe.instructions]
@@ -1049,7 +1085,9 @@ const handleScan = async () => {
     formData.value.page = result.page || formData.value.page
 
     if (result.ingredients?.length) {
-      formData.value.ingredients = result.ingredients
+      formData.value.ingredients = ingredientsToRows(
+        result.ingredients.map(({ group, ...ingredient }) => ({ ...emptyIngredient(), ...ingredient, groupName: group }))
+      )
     }
     if (result.instructions?.length) {
       formData.value.instructions = result.instructions
@@ -1094,6 +1132,11 @@ const copyUnrecognizedText = async () => {
 
 const addIngredient = () => {
   formData.value.ingredients.push(emptyIngredient())
+}
+
+const addGroup = () => {
+  const index = addGroupRow(formData.value.ingredients)
+  focusInRow('.ingredient-row', index, '.ingredient-group-input')
 }
 
 const ingredientTextMode = ref(false)
@@ -1188,9 +1231,11 @@ const removeImage = () => {
   formData.value.imageUrl = ''
 }
 
+// A removed heading leaves its ingredients to the group above; the last ingredient row always stays
 const removeIngredient = (index) => {
-  if (formData.value.ingredients.length > 1) {
-    formData.value.ingredients.splice(index, 1)
+  const rows = formData.value.ingredients
+  if (isGroupRow(rows[index]) || rows.filter((row) => !isGroupRow(row)).length > 1) {
+    rows.splice(index, 1)
   }
 }
 
@@ -1623,6 +1668,17 @@ const handleSubmit = () => {
   border-bottom: none;
 }
 
+.ingredient-row.ingredient-group-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: none;
+  margin-top: 8px;
+  border-bottom: 2px solid var(--color-border, #cbd5e0);
+}
+
+.ingredient-group-input {
+  font-weight: 600;
+}
+
 .ingredient-row > * {
   min-width: 0;
 }
@@ -1745,6 +1801,10 @@ const handleSubmit = () => {
 
   .ingredient-row .row-actions {
     grid-area: actions;
+  }
+
+  .ingredient-row.ingredient-group-row .row-actions {
+    grid-area: auto;
   }
 
   .instruction-row {

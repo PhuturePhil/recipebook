@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Zutatengruppen',
+    changes: [
+      'Zutaten lassen sich in Gruppen wie „Salsa“ oder „Für den Teig“ gliedern. Im Formular legt „+ Gruppe“ eine Überschrift an; sie lässt sich umbenennen und mit ↑/↓ verschieben. Wird sie gelöscht, bleiben die Zutaten erhalten und gehören zur Gruppe darüber',
+      'Beim Einfügen einer Zutatenliste und in „Als Text bearbeiten“ werden Zeilen wie „Salsa:“, „Für die Salsa:“, „### Salsa“ oder „**Salsa**“ zu Gruppen. Auch der Foto-Import übernimmt Gruppen aus der Vorlage',
+      'Rezeptseite, geteilte Seite und PDF zeigen die Gruppen als Zwischenüberschriften. Bei englischen Rezepten werden die Gruppennamen mitübersetzt',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Tags entdecken und „Neueste zuerst“',
     changes: [
       'Tippst du ins leere Suchfeld, erscheinen darunter alle vorhandenen Tags mit Anzahl, die häufigsten zuerst. Ein Tipp auf einen Tag zeigt alle passenden Rezepte; bei vielen Tags klappt „mehr…“ den Rest auf',

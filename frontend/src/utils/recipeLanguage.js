@@ -33,7 +33,7 @@ export const isTranslatable = (recipe) => recipe?.language === 'en'
 
 export const wantsTranslation = (recipe, preference) => isTranslatable(recipe) && preference === GERMAN
 
-// Overlays the translated texts on the original recipe. Ingredient rows keep their id and position,
+// Overlays the translated texts (group names included) on the original recipe. Ingredient rows keep their id and position,
 // so scaling and nutrition keep working with the translated amounts.
 export function applyTranslation(recipe, translation) {
   if (!recipe || translation?.status !== 'translated') return recipe
@@ -43,7 +43,15 @@ export function applyTranslation(recipe, translation) {
     title: translation.title,
     description: translation.description ?? '',
     ingredients: (recipe.ingredients ?? []).map((ingredient, i) =>
-      lines[i] ? { ...ingredient, amount: lines[i].amount ?? '', unit: lines[i].unit ?? '', name: lines[i].name } : ingredient
+      lines[i]
+        ? {
+            ...ingredient,
+            amount: lines[i].amount ?? '',
+            unit: lines[i].unit ?? '',
+            name: lines[i].name,
+            ...('group' in lines[i] ? { groupName: lines[i].group } : {}),
+          }
+        : ingredient
     ),
     instructions: translation.instructions ?? recipe.instructions,
   }
