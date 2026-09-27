@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DataJpaTest(properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
 @Import(RecipeService.class)
@@ -133,5 +134,16 @@ class RecipeOrderPersistenceTest {
 
         assertEquals(List.of("Ccc", "Aaa"), names(reloaded));
         assertEquals(List.of("S3", "S1"), reloaded.getInstructions());
+    }
+
+    @Test
+    void creationTimeIsSetOnceAndSurvivesEditsWithoutIt() {
+        Recipe loaded = createRecipe();
+        assertNotNull(loaded.getCreatedAt());
+        Recipe update = asSentByForm(loaded, loaded.getIngredients(), loaded.getInstructions());
+
+        Recipe saved = recipeService.save(update, null);
+        assertEquals(loaded.getCreatedAt(), saved.getCreatedAt());
+        assertEquals(loaded.getCreatedAt(), reload(loaded.getId()).getCreatedAt());
     }
 }

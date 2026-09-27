@@ -113,8 +113,23 @@ const ascendingNullsLast = (value) => (a, b) => {
   return va - vb
 }
 
+const createdTime = (recipe) => {
+  const time = Date.parse(recipe.createdAt ?? '')
+  return Number.isNaN(time) ? null : time
+}
+
+// Jüngstes Anlegedatum zuerst; ohne Datum (oder bei Gleichstand) entscheidet die höhere ID
+const newestFirst = (a, b) => {
+  const ta = createdTime(a)
+  const tb = createdTime(b)
+  if (ta !== null && tb !== null && ta !== tb) return tb - ta
+  if (ta !== null && tb === null) return -1
+  if (ta === null && tb !== null) return 1
+  return b.id - a.id
+}
+
 export const sortRecipes = (recipes, mode) => {
-  if (mode === 'newest') return [...recipes].sort((a, b) => b.id - a.id)
+  if (mode === 'newest') return [...recipes].sort(newestFirst)
   if (mode === 'prepTime') return [...recipes].sort(ascendingNullsLast((r) => r.prepTimeMinutes))
   if (mode === 'kcal') return [...recipes].sort(ascendingNullsLast((r) => r.nutrition?.perServing?.kcal))
   return recipes

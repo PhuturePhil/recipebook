@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +42,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     String getSource();
     String getCreatedBy();
     String getIngredientNames();
+    LocalDateTime getCreatedAt();
   }
 
   @Query(value =
@@ -51,7 +53,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       "COUNT(i.id) AS ingredientCount, " +
       "r.author, r.source, " +
       "COALESCE(CONCAT_WS(' ', NULLIF(u.vorname, ''), NULLIF(u.nachname, '')), '') AS createdBy, " +
-      "STRING_AGG(i.name, ', ') AS ingredientNames " +
+      "STRING_AGG(i.name, ', ') AS ingredientNames, " +
+      "r.created_at AS createdAt " +
       "FROM recipes r " +
       "LEFT JOIN ingredients i ON i.recipe_id = r.id " +
       "LEFT JOIN users u ON u.id = r.user_id " +
@@ -64,6 +67,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       "FROM Recipe r WHERE r.source IS NOT NULL AND r.source <> '' " +
       "GROUP BY r.source, r.author ORDER BY r.source")
   List<SourceAuthorDto> findDistinctSourceAuthorPairs();
+
+  @Query("SELECT r.createdAt FROM Recipe r WHERE r.id = :recipeId")
+  Optional<LocalDateTime> findCreatedAt(@Param("recipeId") Long recipeId);
 
   @Query("SELECT r.imageUrl FROM Recipe r WHERE r.id = :recipeId")
   Optional<String> findImageUrl(@Param("recipeId") Long recipeId);

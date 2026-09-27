@@ -3,6 +3,7 @@ package com.recipebook.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -62,6 +63,10 @@ public class Recipe {
     // null im Request = automatisch erkennen; false = von Hand gesetzt, bleibt beim Speichern stehen
     @Column(name = "language_auto", nullable = false)
     private Boolean languageAuto;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -192,9 +197,18 @@ public class Recipe {
 
     @PrePersist
     @PreUpdate
-    void defaultLanguage() {
+    void applyDefaults() {
         if (language == null) language = "de";
         if (languageAuto == null) languageAuto = true;
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public User getUser() {

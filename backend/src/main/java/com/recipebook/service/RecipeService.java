@@ -72,6 +72,7 @@ public class RecipeService {
             dto.setIngredientNames(p.getIngredientNames());
             dto.setTranslatedSearchText(translatedSearch.get(p.getId()));
             dto.setTags(tags.getOrDefault(p.getId(), List.of()));
+            dto.setCreatedAt(p.getCreatedAt());
             RecipeNutrition n = nutrition.get(p.getId());
             if (n != null) dto.setNutrition(NutritionSummaryDto.of(n));
             return dto;
@@ -131,6 +132,7 @@ public class RecipeService {
         if (recipe.getImageCredit() == null) {
             recipe.setImageCredit(exists ? keptImageCredit(recipe) : ImageCredit.forUpload(recipe.getImageUrl()));
         }
+        if (exists) recipe.setCreatedAt(recipeRepository.findCreatedAt(recipe.getId()).orElse(null));
         User owner = exists ? recipeRepository.findOwner(recipe.getId()).orElse(user) : user;
         recipe.setUser(owner);
         return recipeRepository.save(recipe);

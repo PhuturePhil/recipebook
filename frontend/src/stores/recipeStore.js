@@ -44,6 +44,7 @@ const toSummary = (recipe) => ({
   ingredientNames: recipe.ingredientNames ?? '',
   translatedSearchText: recipe.translatedSearchText ?? null,
   tags: recipe.tags ?? [],
+  createdAt: recipe.createdAt ?? null,
   nutrition: recipe.nutrition ?? null,
 })
 

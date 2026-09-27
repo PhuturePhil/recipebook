@@ -104,3 +104,21 @@ test('sortRecipes sortiert nach Zeit und kcal, fehlende Werte ans Ende', () => {
   assert.deepEqual(ids('kcal'), [2, 1, 4, 3])
   assert.deepEqual(recipes.map((r) => r.id), [1, 2, 3, 4])
 })
+
+test('Neueste zuerst sortiert nach Anlegedatum, nicht nach ID', () => {
+  const list = [
+    { id: 1, createdAt: '2026-09-27T12:00:00' },
+    { id: 2, createdAt: '2026-09-27T11:59:00' },
+    { id: 3, createdAt: '2026-09-28T08:15:30.123456' },
+    { id: 4, createdAt: '2026-09-27T12:00:00' },
+  ]
+  assert.deepEqual(sortRecipes(list, 'newest').map((r) => r.id), [3, 4, 1, 2])
+  assert.deepEqual(sortRecipes(list, 'default').map((r) => r.id), [1, 2, 3, 4])
+})
+
+test('Neueste zuerst: gestaffelter Bestand ergibt absteigende IDs, Rezepte ohne Datum ans Ende', () => {
+  const minute = (m) => `2026-09-27T12:${String(m).padStart(2, '0')}:00`
+  const backfilled = [5, 17, 9, 40, 23].sort((a, b) => a - b).map((id, i) => ({ id, createdAt: minute(i) }))
+  const list = [...backfilled, { id: 99 }, { id: 98, createdAt: 'kaputt' }, { id: 41, createdAt: minute(30) }]
+  assert.deepEqual(sortRecipes(list, 'newest').map((r) => r.id), [41, 40, 23, 17, 9, 5, 99, 98])
+})

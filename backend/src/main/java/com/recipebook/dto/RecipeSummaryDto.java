@@ -1,6 +1,7 @@
 package com.recipebook.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class RecipeSummaryDto {
@@ -21,6 +22,7 @@ public class RecipeSummaryDto {
   @JsonInclude(JsonInclude.Include.NON_NULL)
   private String translatedSearchText;
   private List<String> tags = List.of();
+  private LocalDateTime createdAt;
 
   public RecipeSummaryDto(Long id, String title, String description, String imageUrl,
       Integer prepTimeMinutes, Integer baseServings, Integer servingsTo, Long ingredientCount) {
@@ -64,4 +66,6 @@ public class RecipeSummaryDto {
   public void setTranslatedSearchText(String translatedSearchText) { this.translatedSearchText = translatedSearchText; }
   public List<String> getTags() { return tags; }
   public void setTags(List<String> tags) { this.tags = tags; }
+  public LocalDateTime getCreatedAt() { return createdAt; }
+  public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
