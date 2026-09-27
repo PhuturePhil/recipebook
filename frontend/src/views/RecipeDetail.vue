@@ -18,6 +18,7 @@
     <div v-else-if="recipe" class="recipe-content">
       <header class="recipe-header">
         <h1 ref="titleRef">{{ shown.title }}</h1>
+        <TranslationBanner v-if="banner" :banner="banner" @show-original="setLanguage('original')" />
         <div class="recipe-tools">
           <div v-if="translatable" class="language-toggle" role="group" aria-label="Sprache des Rezepts">
             <button
@@ -159,6 +160,7 @@ import ShareModal from '@/components/ShareModal.vue'
 import NutritionPanel from '@/components/NutritionPanel.vue'
 import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
+import TranslationBanner from '@/components/TranslationBanner.vue'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 import { recipeService } from '@/services/recipeService'
 import {
@@ -167,6 +169,7 @@ import {
   isTranslatable,
   wantsTranslation,
   applyTranslation,
+  translationBanner,
   shareUrl,
 } from '@/utils/recipeLanguage'
 
@@ -209,6 +212,7 @@ const translationNote = computed(() =>
     ? 'Die Übersetzung ist gerade nicht verfügbar – hier steht das Original.'
     : ''
 )
+const banner = computed(() => translationBanner(recipe.value?.language, languagePref.value, translation.value?.status))
 
 const loadTranslation = async () => {
   if (!wantsTranslation(recipe.value, languagePref.value) || translation.value?.status === 'translated') return

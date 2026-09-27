@@ -1,6 +1,14 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Übersetzungen deutlich gekennzeichnet',
+    changes: [
+      'Zeigt die App die deutsche Übersetzung eines englischen Rezepts, steht direkt unter dem Titel ein farbiger Hinweis „Automatisch übersetzte Fassung — Original: Englisch“ mit dem Knopf „Original anzeigen“. Das gilt auch auf geteilten Seiten',
+      'Im PDF steht unter dem Titel „Automatisch aus dem Englischen übersetzt“',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Englische Rezepte auf Deutsch',
     changes: [
       'Englische Rezepte erscheinen jetzt auf Deutsch: Titel, Beschreibung, Zutaten und Schritte werden beim ersten Öffnen einmal übersetzt (dauert ein paar Sekunden) und danach gespeichert',

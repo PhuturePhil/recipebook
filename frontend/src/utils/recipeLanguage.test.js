@@ -8,6 +8,7 @@ import {
   wantsTranslation,
   applyTranslation,
   shareUrl,
+  translationBanner,
 } from './recipeLanguage.js'
 import { scaleIngredients } from './scaleIngredients.js'
 
@@ -102,4 +103,17 @@ test('share links of English recipes carry the chosen language', () => {
   assert.equal(shareUrl('https://pastoors.cloud/share/abc', english, 'de'), 'https://pastoors.cloud/share/abc?lang=de')
   assert.equal(shareUrl('https://pastoors.cloud/share/abc', english, 'original'), 'https://pastoors.cloud/share/abc?lang=original')
   assert.equal(shareUrl('https://pastoors.cloud/share/abc', { language: 'de' }, 'de'), 'https://pastoors.cloud/share/abc')
+})
+
+test('a shown translation is marked on screen and in print', () => {
+  const banner = translationBanner('en', 'de', 'translated')
+  assert.equal(banner.screen, 'Automatisch übersetzte Fassung — Original: Englisch')
+  assert.equal(banner.print, 'Automatisch aus dem Englischen übersetzt')
+})
+
+test('no translation banner for the original, a pending or unavailable translation, or German recipes', () => {
+  assert.equal(translationBanner('en', 'original', 'translated'), null)
+  assert.equal(translationBanner('en', 'de', undefined), null)
+  assert.equal(translationBanner('en', 'de', 'unavailable'), null)
+  assert.equal(translationBanner('de', 'de', 'original'), null)
 })

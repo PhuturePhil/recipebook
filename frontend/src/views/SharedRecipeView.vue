@@ -9,6 +9,7 @@
     <div v-else-if="recipe" class="recipe-content">
       <header class="recipe-header">
         <h1>{{ recipe.title }}</h1>
+        <TranslationBanner v-if="banner" :banner="banner" @show-original="setLanguage('original')" />
         <p v-if="recipe.attribution" class="recipe-attribution">{{ recipe.attribution }}</p>
         <div v-if="recipe.sourceLanguage === 'en'" class="language-toggle" role="group" aria-label="Sprache des Rezepts">
           <button
@@ -82,9 +83,10 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { shareService } from '@/services/shareService'
 import { scaleIngredients } from '@/utils/scaleIngredients'
-import { GERMAN, sharedLanguage, writeLanguagePreference } from '@/utils/recipeLanguage'
+import { GERMAN, sharedLanguage, writeLanguagePreference, translationBanner } from '@/utils/recipeLanguage'
 import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
+import TranslationBanner from '@/components/TranslationBanner.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -99,6 +101,9 @@ const translationNote = computed(() =>
   languagePref.value === GERMAN && recipe.value?.translationStatus === 'unavailable'
     ? 'Die Übersetzung ist gerade nicht verfügbar – hier steht das Original.'
     : ''
+)
+const banner = computed(() =>
+  translationBanner(recipe.value?.sourceLanguage, languagePref.value, recipe.value?.translationStatus)
 )
 
 const fetchRecipe = () =>

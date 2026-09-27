@@ -49,6 +49,19 @@ export function applyTranslation(recipe, translation) {
   }
 }
 
+const SOURCE_LANGUAGES = { en: { name: 'Englisch', from: 'aus dem Englischen' } }
+
+// A shown translation is marked on screen and on paper, so nobody takes it for the original.
+// Original mode, a pending translation and the "unavailable" fallback get no banner.
+export function translationBanner(sourceLanguage, preference, status) {
+  const source = SOURCE_LANGUAGES[sourceLanguage]
+  if (!source || preference !== GERMAN || status !== 'translated') return null
+  return {
+    screen: `Automatisch übersetzte Fassung — Original: ${source.name}`,
+    print: `Automatisch ${source.from} übersetzt`,
+  }
+}
+
 export function shareUrl(url, recipe, preference) {
   if (!url || !isTranslatable(recipe)) return url
   const separator = url.includes('?') ? '&' : '?'
