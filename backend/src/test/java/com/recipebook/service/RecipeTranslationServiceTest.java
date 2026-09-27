@@ -3,6 +3,7 @@ package com.recipebook.service;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.RecipeTranslation;
+import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.RecipeTranslationRepository;
 import com.recipebook.translation.TranslatedRecipe;
 import com.recipebook.translation.TranslationHash;
@@ -41,6 +42,8 @@ class RecipeTranslationServiceTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private RecipeTranslationRepository repository;
+    private RecipeRepository recipeRepository;
+    private IngredientAiService ingredientAi;
     private OpenAiClient ai;
     private MutableClock clock;
     private RecipeTranslationService service;
@@ -58,9 +61,11 @@ class RecipeTranslationServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(RecipeTranslationRepository.class);
+        recipeRepository = mock(RecipeRepository.class);
+        ingredientAi = mock(IngredientAiService.class);
         ai = mock(OpenAiClient.class);
         clock = new MutableClock();
-        service = new RecipeTranslationService(repository, ai, mapper, "gpt-4.1", clock);
+        service = new RecipeTranslationService(repository, recipeRepository, ingredientAi, ai, mapper, "gpt-4.1", clock);
         when(repository.findByRecipeIdAndLanguage(eq(92L), eq("de"))).thenAnswer(inv -> Optional.ofNullable(row.get()));
         when(repository.save(any(RecipeTranslation.class))).thenAnswer(inv -> {
             row.set(inv.getArgument(0));
@@ -240,6 +245,33 @@ class RecipeTranslationServiceTest {
         aiAnswers(ANSWER);
 
         assertEquals("translated", service.translate(recipe, "de").status());
+        verify(ai, times(1)).complete(anyString(), anyString(), any(), anyInt(), any(Duration.class));
+    }
+
+    @Test
+    void germanNamesOfANewTranslationGoToTheIngredientMatching() throws Exception {
+        aiAnswers(ANSWER);
+        service.translate(recipe, "de");
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<List<Ingredient>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(ingredientAi).enqueueForIngredients(captor.capture());
+        assertEquals(List.of("Stangenbohnen, entfädelt", "Olivenöl", "Rotweinessig"),
+            captor.getValue().stream().map(Ingredient::getName).toList());
+        assertEquals("ml", captor.getValue().get(1).getUnit());
+    }
+
+    @Test
+    void currentIngredientsOnlyReturnsFreshTranslations() throws Exception {
+        aiAnswers(ANSWER);
+        service.translate(recipe, "de");
+        when(repository.findByRecipeIdInAndLanguage(any(), eq("de"))).thenAnswer(inv -> List.of(row.get()));
+        when(recipeRepository.findAllById(any())).thenAnswer(inv -> List.of(recipe));
+
+        assertEquals("Olivenöl", service.currentIngredients(List.of(92L, 51L), "de").get(92L).get(1).name());
+
+        recipe.setTitle("Turkish beans");
+        assertTrue(service.currentIngredients(List.of(92L, 51L), "de").isEmpty());
         verify(ai, times(1)).complete(anyString(), anyString(), any(), anyInt(), any(Duration.class));
     }
 }

@@ -3,6 +3,7 @@ package com.recipebook.service;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.RecipeTranslation;
+import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.RecipeTranslationRepository;
 import com.recipebook.translation.RecipeLanguage;
 import com.recipebook.translation.TranslatedRecipe;
@@ -66,6 +67,8 @@ public class RecipeTranslationService {
         """;
 
     private final RecipeTranslationRepository repository;
+    private final RecipeRepository recipeRepository;
+    private final IngredientAiService ingredientAiService;
     private final OpenAiClient openAiClient;
     private final ObjectMapper objectMapper;
     private final String model;
@@ -74,14 +77,18 @@ public class RecipeTranslationService {
     private final Map<Long, Instant> lastFailure = new ConcurrentHashMap<>();
 
     @Autowired
-    public RecipeTranslationService(RecipeTranslationRepository repository, OpenAiClient openAiClient,
-            ObjectMapper objectMapper, @Value("${openai.translation-model:gpt-4.1}") String model) {
-        this(repository, openAiClient, objectMapper, model, Clock.systemUTC());
+    public RecipeTranslationService(RecipeTranslationRepository repository, RecipeRepository recipeRepository,
+            IngredientAiService ingredientAiService, OpenAiClient openAiClient, ObjectMapper objectMapper,
+            @Value("${openai.translation-model:gpt-4.1}") String model) {
+        this(repository, recipeRepository, ingredientAiService, openAiClient, objectMapper, model, Clock.systemUTC());
     }
 
-    RecipeTranslationService(RecipeTranslationRepository repository, OpenAiClient openAiClient,
-            ObjectMapper objectMapper, String model, Clock clock) {
+    RecipeTranslationService(RecipeTranslationRepository repository, RecipeRepository recipeRepository,
+            IngredientAiService ingredientAiService, OpenAiClient openAiClient, ObjectMapper objectMapper, String model,
+            Clock clock) {
         this.repository = repository;
+        this.recipeRepository = recipeRepository;
+        this.ingredientAiService = ingredientAiService;
         this.openAiClient = openAiClient;
         this.objectMapper = objectMapper;
         this.model = model;
@@ -119,12 +126,21 @@ public class RecipeTranslationService {
     }
 
     /**
-     * Gespeicherte Übersetzungen mehrerer Rezepte auf einmal, ohne Hash-Prüfung (für die Liste; nur Rohdaten).
+     * Deutsche Zutatenzeilen aller Rezepte mit aktueller gespeicherter Übersetzung – ohne KI-Aufruf, für die
+     * Nährwerte der Rezeptliste. Rezepte ohne (aktuelle) Übersetzung fehlen in der Map.
      */
-    public Map<Long, RecipeTranslation> storedFor(Collection<Long> recipeIds, String language) {
-        Map<Long, RecipeTranslation> result = new HashMap<>();
+    public Map<Long, List<Line>> currentIngredients(Collection<Long> recipeIds, String language) {
+        Map<Long, List<Line>> result = new HashMap<>();
         if (recipeIds.isEmpty()) return result;
-        repository.findByRecipeIdInAndLanguage(recipeIds, language).forEach(t -> result.put(t.getRecipeId(), t));
+        Map<Long, RecipeTranslation> rows = new HashMap<>();
+        repository.findByRecipeIdInAndLanguage(recipeIds, language).forEach(t -> rows.put(t.getRecipeId(), t));
+        if (rows.isEmpty()) return result;
+        for (Recipe recipe : recipeRepository.findAllById(rows.keySet())) {
+            RecipeTranslation t = rows.get(recipe.getId());
+            if (needsTranslation(recipe, language) && TranslationHash.of(recipe).equals(t.getSourceHash())) {
+                toResult(recipe, t).ifPresent(r -> result.put(recipe.getId(), r.ingredients()));
+            }
+        }
         return result;
     }
 
@@ -145,6 +161,7 @@ public class RecipeTranslationService {
             TranslationParser.Parsed parsed = TranslationParser.parse(answer.json(), recipe);
             RecipeTranslation saved = save(recipe.getId(), language, hash, parsed, answer);
             lastFailure.remove(recipe.getId());
+            enqueueUnknownNames(parsed.ingredients());
             log.info("Rezept {} übersetzt ({} → {}) mit {}: {} Prompt- + {} Antwort-Tokens, {} ms", recipe.getId(),
                 recipe.getLanguage(), language, answer.model(), answer.promptTokens(), answer.completionTokens(),
                 (System.nanoTime() - started) / 1_000_000);
@@ -153,6 +170,16 @@ public class RecipeTranslationService {
             lastFailure.put(recipe.getId(), clock.instant());
             log.warn("Übersetzung von Rezept {} fehlgeschlagen, liefere Original: {}", recipe.getId(), e.getMessage());
             return TranslatedRecipe.original(recipe, TranslatedRecipe.UNAVAILABLE);
+        }
+    }
+
+    // Deutsche Namen, die der Katalog noch nicht kennt, laufen wie bei neuen Rezepten durch die KI-Zuordnung
+    private void enqueueUnknownNames(List<Line> lines) {
+        try {
+            ingredientAiService.enqueueForIngredients(lines.stream()
+                .map(l -> new Ingredient(l.name(), l.amount(), l.unit())).toList());
+        } catch (RuntimeException e) {
+            log.warn("Zutaten der Übersetzung nicht zur KI-Zuordnung eingereiht: {}", e.getMessage());
         }
     }
 
