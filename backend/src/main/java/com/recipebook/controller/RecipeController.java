@@ -66,6 +66,11 @@ public class RecipeController {
         return recipeService.findDistinctSourceAuthorPairs();
     }
 
+    @GetMapping("/tags")
+    public List<String> getTags() {
+        return recipeService.knownTags();
+    }
+
     @GetMapping("/units")
     public List<String> getUnits() {
         return IngredientUnits.SUGGESTED;

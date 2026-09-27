@@ -61,6 +61,13 @@ export const fuzzyDistance = (needle, haystack) => {
 export const fuzzyIncludes = (haystack, needle) =>
   haystack.includes(needle) || (needle.length >= FUZZY_MIN_LENGTH && fuzzyDistance(needle, haystack) <= 1)
 
+// "#tag" trifft nur Rezepte mit genau diesem Tag; alles andere ist kein Tag-Begriff (undefined)
+export const matchTag = (recipe, text) => {
+  if (!text.startsWith('#')) return undefined
+  const tag = text.slice(1).trim()
+  return (recipe.tags ?? []).some((t) => normalizeText(t) === tag)
+}
+
 const matchesTime = (recipe, term) => {
   const prep = recipe.prepTimeMinutes ?? null
   if (prep === null) return false

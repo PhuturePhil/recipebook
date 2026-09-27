@@ -36,7 +36,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { SORT_OPTIONS } from '@/utils/recipeSearch'
 
@@ -52,6 +52,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => clearTimeout(liveSearchTimer))
+
+watch(() => store.searchTerms, (terms) => {
+  if (terms.join('\n') !== badges.value.join('\n')) badges.value = [...terms]
+})
 
 const updateLiveSearch = (immediate = false) => {
   clearTimeout(liveSearchTimer)

@@ -29,6 +29,13 @@ public class Recipe {
     @OrderColumn(name = "sort_order")
     private List<Ingredient> ingredients;
     
+    // null im Request = Tags unverändert lassen
+    @ElementCollection
+    @CollectionTable(name = "recipe_tags", joinColumns = @JoinColumn(name = "recipe_id"))
+    @Column(name = "tag", length = 30)
+    @OrderColumn(name = "sort_order")
+    private List<String> tags;
+
     @Column(nullable = false)
     private Integer baseServings = 4;
     
@@ -201,5 +208,13 @@ public class Recipe {
     @JsonProperty(value = "ownerId", access = JsonProperty.Access.READ_ONLY)
     public Long getOwnerId() {
         return user != null ? user.getId() : null;
+    }
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
     }
 }

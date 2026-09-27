@@ -21,6 +21,16 @@
           {{ recipe.nutrition.complete ? '' : 'mind. ' }}{{ kcalPerServing }} kcal
         </span>
       </div>
+      <div v-if="recipe.tags?.length" class="recipe-card__tags">
+        <button
+          v-for="tag in recipe.tags"
+          :key="tag"
+          type="button"
+          class="recipe-card__tag"
+          :title="`Nach „${tag}“ suchen`"
+          @click.stop="searchTag(tag)"
+        >#{{ tag }}</button>
+      </div>
       <div v-if="badges && badges.length" class="recipe-card__badges">
         <span v-for="badge in badges" :key="badge" :class="['badge', `badge--${badgeKey(badge)}`]">
           {{ badge }}
@@ -34,6 +44,8 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRecipeImage } from '@/composables/useRecipeImage'
+import { useRecipeStore } from '@/stores/recipeStore'
+import { tagSearchTerm } from '@/utils/recipeTags'
 
 const props = defineProps({
   recipe: {
@@ -57,8 +69,12 @@ const kcalPerServing = computed(() => {
 const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/\s+/g, '-')
 
 const router = useRouter()
+const store = useRecipeStore()
 
-
+const searchTag = (tag) => {
+  store.addSearchTerm(tagSearchTerm(tag))
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 const formatPrepTime = (minutes) => {
   if (!minutes) return ''
@@ -129,6 +145,28 @@ const navigateToDetail = () => {
   gap: 16px;
   font-size: 0.875rem;
   color: var(--color-text-muted, #999);
+}
+
+.recipe-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 10px;
+}
+
+.recipe-card__tag {
+  padding: 2px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #999);
+  cursor: pointer;
+}
+
+.recipe-card__tag:hover {
+  color: var(--color-primary, #4a5568);
+  text-decoration: underline;
 }
 
 .recipe-card__badges {

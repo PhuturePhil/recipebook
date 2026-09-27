@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { recipeService } from '@/services/recipeService'
 import { useUiStore } from '@/stores/uiStore'
-import { filterRecipes, normalizeText, sortRecipes, SORT_OPTIONS } from '@/utils/recipeSearch'
+import { filterRecipes, matchTag, normalizeText, sortRecipes, SORT_OPTIONS } from '@/utils/recipeSearch'
 
 export const QUICK_MAX_MINUTES = 30
 
@@ -26,6 +26,7 @@ const recipeSearchText = (recipe) => normalizeText([
   recipe.createdBy,
   recipe.ingredientNames,
   recipe.translatedSearchText,
+  ...(recipe.tags ?? []),
 ].filter(Boolean).join(' | '))
 
 const toSummary = (recipe) => ({
@@ -42,6 +43,7 @@ const toSummary = (recipe) => ({
   createdBy: recipe.createdBy ?? '',
   ingredientNames: recipe.ingredientNames ?? '',
   translatedSearchText: recipe.translatedSearchText ?? null,
+  tags: recipe.tags ?? [],
   nutrition: recipe.nutrition ?? null,
 })
 
@@ -81,6 +83,8 @@ export const useRecipeStore = defineStore('recipe', {
       const badgeMap = this.computedBadges
       const searchTexts = this.searchTexts
       const matchKeyword = (recipe, text) => {
+        const tagHit = matchTag(recipe, text)
+        if (tagHit !== undefined) return tagHit
         const badge = BADGE_SEARCH_ALIASES[text] ?? BADGE_NAMES.find((b) => normalizeText(b) === text)
         return badge ? (badgeMap.get(recipe.id) ?? []).includes(badge) : undefined
       }
@@ -205,6 +209,10 @@ export const useRecipeStore = defineStore('recipe', {
 
     setSearchTerms(terms) {
       this.searchTerms = terms
+    },
+
+    addSearchTerm(term) {
+      if (!this.searchTerms.includes(term)) this.searchTerms = [...this.searchTerms, term]
     },
 
     setPendingSearchTerm(term) {

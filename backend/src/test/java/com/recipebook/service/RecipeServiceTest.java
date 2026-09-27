@@ -45,6 +45,9 @@ class RecipeServiceTest {
     @Mock
     private RecipeTranslationService translationService;
 
+    @Mock
+    private RecipeTagService recipeTagService;
+
     @InjectMocks
     private RecipeService recipeService;
 
@@ -520,5 +523,40 @@ class RecipeServiceTest {
 
         assertEquals("de", recipe.getLanguage());
         assertTrue(recipe.getLanguageAuto());
+    }
+
+    @Test
+    void applyTags_keepsStoredTagsWhenRequestHasNone() {
+        testRecipe.setTags(null);
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findTags(1L)).thenReturn(List.of("Suppe"));
+
+        recipeService.applyTags(testRecipe);
+
+        assertEquals(List.of("Suppe"), testRecipe.getTags());
+        verifyNoInteractions(recipeTagService);
+    }
+
+    @Test
+    void applyTags_normalizesManualTagsWithoutAi() {
+        testRecipe.setTags(new ArrayList<>(List.of(" curry", "Curry", "#lieblingsessen")));
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+
+        recipeService.applyTags(testRecipe);
+
+        assertEquals(List.of("Curry", "Lieblingsessen"), testRecipe.getTags());
+        verifyNoInteractions(recipeTagService);
+    }
+
+    @Test
+    void applyTags_asksAiWhenRecipeHasNoTags() {
+        testRecipe.setId(null);
+        testRecipe.setTags(new ArrayList<>());
+        testRecipe.setIngredients(new ArrayList<>(List.of(new Ingredient("Linsen", "200", "g"))));
+        when(recipeTagService.suggest("Test Recipe", List.of("Linsen"))).thenReturn(List.of("Curry", "Indisch"));
+
+        recipeService.applyTags(testRecipe);
+
+        assertEquals(List.of("Curry", "Indisch"), testRecipe.getTags());
     }
 }

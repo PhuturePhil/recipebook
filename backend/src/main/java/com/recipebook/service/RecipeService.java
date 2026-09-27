@@ -14,9 +14,12 @@ import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.RecipeRepository.RecipeSummaryProjection;
 import com.recipebook.repository.RecipeRepository.StoredIngredient;
 import com.recipebook.repository.UserRepository;
+import com.recipebook.tagging.RecipeTags;
 import com.recipebook.translation.RecipeLanguage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,16 +37,18 @@ public class RecipeService {
     private final NutritionService nutritionService;
     private final IngredientAiService ingredientAiService;
     private final RecipeTranslationService translationService;
+    private final RecipeTagService recipeTagService;
 
     public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, RecipeImageService recipeImageService,
             NutritionService nutritionService, IngredientAiService ingredientAiService,
-            RecipeTranslationService translationService) {
+            RecipeTranslationService translationService, RecipeTagService recipeTagService) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.recipeImageService = recipeImageService;
         this.nutritionService = nutritionService;
         this.ingredientAiService = ingredientAiService;
         this.translationService = translationService;
+        this.recipeTagService = recipeTagService;
     }
     
     public List<RecipeSummaryDto> findAllSummaries() {
@@ -52,6 +57,9 @@ public class RecipeService {
         projections.forEach(p -> servings.put(p.getId(), p.getBaseServings()));
         Map<Long, RecipeNutrition> nutrition = nutritionService.calculateAll(servings);
         Map<Long, String> translatedSearch = translationService.searchTexts(RecipeLanguage.GERMAN);
+        Map<Long, List<String>> tags = new HashMap<>();
+        recipeRepository.findAllTagRows().forEach(t ->
+            tags.computeIfAbsent(t.getRecipeId(), id -> new ArrayList<>()).add(t.getTag()));
         return projections.stream().map(p -> {
             RecipeSummaryDto dto = new RecipeSummaryDto(
                 p.getId(), p.getTitle(), p.getDescription(), p.getImageUrl(),
@@ -63,6 +71,7 @@ public class RecipeService {
             dto.setCreatedBy(p.getCreatedBy());
             dto.setIngredientNames(p.getIngredientNames());
             dto.setTranslatedSearchText(translatedSearch.get(p.getId()));
+            dto.setTags(tags.getOrDefault(p.getId(), List.of()));
             RecipeNutrition n = nutrition.get(p.getId());
             if (n != null) dto.setNutrition(NutritionSummaryDto.of(n));
             return dto;
@@ -71,6 +80,14 @@ public class RecipeService {
 
     public RecipeNutritionDto nutrition(Recipe recipe) {
         return RecipeNutritionDto.of(nutritionService.calculate(recipe));
+    }
+
+    // Grundauswahl plus alle schon vergebenen Tags, alphabetisch
+    public List<String> knownTags() {
+        Map<String, String> tags = new java.util.TreeMap<>(java.text.Collator.getInstance(java.util.Locale.GERMAN));
+        RecipeTags.VOCABULARY.forEach(t -> tags.put(t, t));
+        recipeRepository.findDistinctTags().forEach(t -> tags.putIfAbsent(t, t));
+        return new ArrayList<>(tags.values());
     }
 
     public List<SourceAuthorDto> findDistinctSourceAuthorPairs() {
@@ -179,9 +196,24 @@ public class RecipeService {
                 recipe.setImageCredit(image.credit());
             });
         }
+        applyTags(recipe);
         Recipe saved = save(recipe, user);
         ingredientAiService.enqueueForIngredients(saved.getIngredients());
         return saved;
+    }
+
+    // Fehlen Tags im Request, bleiben die gespeicherten; ohne Tags vergibt die KI welche
+    void applyTags(Recipe recipe) {
+        boolean exists = recipe.getId() != null && recipeRepository.existsById(recipe.getId());
+        List<String> tags = recipe.getTags() == null && exists
+            ? recipeRepository.findTags(recipe.getId())
+            : RecipeTags.normalize(recipe.getTags());
+        if (tags.isEmpty()) {
+            List<String> names = recipe.getIngredients() == null ? List.of() : recipe.getIngredients().stream()
+                .map(Ingredient::getName).filter(Objects::nonNull).toList();
+            tags = recipeTagService.suggest(recipe.getTitle(), names);
+        }
+        recipe.setTags(new ArrayList<>(tags));
     }
 
     public boolean isOwner(Long recipeId, User user) {

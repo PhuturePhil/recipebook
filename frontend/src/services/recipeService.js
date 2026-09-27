@@ -141,6 +141,21 @@ class RecipeService {
     }
   }
 
+  async getTags() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/recipes/tags`, {
+        headers: { ...getAuthHeaders() }
+      })
+      if (!response.ok) {
+        throw await httpError(response)
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Failed to fetch tags:', error)
+      throw error
+    }
+  }
+
   async getUnits() {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes/units`, {

@@ -1,6 +1,16 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Tags für Rezepte',
+    changes: [
+      'Jedes Rezept hat jetzt bis zu fünf Tags wie Suppe, Curry, Ofengericht oder Frühstück. Sie stehen dezent auf der Rezeptkarte',
+      'Ein Klick auf einen Tag zeigt alle Rezepte mit diesem Tag. Tags werden auch über die normale Suche gefunden',
+      'Beim Anlegen eines Rezepts vergibt die App automatisch zwei bis vier passende Tags. Im Formular lassen sie sich wie alle anderen Angaben ändern, entfernen oder ergänzen; beim Tippen werden schon vorhandene Tags vorgeschlagen',
+      'Alle bisherigen Rezepte haben einmalig automatisch Tags bekommen',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Schlauere Suche und Sortierung',
     changes: [
       'Englische Rezepte werden jetzt auch mit deutschen Begriffen gefunden, zum Beispiel „Bohnen“ für „Turkish green beans“. Die englischen Begriffe funktionieren weiterhin',

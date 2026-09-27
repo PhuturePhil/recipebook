@@ -6,6 +6,7 @@ import com.recipebook.service.IngredientAiService;
 import com.recipebook.service.NutritionService;
 import com.recipebook.service.RecipeImageService;
 import com.recipebook.service.RecipeService;
+import com.recipebook.service.RecipeTagService;
 import com.recipebook.service.RecipeTranslationService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class RecipeOrderPersistenceTest {
 
     @MockitoBean
     private RecipeTranslationService recipeTranslationService;
+
+    @MockitoBean
+    private RecipeTagService recipeTagService;
 
     private static Ingredient ingredient(Long id, String name) {
         Ingredient ingredient = new Ingredient(name, "1", "");

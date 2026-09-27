@@ -148,6 +148,11 @@
     </div>
 
     <div class="form-group">
+      <label for="tags">Tags</label>
+      <TagInput v-model="formData.tags" :known="knownTags" />
+    </div>
+
+    <div class="form-group">
       <label for="language">Sprache des Rezepts</label>
       <select id="language" v-model="languageSelection" class="language-select">
         <option value="auto">{{ autoLanguageLabel(formData.language) }}</option>
@@ -457,6 +462,7 @@ import { ingredientCatalogService } from '@/services/ingredientCatalogService'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
+import TagInput from '@/components/TagInput.vue'
 import { resizeImageFile } from '@/utils/resizeImage'
 import { FRACTION_KEYS, applyFraction } from '@/utils/fractionKeys'
 import { DROPDOWN_MAX_HEIGHT, dropdownPlacement } from '@/utils/dropdownPlacement'
@@ -539,6 +545,7 @@ const formData = ref({
   author: '',
   source: '',
   page: '',
+  tags: [],
   ingredients: [emptyIngredient()],
   instructions: ['']
 })
@@ -560,6 +567,7 @@ let unitField = null
 const descriptionRef = ref(null)
 const knownUnits = ref([])
 const knownSources = ref([])
+const knownTags = ref([])
 const activeSourceField = ref(null)
 const sourceEscPressed = ref(false)
 
@@ -868,6 +876,11 @@ onMounted(async () => {
   } catch {
     // Vorschläge nicht verfügbar — kein kritischer Fehler
   }
+  try {
+    knownTags.value = await recipeService.getTags()
+  } catch {
+    // Tag-Vorschläge nicht verfügbar — Tags lassen sich trotzdem eintippen
+  }
 })
 
 watch(() => formData.value.title, (title) => {
@@ -891,6 +904,7 @@ watch(
         author: newRecipe.author || '',
         source: newRecipe.source || '',
         page: newRecipe.page || '',
+        tags: [...(newRecipe.tags ?? [])],
         ingredients: newRecipe.ingredients?.length
           ? newRecipe.ingredients.map((i) => ({ ...i }))
           : [emptyIngredient()],

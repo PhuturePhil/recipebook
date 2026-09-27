@@ -5,6 +5,7 @@ import com.recipebook.model.ImageCredit;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
@@ -69,4 +70,27 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
   @Query("SELECT r.imageCredit FROM Recipe r WHERE r.id = :recipeId")
   Optional<ImageCredit> findImageCredit(@Param("recipeId") Long recipeId);
+
+  interface TagRow {
+    Long getRecipeId();
+    String getTag();
+  }
+
+  @Query(value = "SELECT recipe_id AS recipeId, tag FROM recipe_tags ORDER BY recipe_id, sort_order", nativeQuery = true)
+  List<TagRow> findAllTagRows();
+
+  @Query(value = "SELECT tag FROM recipe_tags WHERE recipe_id = :recipeId ORDER BY sort_order", nativeQuery = true)
+  List<String> findTags(@Param("recipeId") Long recipeId);
+
+  @Query(value = "SELECT DISTINCT tag FROM recipe_tags", nativeQuery = true)
+  List<String> findDistinctTags();
+
+  @Query(value = "SELECT r.id FROM recipes r WHERE NOT EXISTS "
+      + "(SELECT 1 FROM recipe_tags t WHERE t.recipe_id = r.id) ORDER BY r.id", nativeQuery = true)
+  List<Long> findUntaggedIds();
+
+  @Modifying
+  @Query(value = "INSERT INTO recipe_tags (recipe_id, sort_order, tag) VALUES (:recipeId, :position, :tag)",
+      nativeQuery = true)
+  int insertTag(@Param("recipeId") Long recipeId, @Param("position") int position, @Param("tag") String tag);
 }
