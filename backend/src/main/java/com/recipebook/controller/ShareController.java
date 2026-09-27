@@ -4,11 +4,13 @@ import com.recipebook.dto.ShareLinkDto;
 import com.recipebook.dto.SharedRecipeDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.service.ShareLinkService;
+import com.recipebook.translation.RecipeLanguage;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api")
@@ -40,10 +42,14 @@ public class ShareController {
     }
 
     @GetMapping("/share/{token}")
-    public ResponseEntity<SharedRecipeDto> getSharedRecipe(@PathVariable String token) {
+    public ResponseEntity<SharedRecipeDto> getSharedRecipe(@PathVariable String token,
+                                                           @RequestParam(name = "lang", required = false) String lang) {
+        if (lang != null && !RecipeLanguage.isSupported(lang)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unbekannte Sprache.");
+        }
         return ResponseEntity.ok()
                 .header("X-Robots-Tag", "noindex, nofollow")
-                .body(shareLinkService.getSharedRecipe(token));
+                .body(lang == null ? shareLinkService.getSharedRecipe(token) : shareLinkService.getSharedRecipe(token, lang));
     }
 
     @GetMapping("/share/{token}/image")

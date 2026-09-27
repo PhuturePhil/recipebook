@@ -12,6 +12,7 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
+import reactor.netty.http.client.HttpClientRequest;
 
 import java.time.Duration;
 
@@ -59,11 +60,17 @@ public class OpenAiChatClient implements OpenAiClient {
 
     @Override
     public JsonNode completeJson(String model, String systemPrompt, JsonNode payload) throws AiCallException {
+        return complete(model, systemPrompt, payload, 600, timeout).json();
+    }
+
+    @Override
+    public AiAnswer complete(String model, String systemPrompt, JsonNode payload, int maxTokens, Duration callTimeout)
+            throws AiCallException {
         if (!isConfigured()) throw new AiCallException("Kein OpenAI-API-Key konfiguriert");
         ObjectNode body = objectMapper.createObjectNode();
         body.put("model", model);
         body.put("temperature", 0);
-        body.put("max_tokens", 600);
+        body.put("max_tokens", maxTokens);
         body.putObject("response_format").put("type", "json_object");
         ArrayNode messages = body.putArray("messages");
         messages.addObject().put("role", "system").put("content", systemPrompt);
@@ -79,17 +86,25 @@ public class OpenAiChatClient implements OpenAiClient {
                 .uri("/v1/chat/completions")
                 .header("Authorization", "Bearer " + apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
+                .httpRequest(request -> {
+                    Object nativeRequest = request.getNativeRequest();
+                    if (nativeRequest instanceof HttpClientRequest r) r.responseTimeout(callTimeout);
+                })
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class)
-                .block(timeout.plusSeconds(5));
+                .block(callTimeout.plusSeconds(5));
         } catch (RuntimeException e) {
             throw new AiCallException("OpenAI-Aufruf fehlgeschlagen: " + e.getMessage(), e);
         }
-        return parseResponse(response);
+        return parseAnswer(response, model);
     }
 
     JsonNode parseResponse(String response) throws AiCallException {
+        return parseAnswer(response, model).json();
+    }
+
+    AiAnswer parseAnswer(String response, String requestedModel) throws AiCallException {
         if (response == null || response.isBlank()) throw new AiCallException("Leere Antwort von OpenAI");
         try {
             JsonNode root = objectMapper.readTree(response);
@@ -101,7 +116,10 @@ public class OpenAiChatClient implements OpenAiClient {
             if (!content.isTextual()) throw new AiCallException("Antwort ohne Inhalt");
             JsonNode json = objectMapper.readTree(content.asText());
             if (json == null || !json.isObject()) throw new AiCallException("Antwort ist kein JSON-Objekt");
-            return json;
+            JsonNode usage = root.path("usage");
+            String answeredModel = root.path("model").isTextual() ? root.path("model").asText() : requestedModel;
+            return new AiAnswer(json, answeredModel, usage.path("prompt_tokens").asInt(0),
+                usage.path("completion_tokens").asInt(0));
         } catch (JacksonException e) {
             throw new AiCallException("Antwort ist kein gültiges JSON: " + e.getOriginalMessage(), e);
         }

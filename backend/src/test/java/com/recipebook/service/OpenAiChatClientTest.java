@@ -36,4 +36,15 @@ class OpenAiChatClientTest {
         String response = "{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":\"{\\\"grams_per_unit\\\": 90}\"}}]}";
         assertEquals(90, client.parseResponse(response).path("grams_per_unit").asInt());
     }
+
+    @Test
+    void answerCarriesTokenUsageAndModel() throws Exception {
+        String response = "{\"model\":\"gpt-4.1-2025-04-14\",\"usage\":{\"prompt_tokens\":812,\"completion_tokens\":345},"
+            + "\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":\"{\\\"title\\\": \\\"Bohnen\\\"}\"}}]}";
+        OpenAiClient.AiAnswer answer = client.parseAnswer(response, "gpt-4.1");
+        assertEquals("Bohnen", answer.json().path("title").asText());
+        assertEquals("gpt-4.1-2025-04-14", answer.model());
+        assertEquals(812, answer.promptTokens());
+        assertEquals(345, answer.completionTokens());
+    }
 }

@@ -9,6 +9,7 @@ import com.recipebook.model.User;
 import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.ShareLinkRepository;
 import com.recipebook.repository.UserRepository;
+import com.recipebook.translation.TranslatedRecipe;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,7 @@ public class ShareLinkService {
     private final ShareLinkRepository shareLinkRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final RecipeTranslationService translationService;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -42,15 +44,16 @@ public class ShareLinkService {
 
     @Autowired
     public ShareLinkService(ShareLinkRepository shareLinkRepository, RecipeRepository recipeRepository,
-                            UserRepository userRepository) {
-        this(shareLinkRepository, recipeRepository, userRepository, Clock.systemDefaultZone());
+                            UserRepository userRepository, RecipeTranslationService translationService) {
+        this(shareLinkRepository, recipeRepository, userRepository, translationService, Clock.systemDefaultZone());
     }
 
     ShareLinkService(ShareLinkRepository shareLinkRepository, RecipeRepository recipeRepository,
-                     UserRepository userRepository, Clock clock) {
+                     UserRepository userRepository, RecipeTranslationService translationService, Clock clock) {
         this.shareLinkRepository = shareLinkRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
+        this.translationService = translationService;
         this.clock = clock;
     }
 
@@ -82,9 +85,20 @@ public class ShareLinkService {
         shareLinkRepository.saveAll(activeLinks);
     }
 
-    @Transactional(readOnly = true)
     public SharedRecipeDto getSharedRecipe(String token) {
-        return toSharedRecipe(validShareLink(token).getRecipe());
+        return getSharedRecipe(token, null);
+    }
+
+    /**
+     * Ohne Transaktion, damit eine erstmalige Übersetzung (KI-Aufruf) keine Datenbankverbindung blockiert und in
+     * einer eigenen Transaktion gespeichert wird; Zutaten und Schritte lädt Open-in-View nach.
+     */
+    public SharedRecipeDto getSharedRecipe(String token, String language) {
+        Recipe recipe = validShareLink(token).getRecipe();
+        TranslatedRecipe content = language == null
+                ? TranslatedRecipe.original(recipe, TranslatedRecipe.ORIGINAL)
+                : translationService.translate(recipe, language);
+        return toSharedRecipe(recipe, content);
     }
 
     public String getSharedImageUrl(String token) {
@@ -100,17 +114,17 @@ public class ShareLinkService {
         return shareLink;
     }
 
-    private SharedRecipeDto toSharedRecipe(Recipe recipe) {
-        List<SharedIngredientDto> ingredients = recipe.getIngredients() == null ? List.of() :
-                recipe.getIngredients().stream()
-                        .map(i -> new SharedIngredientDto(i.getName(), i.getAmount(), i.getUnit()))
-                        .toList();
-        List<String> instructions = recipe.getInstructions() == null ? List.of() : new ArrayList<>(recipe.getInstructions());
+    private SharedRecipeDto toSharedRecipe(Recipe recipe, TranslatedRecipe content) {
+        List<SharedIngredientDto> ingredients = content.ingredients().stream()
+                .map(i -> new SharedIngredientDto(i.name(), i.amount(), i.unit()))
+                .toList();
+        List<String> instructions = new ArrayList<>(content.instructions());
         String source = recipe.getSource();
         String attribution = source != null && !source.isBlank() ? "nach: " + source.trim() : null;
         boolean hasImage = recipe.getImageUrl() != null && !recipe.getImageUrl().isBlank();
-        return new SharedRecipeDto(recipe.getTitle(), recipe.getBaseServings(), ingredients, instructions, attribution,
-                hasImage, hasImage ? recipe.getImageCredit() : null);
+        return new SharedRecipeDto(content.title(), recipe.getBaseServings(), ingredients, instructions, attribution,
+                hasImage, hasImage ? recipe.getImageCredit() : null, content.sourceLanguage(), content.language(),
+                content.status());
     }
 
     private ShareLinkDto toDto(ShareLink shareLink) {

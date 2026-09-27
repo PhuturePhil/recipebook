@@ -117,4 +117,19 @@ class ShareControllerTest {
 
         verify(shareLinkService, never()).revokeShareLinks(any());
     }
+
+    @Test
+    void getSharedRecipe_passesTheLanguageAndRejectsUnknownOnes() throws Exception {
+        when(shareLinkService.getSharedRecipe("tok", "de")).thenReturn(new SharedRecipeDto(
+                "Türkische grüne Bohnen", 4, List.of(new SharedIngredientDto("Olivenöl", "240", "ml")),
+                List.of("Garen"), null, false, null, "en", "de", "translated"));
+
+        mockMvc.perform(get("/api/share/tok").param("lang", "de"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Türkische grüne Bohnen"))
+                .andExpect(jsonPath("$.sourceLanguage").value("en"))
+                .andExpect(jsonPath("$.translationStatus").value("translated"));
+        mockMvc.perform(get("/api/share/tok").param("lang", "xx"))
+                .andExpect(status().isBadRequest());
+    }
 }

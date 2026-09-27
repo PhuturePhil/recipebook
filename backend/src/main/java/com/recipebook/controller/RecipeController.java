@@ -8,6 +8,9 @@ import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
 import com.recipebook.service.IngredientUnits;
 import com.recipebook.service.RecipeService;
+import com.recipebook.service.RecipeTranslationService;
+import com.recipebook.translation.RecipeLanguage;
+import com.recipebook.translation.TranslatedRecipe;
 import com.recipebook.service.RecipeValidator;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -23,9 +26,11 @@ import java.util.List;
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final RecipeTranslationService translationService;
 
-    public RecipeController(RecipeService recipeService) {
+    public RecipeController(RecipeService recipeService, RecipeTranslationService translationService) {
         this.recipeService = recipeService;
+        this.translationService = translationService;
     }
 
     @GetMapping
@@ -36,6 +41,19 @@ public class RecipeController {
     @GetMapping("/{id}")
     public ResponseEntity<Recipe> getRecipeById(@PathVariable Long id) {
         return ResponseEntity.ok(findOrThrow(id));
+    }
+
+    /**
+     * Rezept in der gewünschten Sprache: englische Rezepte werden beim ersten Abruf übersetzt und gespeichert.
+     * status "original" = schon in dieser Sprache, "unavailable" = Übersetzung gerade nicht möglich (Original).
+     */
+    @GetMapping("/{id}/translation")
+    public ResponseEntity<TranslatedRecipe> getTranslation(@PathVariable Long id,
+            @RequestParam(name = "lang", defaultValue = "de") String lang) {
+        if (!RecipeLanguage.isSupported(lang)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unbekannte Sprache.");
+        }
+        return ResponseEntity.ok(translationService.translate(findOrThrow(id), lang));
     }
 
     @GetMapping("/{id}/nutrition")

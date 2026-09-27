@@ -48,6 +48,9 @@ class ShareLinkServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private RecipeTranslationService translationService;
+
     private ShareLinkService shareLinkService;
     private Recipe recipe;
     private User user;
@@ -75,7 +78,7 @@ class ShareLinkServiceTest {
 
     private ShareLinkService serviceAt(Instant instant) {
         ShareLinkService service = new ShareLinkService(
-                shareLinkRepository, recipeRepository, userRepository, Clock.fixed(instant, ZONE));
+                shareLinkRepository, recipeRepository, userRepository, translationService, Clock.fixed(instant, ZONE));
         ReflectionTestUtils.setField(service, "appUrl", "https://pastoors.cloud");
         return service;
     }
@@ -291,5 +294,35 @@ class ShareLinkServiceTest {
 
         assertTrue(result.isPresent());
         assertEquals(valid.getToken(), result.get().getToken());
+    }
+
+    @Test
+    void getSharedRecipe_inRequestedLanguageUsesTheTranslation() {
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+        when(translationService.translate(recipe, "de")).thenReturn(new com.recipebook.translation.TranslatedRecipe(
+                1L, "en", "de", "translated", "Linsen-Dal", null,
+                List.of(new com.recipebook.translation.TranslatedRecipe.Line("250", "g", "Rote Linsen")),
+                List.of("Linsen waschen"), "gpt-4.1", null));
+
+        SharedRecipeDto result = shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm", "de");
+
+        assertEquals("Linsen-Dal", result.getTitle());
+        assertEquals(List.of("Linsen waschen"), result.getInstructions());
+        assertEquals("en", result.getSourceLanguage());
+        assertEquals("de", result.getLanguage());
+        assertEquals("translated", result.getTranslationStatus());
+        assertEquals("nach: Made in India", result.getAttribution());
+    }
+
+    @Test
+    void getSharedRecipe_withoutLanguageIsTheOriginal() {
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        SharedRecipeDto result = shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm");
+
+        assertEquals("original", result.getTranslationStatus());
+        verifyNoInteractions(translationService);
     }
 }

@@ -9,6 +9,7 @@ import com.recipebook.model.User;
 import com.recipebook.service.CustomUserDetailsService;
 import com.recipebook.service.JwtService;
 import com.recipebook.service.RecipeService;
+import com.recipebook.service.RecipeTranslationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ class RecipeControllerTest {
 
     @MockitoBean
     private RecipeService recipeService;
+
+    @MockitoBean
+    private RecipeTranslationService translationService;
 
     @MockitoBean
     private JwtService jwtService;
@@ -275,5 +279,33 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$[0]").value("g"))
                 .andExpect(jsonPath("$[7]").value("Stück"))
                 .andExpect(jsonPath("$.length()").value(18));
+    }
+
+    @Test
+    void getTranslation_returnsTheGermanVersion() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(92L);
+        recipe.setLanguage("en");
+        when(recipeService.findById(92L)).thenReturn(Optional.of(recipe));
+        when(translationService.translate(recipe, "de")).thenReturn(new com.recipebook.translation.TranslatedRecipe(
+                92L, "en", "de", "translated", "Türkische grüne Bohnen", null,
+                java.util.List.of(new com.recipebook.translation.TranslatedRecipe.Line("240", "ml", "Olivenöl")),
+                java.util.List.of("Die Bohnen garen."), "gpt-4.1", null));
+
+        mockMvc.perform(get("/api/recipes/92/translation").param("lang", "de").with(user(principal(5, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("translated"))
+                .andExpect(jsonPath("$.sourceLanguage").value("en"))
+                .andExpect(jsonPath("$.title").value("Türkische grüne Bohnen"))
+                .andExpect(jsonPath("$.ingredients[0].unit").value("ml"));
+    }
+
+    @Test
+    void getTranslation_rejectsUnknownLanguageAndNeedsLogin() throws Exception {
+        mockMvc.perform(get("/api/recipes/92/translation").param("lang", "fr").with(user(principal(5, Role.USER))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/recipes/92/translation").param("lang", "de"))
+                .andExpect(status().is4xxClientError());
+        verifyNoInteractions(translationService);
     }
 }
