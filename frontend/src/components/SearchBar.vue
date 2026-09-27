@@ -32,15 +32,22 @@
         <span class="badge-remove" @click="removeBadge(index)">&times;</span>
       </span>
     </div>
-    <div v-if="showTagBar" class="search-tags" aria-label="Tags" @mousedown.prevent>
+    <div
+      v-if="showTagBar"
+      :class="['search-tags', { 'search-tags--expanded': tagsExpanded }]"
+      aria-label="Tags"
+      @mousedown.prevent
+    >
       <span class="search-tags__label">Tags:</span>
-      <button
-        v-for="entry in tagBar.shown"
-        :key="entry.tag"
-        type="button"
-        class="search-tags__chip"
-        @click="pickTag(entry.tag)"
-      >{{ entry.tag }} <span class="search-tags__count">({{ entry.count }})</span></button>
+      <div class="search-tags__list">
+        <button
+          v-for="entry in tagBar.shown"
+          :key="entry.tag"
+          type="button"
+          class="search-tags__chip"
+          @click="pickTag(entry.tag)"
+        >{{ entry.tag }} <span class="search-tags__count">({{ entry.count }})</span></button>
+      </div>
       <button v-if="tagBar.hidden" type="button" class="search-tags__more" @click="tagsExpanded = true">
         mehr…
       </button>
@@ -137,6 +144,7 @@ const handleBackspace = (e) => {
 const pickTag = (tag) => {
   addBadge(tagSearchTerm(tag))
   inputEl.value?.blur()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const removeBadge = (index) => {
@@ -244,26 +252,38 @@ const clearAll = () => {
 
 .search-tags {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
-  max-height: 40vh;
-  overflow-y: auto;
   font-size: 0.8rem;
 }
 
 .search-tags__label {
+  padding: 4px 0;
   color: var(--color-text-muted, #999);
+}
+
+.search-tags__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.search-tags--expanded .search-tags__list {
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .search-tags__chip,
 .search-tags__more {
+  flex: 0 0 auto;
   padding: 3px 9px;
   border: 1px solid var(--color-border, #ddd);
   border-radius: 999px;
   background: var(--color-bg-card, #fff);
   color: var(--color-text-secondary, #666);
   font: inherit;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -278,6 +298,20 @@ const clearAll = () => {
 
 .search-tags__more {
   border-style: dashed;
+}
+
+/* Mobil eingeklappt nur eine wischbare Zeile, damit die fixierte Kopfzeile kaum wächst */
+@media (max-width: 600px) {
+  .search-tags:not(.search-tags--expanded) .search-tags__list {
+    flex: 1;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .search-tags:not(.search-tags--expanded) .search-tags__list::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .search-badges {
