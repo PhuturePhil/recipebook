@@ -8,6 +8,7 @@ import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
 import com.recipebook.service.IngredientUnits;
 import com.recipebook.service.RecipeService;
+import com.recipebook.service.RecipeValidator;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,6 +64,7 @@ public class RecipeController {
     @PostMapping
     public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe, @AuthenticationPrincipal CustomUserDetails userDetails) {
         recipe.setId(null);
+        RecipeValidator.validate(recipe);
         Recipe saved = recipeService.saveForUser(recipe, userDetails);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
@@ -73,6 +75,7 @@ public class RecipeController {
         requireOwnerOrAdmin(id, userDetails, "Du kannst nur deine eigenen Rezepte bearbeiten.");
 
         recipe.setId(id);
+        RecipeValidator.validate(recipe);
         Recipe updated = recipeService.saveForUser(recipe, userDetails);
         return ResponseEntity.ok(updated);
     }

@@ -203,6 +203,72 @@ class RecipeControllerTest {
     }
 
     @Test
+    void createRecipe_withoutTitleIsRejectedWithGermanMessage() throws Exception {
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"   \",\"baseServings\":2,\"ingredients\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Bitte gib einen Titel ein."))
+                .andExpect(jsonPath("$.errors[0].field").value("title"));
+
+        verify(recipeService, never()).saveForUser(any(), any());
+    }
+
+    @Test
+    void createRecipe_withoutServingsDefaultsToFour() throws Exception {
+        when(recipeService.saveForUser(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\",\"baseServings\":null,\"ingredients\":[{\"name\":\"Linsen\",\"amount\":\"200\",\"unit\":\"g\"}]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.baseServings").value(4));
+    }
+
+    @Test
+    void createRecipe_withZeroServingsIsRejected() throws Exception {
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\",\"baseServings\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("baseServings"))
+                .andExpect(jsonPath("$.message").value(containsString("Portionenzahl")));
+
+        verify(recipeService, never()).saveForUser(any(), any());
+    }
+
+    @Test
+    void createRecipe_withTextInNumberFieldGetsReadableMessage() throws Exception {
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\",\"baseServings\":\"vier\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value(containsString("ungültige Angaben")));
+    }
+
+    @Test
+    void updateRecipe_withoutTitleIsRejectedBeforeSaving() throws Exception {
+        when(recipeService.findById(1L)).thenReturn(Optional.of(new Recipe()));
+        when(recipeService.isOwner(1L, 5L)).thenReturn(true);
+
+        mockMvc.perform(put("/api/recipes/1")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"\",\"ingredients\":[{\"name\":\"\",\"amount\":\"2\",\"unit\":\"EL\"}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.length()").value(2))
+                .andExpect(jsonPath("$.errors[1].field").value("ingredients[0].name"));
+
+        verify(recipeService, never()).saveForUser(any(), any());
+    }
+
+    @Test
     void units_areTheCuratedList() throws Exception {
         mockMvc.perform(get("/api/recipes/units").with(user(principal(5, Role.USER))))
                 .andExpect(status().isOk())
