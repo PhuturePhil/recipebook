@@ -264,7 +264,7 @@
               </li>
             </ul>
           </div>
-          <div class="name-input-wrapper" :class="{ 'has-hint': nutritionHint(ingredient) }">
+          <div class="name-input-wrapper" :class="{ 'has-hint': nutritionHint(ingredient, index) }">
             <input
               v-model="ingredient.name"
               type="text"
@@ -288,17 +288,17 @@
               @paste="onIngredientPaste($event, index)"
             />
             <button
-              v-if="nutritionHint(ingredient)"
+              v-if="nutritionHint(ingredient, index)"
               type="button"
               tabindex="-1"
               class="nutrition-hint"
-              :class="`nutrition-hint-${nutritionHint(ingredient).state}`"
-              :title="nutritionHint(ingredient).title"
-              :aria-label="nutritionHint(ingredient).title"
+              :class="`nutrition-hint-${nutritionHint(ingredient, index).state}`"
+              :title="nutritionHint(ingredient, index).title"
+              :aria-label="nutritionHint(ingredient, index).title"
               @click="toggleHintBubble(index)"
-            >{{ nutritionHint(ingredient).symbol }}</button>
-            <span v-if="openHintIndex === index && nutritionHint(ingredient)" class="nutrition-hint-bubble" role="tooltip">
-              {{ nutritionHint(ingredient).title }}
+            >{{ nutritionHint(ingredient, index).symbol }}</button>
+            <span v-if="openHintIndex === index && nutritionHint(ingredient, index)" class="nutrition-hint-bubble" role="tooltip">
+              {{ nutritionHint(ingredient, index).title }}
             </span>
             <ul
               v-if="nameSuggestionsFor(index).length > 0"
@@ -677,7 +677,9 @@ const recognition = ref({})
 const openHintIndex = ref(null)
 let recognizeTimer = null
 
-const nutritionHint = (ingredient) => {
+// While the suggestion list is open the name is still being typed, so the row shows no verdict yet
+const nutritionHint = (ingredient, index) => {
+  if (nameSuggestionsFor(index).length) return null
   const key = recognitionKey(ingredient)
   return key ? recognitionHint(recognition.value[key]) : null
 }
