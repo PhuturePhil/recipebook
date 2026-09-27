@@ -3,13 +3,17 @@
     <div class="search-controls">
       <div class="search-input-row">
         <input
+          ref="inputEl"
           :value="inputValue"
           type="text"
           aria-label="Rezepte durchsuchen"
           placeholder="Suchen… (Komma = neuer Begriff)"
           @input="handleInput"
+          @focus="focused = true"
+          @blur="focused = false"
           @keydown.enter="commitInput"
           @keydown.backspace="handleBackspace"
+          @keydown.escape="inputEl?.blur()"
         />
         <span v-if="badges.length || inputValue" class="search-clear-all" @click="clearAll">&times;</span>
       </div>
@@ -28,6 +32,22 @@
         <span class="badge-remove" @click="removeBadge(index)">&times;</span>
       </span>
     </div>
+    <div v-if="showTagBar" class="search-tags" aria-label="Tags" @mousedown.prevent>
+      <span class="search-tags__label">Tags:</span>
+      <button
+        v-for="entry in tagBar.shown"
+        :key="entry.tag"
+        type="button"
+        class="search-tags__chip"
+        @click="pickTag(entry.tag)"
+      >{{ entry.tag }} <span class="search-tags__count">({{ entry.count }})</span></button>
+      <button v-if="tagBar.hidden" type="button" class="search-tags__more" @click="tagsExpanded = true">
+        mehr…
+      </button>
+      <button v-else-if="tagsExpanded" type="button" class="search-tags__more" @click="tagsExpanded = false">
+        weniger
+      </button>
+    </div>
   </div>
 </template>
 
@@ -35,13 +55,26 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { SORT_OPTIONS } from '@/utils/recipeSearch'
+import { tagBarEntries, tagCounts, tagSearchTerm } from '@/utils/recipeTags'
 
 const store = useRecipeStore()
 const badges = ref([])
 const inputValue = ref('')
+const inputEl = ref(null)
+const focused = ref(false)
+const tagsExpanded = ref(false)
 const LIVE_SEARCH_DELAY_MS = 200
 const sortShort = computed(() => SORT_OPTIONS.find((o) => o.value === store.sortMode)?.short ?? '')
 let liveSearchTimer = null
+
+// Leeres, fokussiertes Feld: vorhandene Tags zum Antippen, gezählt in der aktuellen Trefferliste
+const tagEntries = computed(() => tagCounts(store.filteredRecipes, store.searchTerms))
+const tagBar = computed(() => tagBarEntries(tagEntries.value, tagsExpanded.value))
+const showTagBar = computed(() => focused.value && !inputValue.value.trim() && tagEntries.value.length > 0)
+
+watch(focused, (isFocused) => {
+  if (!isFocused) tagsExpanded.value = false
+})
 
 onMounted(() => {
   badges.value = [...store.searchTerms]
@@ -99,6 +132,11 @@ const handleBackspace = (e) => {
     badges.value.pop()
     store.setSearchTerms([...badges.value])
   }
+}
+
+const pickTag = (tag) => {
+  addBadge(tagSearchTerm(tag))
+  inputEl.value?.blur()
 }
 
 const removeBadge = (index) => {
@@ -202,6 +240,44 @@ const clearAll = () => {
 
 .search-clear-all:hover {
   color: var(--color-text-primary, #333);
+}
+
+.search-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 0.8rem;
+}
+
+.search-tags__label {
+  color: var(--color-text-muted, #999);
+}
+
+.search-tags__chip,
+.search-tags__more {
+  padding: 3px 9px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 999px;
+  background: var(--color-bg-card, #fff);
+  color: var(--color-text-secondary, #666);
+  font: inherit;
+  cursor: pointer;
+}
+
+.search-tags__chip:hover {
+  border-color: var(--color-primary, #4a5568);
+  color: var(--color-text-primary, #333);
+}
+
+.search-tags__count {
+  color: var(--color-text-muted, #999);
+}
+
+.search-tags__more {
+  border-style: dashed;
 }
 
 .search-badges {

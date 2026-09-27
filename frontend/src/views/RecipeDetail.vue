@@ -70,6 +70,17 @@
         </button>
       </div>
 
+      <div v-if="recipe.tags?.length" class="recipe-tags">
+        <button
+          v-for="tag in recipe.tags"
+          :key="tag"
+          type="button"
+          class="recipe-tag"
+          :title="`Alle Rezepte mit „${tag}“`"
+          @click="searchTag(tag)"
+        >#{{ tag }}</button>
+      </div>
+
       <div v-if="recipe.author || recipe.source" class="recipe-source">
         <span class="source-label">Quelle:</span>
         <span v-if="recipe.author" class="source-author">{{ recipe.author }}</span>
@@ -156,6 +167,7 @@ import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { scaleIngredients } from '@/utils/scaleIngredients'
+import { tagSearchTerm } from '@/utils/recipeTags'
 import ShareModal from '@/components/ShareModal.vue'
 import NutritionPanel from '@/components/NutritionPanel.vue'
 import ImageCredit from '@/components/ImageCredit.vue'
@@ -182,6 +194,12 @@ const authStore = useAuthStore()
 
 
 const recipe = computed(() => store.currentRecipe)
+
+const searchTag = (tag) => {
+  store.setSearchTerms([tagSearchTerm(tag)])
+  store.setPendingSearchTerm('')
+  router.push('/')
+}
 const canEdit = computed(() =>
   authStore.isAdmin || (recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
 )
@@ -492,6 +510,28 @@ const handleDelete = async () => {
   color: var(--color-text-secondary, #666);
 }
 
+.recipe-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: -8px 0 16px;
+}
+
+.recipe-tag {
+  padding: 2px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #999);
+  cursor: pointer;
+}
+
+.recipe-tag:hover {
+  color: var(--color-primary, #4a5568);
+  text-decoration: underline;
+}
+
 .meta-item {
   padding: 4px 10px;
   background: var(--color-bg-secondary, #f0f0f0);
@@ -767,6 +807,7 @@ const handleDelete = async () => {
   }
 
   .recipe-tools,
+  .recipe-tags,
   .translation-note,
   .detail-actions,
   .servings-control,

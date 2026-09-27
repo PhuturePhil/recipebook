@@ -29,3 +29,31 @@ export function tagSuggestions(known, current, query) {
 }
 
 export const tagSearchTerm = (tag) => `#${tag}`
+
+export const TAG_BAR_LIMIT = 8
+
+/**
+ * Tags der gegebenen Rezepte mit Anzahl, häufigste zuerst (Gleichstand alphabetisch).
+ * Schon als "#Tag" aktive Suchbegriffe fehlen, Schreibvarianten zählen als ein Tag.
+ */
+export function tagCounts(recipes, activeTerms = []) {
+  const active = new Set(activeTerms.filter((t) => t.startsWith('#')).map((t) => normalizeText(t.slice(1))))
+  const counts = new Map()
+  for (const recipe of recipes) {
+    const seen = new Set()
+    for (const tag of recipe.tags ?? []) {
+      const key = normalizeText(tag)
+      if (!key || active.has(key) || seen.has(key)) continue
+      seen.add(key)
+      const entry = counts.get(key)
+      if (entry) entry.count++
+      else counts.set(key, { tag, count: 1 })
+    }
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'de'))
+}
+
+export const tagBarEntries = (entries, expanded, limit = TAG_BAR_LIMIT) => {
+  const shown = expanded || entries.length <= limit ? entries : entries.slice(0, limit)
+  return { shown, hidden: entries.length - shown.length }
+}

@@ -11,6 +11,9 @@
         <h1>{{ recipe.title }}</h1>
         <TranslationBanner v-if="banner" :banner="banner" @show-original="setLanguage('original')" />
         <p v-if="recipe.attribution" class="recipe-attribution">{{ recipe.attribution }}</p>
+        <p v-if="recipe.tags?.length" class="recipe-tags">
+          <span v-for="tag in recipe.tags" :key="tag" class="recipe-tag">#{{ tag }}</span>
+        </p>
         <div v-if="recipe.sourceLanguage === 'en'" class="language-toggle" role="group" aria-label="Sprache des Rezepts">
           <button
             type="button"
@@ -225,6 +228,15 @@ const scaledIngredients = computed(() =>
   margin: 0;
   font-size: 2rem;
   color: var(--color-text-primary, #333);
+}
+
+.recipe-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #999);
 }
 
 .recipe-attribution {

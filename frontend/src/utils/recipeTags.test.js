@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { MAX_TAGS, cleanTag, addTag, tagSuggestions, tagSearchTerm } from './recipeTags.js'
+import { MAX_TAGS, TAG_BAR_LIMIT, cleanTag, addTag, tagSuggestions, tagSearchTerm, tagCounts, tagBarEntries } from './recipeTags.js'
 import { filterRecipes, matchTag } from './recipeSearch.js'
 
 test('cleanTag entfernt #, Leerraum und schreibt groß', () => {
@@ -46,4 +46,49 @@ test('Tag-Begriff "#tag" trifft nur Rezepte mit genau diesem Tag', () => {
   assert.deepEqual(run(['curry']), [1, 2])
   assert.deepEqual(run(['-#Curry']), [2, 3])
   assert.equal(matchTag(recipes[0], 'curry'), undefined)
+})
+
+const tagged = [
+  { id: 1, tags: ['Ofengericht', 'Indisch'] },
+  { id: 2, tags: ['Ofengericht', 'Eintopf'] },
+  { id: 3, tags: ['ofengericht', 'Ofengericht'] },
+  { id: 4, tags: ['Eintopf', 'Suppe'] },
+  { id: 5 },
+]
+
+test('tagCounts zählt je Rezept einmal, häufigste zuerst, Gleichstand alphabetisch', () => {
+  assert.deepEqual(tagCounts(tagged), [
+    { tag: 'Ofengericht', count: 3 },
+    { tag: 'Eintopf', count: 2 },
+    { tag: 'Indisch', count: 1 },
+    { tag: 'Suppe', count: 1 },
+  ])
+  assert.deepEqual(tagCounts([]), [])
+})
+
+test('tagCounts blendet schon aktive Tag-Suchbegriffe aus, Freitext nicht', () => {
+  const tags = (terms) => tagCounts(tagged, terms).map((e) => e.tag)
+  assert.deepEqual(tags([tagSearchTerm('Ofengericht')]), ['Eintopf', 'Indisch', 'Suppe'])
+  assert.deepEqual(tags(['#eintopf', 'Ofengericht']), ['Ofengericht', 'Indisch', 'Suppe'])
+})
+
+test('Tag-Leiste klappt ab TAG_BAR_LIMIT ein und zeigt aufgeklappt alle', () => {
+  const entries = Array.from({ length: TAG_BAR_LIMIT + 3 }, (_, i) => ({ tag: `T${i}`, count: 20 - i }))
+  const collapsed = tagBarEntries(entries, false)
+  assert.equal(collapsed.shown.length, TAG_BAR_LIMIT)
+  assert.equal(collapsed.hidden, 3)
+  assert.deepEqual(collapsed.shown, entries.slice(0, TAG_BAR_LIMIT))
+  assert.deepEqual(tagBarEntries(entries, true), { shown: entries, hidden: 0 })
+  const few = entries.slice(0, 3)
+  assert.deepEqual(tagBarEntries(few, false), { shown: few, hidden: 0 })
+})
+
+test('Tag aus der Leiste wird als exakter Tag-Suchbegriff gesetzt', () => {
+  const [top] = tagCounts(tagged)
+  const hits = filterRecipes(tagged, [tagSearchTerm(top.tag)], {
+    searchText: () => '',
+    matchKeyword: (recipe, text) => matchTag(recipe, text),
+  })
+  assert.deepEqual(hits.map((r) => r.id), [1, 2, 3])
+  assert.equal(hits.length, top.count)
 })

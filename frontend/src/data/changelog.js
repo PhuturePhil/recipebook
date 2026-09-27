@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Tags entdecken und „Neueste zuerst“',
+    changes: [
+      'Tippst du ins leere Suchfeld, erscheinen darunter alle vorhandenen Tags mit Anzahl, die häufigsten zuerst. Ein Tipp auf einen Tag zeigt alle passenden Rezepte; bei vielen Tags klappt „mehr…“ den Rest auf',
+      'Die Tags stehen jetzt auch auf der Rezeptseite. Ein Klick darauf führt zurück zur Übersicht mit allen Rezepten dieses Tags. Auf geteilten Seiten sind sie zu sehen, aber nicht anklickbar',
+      '„Neueste zuerst“ sortiert jetzt nach dem Datum, an dem ein Rezept angelegt wurde. Für ältere Rezepte ist das Datum aus der Reihenfolge ihrer Erfassung geschätzt',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Tags für Rezepte',
     changes: [
       'Jedes Rezept hat jetzt bis zu fünf Tags wie Suppe, Curry, Ofengericht oder Frühstück. Sie stehen dezent auf der Rezeptkarte',

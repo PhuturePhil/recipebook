@@ -191,6 +191,24 @@ class ShareLinkServiceTest {
     }
 
     @Test
+    void getSharedRecipe_shouldExposeTags() {
+        recipe.setTags(List.of("Ofengericht", "Indisch"));
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        assertEquals(List.of("Ofengericht", "Indisch"), shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm").getTags());
+    }
+
+    @Test
+    void getSharedRecipe_withoutTagsHasAnEmptyList() {
+        recipe.setTags(null);
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        assertEquals(List.of(), shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm").getTags());
+    }
+
+    @Test
     void getSharedImageUrl_shouldReturnImageOfValidLink() {
         when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
                 .thenReturn(Optional.of(linkCreatedAt(NOW)));

@@ -41,10 +41,12 @@ class ShareControllerTest {
 
     @Test
     void getSharedRecipe_shouldBePublicAndOnlyExposeAllowedFields() throws Exception {
-        when(shareLinkService.getSharedRecipe("tok")).thenReturn(new SharedRecipeDto(
+        SharedRecipeDto shared = new SharedRecipeDto(
                 "Linsen-Dhal", 4, List.of(new SharedIngredientDto("Rote Linsen", "250", "g")),
                 List.of("Kochen"), "nach: Made in India", true,
-                new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", "https://unsplash.com/photos/x")));
+                new ImageCredit(ImageCredit.UNSPLASH, "Jane Doe", "https://unsplash.com/@jane", "https://unsplash.com/photos/x"));
+        shared.setTags(List.of("Eintopf"));
+        when(shareLinkService.getSharedRecipe("tok")).thenReturn(shared);
 
         mockMvc.perform(get("/api/share/tok"))
                 .andExpect(status().isOk())
@@ -54,6 +56,8 @@ class ShareControllerTest {
                 .andExpect(jsonPath("$.ingredients[0].name").value("Rote Linsen"))
                 .andExpect(jsonPath("$.instructions[0]").value("Kochen"))
                 .andExpect(jsonPath("$.attribution").value("nach: Made in India"))
+                .andExpect(jsonPath("$.tags[0]").value("Eintopf"))
+                .andExpect(jsonPath("$.createdAt").doesNotExist())
                 .andExpect(jsonPath("$.description").doesNotExist())
                 .andExpect(jsonPath("$.author").doesNotExist())
                 .andExpect(jsonPath("$.page").doesNotExist())

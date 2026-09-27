@@ -122,9 +122,11 @@ public class ShareLinkService {
         String source = recipe.getSource();
         String attribution = source != null && !source.isBlank() ? "nach: " + source.trim() : null;
         boolean hasImage = recipe.getImageUrl() != null && !recipe.getImageUrl().isBlank();
-        return new SharedRecipeDto(content.title(), recipe.getBaseServings(), ingredients, instructions, attribution,
-                hasImage, hasImage ? recipe.getImageCredit() : null, content.sourceLanguage(), content.language(),
-                content.status());
+        SharedRecipeDto dto = new SharedRecipeDto(content.title(), recipe.getBaseServings(), ingredients, instructions,
+                attribution, hasImage, hasImage ? recipe.getImageCredit() : null, content.sourceLanguage(),
+                content.language(), content.status());
+        dto.setTags(recipe.getTags());
+        return dto;
     }
 
     private ShareLinkDto toDto(ShareLink shareLink) {
