@@ -53,6 +53,58 @@ class RecipeValidatorTest {
     }
 
     @Test
+    void linkToTheOriginalIsTrimmedAndBlankBecomesNull() {
+        Recipe r = recipe("Dal");
+        r.setSourceUrl("  https://www.zeit.de/zeit-magazin/wochenmarkt/2025-11/kuerbis-linsen-dhansak  ");
+        RecipeValidator.validate(r);
+        assertEquals("https://www.zeit.de/zeit-magazin/wochenmarkt/2025-11/kuerbis-linsen-dhansak", r.getSourceUrl());
+
+        for (String blank : Arrays.asList(null, "", "   ")) {
+            Recipe b = recipe("Dal");
+            b.setSourceUrl(blank);
+            RecipeValidator.validate(b);
+            assertNull(b.getSourceUrl());
+        }
+    }
+
+    @Test
+    void acceptsHttpAndHttpsLinksWithDomain() {
+        for (String url : List.of("http://example.com", "HTTPS://Example.com/a?b=c#d", "https://www.küchengötter.de/rezept",
+                "https://rainbowplantlife.com/wprm_print/8066", "https://localhost.de:8443/x")) {
+            Recipe r = recipe("Dal");
+            r.setSourceUrl(url);
+            RecipeValidator.validate(r);
+            assertEquals(url, r.getSourceUrl());
+        }
+    }
+
+    @Test
+    void rejectsLinksThatAreNoWebAddress() {
+        for (String url : List.of("zeit.de/rezept", "www.zeit.de", "ftp://example.com/x", "javascript:alert(1)",
+                "https://", "https://localhost/x", "https://zeit de/x", "https://user@evil.com/x", "mailto:a@b.de")) {
+            Recipe r = recipe("Dal");
+            r.setSourceUrl(url);
+            RecipeValidationException ex = invalid(r);
+            assertEquals(List.of("sourceUrl"), fields(ex), url);
+            assertTrue(ex.getMessage().contains("http://"), url);
+        }
+    }
+
+    @Test
+    void rejectsOverlongLink() {
+        String prefix = "https://www.zeit.de/";
+        Recipe ok = recipe("Dal");
+        ok.setSourceUrl(prefix + "x".repeat(2048 - prefix.length()));
+        RecipeValidator.validate(ok);
+
+        Recipe tooLong = recipe("Dal");
+        tooLong.setSourceUrl(prefix + "x".repeat(2049 - prefix.length()));
+        RecipeValidationException ex = invalid(tooLong);
+        assertEquals(List.of("sourceUrl"), fields(ex));
+        assertEquals("Der Link darf höchstens 2048 Zeichen lang sein.", ex.getMessage());
+    }
+
+    @Test
     void rejectsOverlongTitle() {
         assertEquals(List.of("title"), fields(invalid(recipe("x".repeat(256)))));
         RecipeValidator.validate(recipe("x".repeat(255)));

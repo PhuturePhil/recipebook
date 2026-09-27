@@ -200,6 +200,16 @@ class ShareLinkServiceTest {
     }
 
     @Test
+    void getSharedRecipe_shouldExposeTheLinkToTheOriginal() {
+        recipe.setSourceUrl("https://www.zeit.de/zeit-magazin/wochenmarkt/dhansak");
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        assertEquals("https://www.zeit.de/zeit-magazin/wochenmarkt/dhansak",
+                shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm").getSourceUrl());
+    }
+
+    @Test
     void getSharedRecipe_withoutTagsHasAnEmptyList() {
         recipe.setTags(null);
         when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))

@@ -9,6 +9,8 @@ import java.util.List;
 @Entity
 @Table(name = "recipes")
 public class Recipe {
+
+    public static final int MAX_SOURCE_URL = 2048;
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,6 +54,9 @@ public class Recipe {
     private String source;
     
     private String page;
+
+    @Column(name = "source_url", length = MAX_SOURCE_URL)
+    private String sourceUrl;
 
     private Integer prepTimeMinutes;
 
@@ -161,6 +166,14 @@ public class Recipe {
     
     public void setPage(String page) {
         this.page = page;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
+    }
+
+    public void setSourceUrl(String sourceUrl) {
+        this.sourceUrl = sourceUrl;
     }
 
     public Integer getPrepTimeMinutes() {

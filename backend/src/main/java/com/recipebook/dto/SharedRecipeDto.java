@@ -17,6 +17,7 @@ public class SharedRecipeDto {
   private String language = "de";
   private String translationStatus = "original";
   private List<String> tags = List.of();
+  private String sourceUrl;
 
   public SharedRecipeDto(String title, Integer baseServings, List<SharedIngredientDto> ingredients,
                          List<String> instructions, String attribution, boolean hasImage, ImageCredit imageCredit,
@@ -50,6 +51,8 @@ public class SharedRecipeDto {
   public String getTranslationStatus() { return translationStatus; }
   public List<String> getTags() { return tags; }
   public void setTags(List<String> tags) { this.tags = tags == null ? List.of() : List.copyOf(tags); }
+  public String getSourceUrl() { return sourceUrl; }
+  public void setSourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; }
 
   public record SharedIngredientDto(String name, String amount, String unit, String groupName) {
     public SharedIngredientDto(String name, String amount, String unit) {

@@ -287,6 +287,63 @@ class RecipeControllerTest {
     }
 
     @Test
+    void createRecipe_passesTheLinkToTheOriginalThroughTrimmed() throws Exception {
+        when(recipeService.saveForUser(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\",\"sourceUrl\":\"  https://www.zeit.de/rezept  \"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sourceUrl").value("https://www.zeit.de/rezept"));
+    }
+
+    @Test
+    void createRecipe_withLinkThatIsNoWebAddressIsRejected() throws Exception {
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\",\"sourceUrl\":\"javascript:alert(1)\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("sourceUrl"))
+                .andExpect(jsonPath("$.message").value(containsString("http://")));
+
+        verify(recipeService, never()).saveForUser(any(), any());
+    }
+
+    @Test
+    void updateRecipe_withoutLinkFieldKeepsTheStoredLink() throws Exception {
+        Recipe stored = new Recipe();
+        stored.setSourceUrl("https://www.zeit.de/rezept");
+        when(recipeService.findById(1L)).thenReturn(Optional.of(stored));
+        when(recipeService.isOwner(1L, 5L)).thenReturn(true);
+        when(recipeService.saveForUser(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(put("/api/recipes/1")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceUrl").value("https://www.zeit.de/rezept"));
+    }
+
+    @Test
+    void updateRecipe_withEmptyLinkRemovesIt() throws Exception {
+        Recipe stored = new Recipe();
+        stored.setSourceUrl("https://www.zeit.de/rezept");
+        when(recipeService.findById(1L)).thenReturn(Optional.of(stored));
+        when(recipeService.isOwner(1L, 5L)).thenReturn(true);
+        when(recipeService.saveForUser(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(put("/api/recipes/1")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dal\",\"sourceUrl\":\" \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceUrl").doesNotExist());
+    }
+
+    @Test
     void updateRecipe_withoutTitleIsRejectedBeforeSaving() throws Exception {
         when(recipeService.findById(1L)).thenReturn(Optional.of(new Recipe()));
         when(recipeService.isOwner(1L, 5L)).thenReturn(true);

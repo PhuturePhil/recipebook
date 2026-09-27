@@ -127,6 +127,7 @@ public class ShareLinkService {
                 attribution, hasImage, hasImage ? recipe.getImageCredit() : null, content.sourceLanguage(),
                 content.language(), content.status());
         dto.setTags(recipe.getTags());
+        dto.setSourceUrl(recipe.getSourceUrl());
         return dto;
     }
 

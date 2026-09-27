@@ -58,6 +58,12 @@ public final class RecipeValidator {
         checkLength(errors, "source", "Die Quelle", recipe.getSource());
         checkLength(errors, "page", "Die Seitenangabe", recipe.getPage());
 
+        recipe.setSourceUrl(RecipeSourceUrl.clean(recipe.getSourceUrl()));
+        String urlProblem = RecipeSourceUrl.problem(recipe.getSourceUrl());
+        if (urlProblem != null) {
+            errors.add(error("sourceUrl", urlProblem));
+        }
+
         if (recipe.getLanguage() != null && !RecipeLanguage.isSupported(recipe.getLanguage())) {
             errors.add(error("language", "Die Sprache muss „de“ oder „en“ sein."));
         }

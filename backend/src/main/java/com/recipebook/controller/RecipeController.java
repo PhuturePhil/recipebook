@@ -94,9 +94,11 @@ public class RecipeController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Recipe> updateRecipe(@PathVariable Long id, @RequestBody Recipe recipe, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        findOrThrow(id);
+        Recipe stored = findOrThrow(id);
         requireOwnerOrAdmin(id, userDetails, "Du kannst nur deine eigenen Rezepte bearbeiten.");
 
+        // Fehlt der Link im Request (ältere Clients), bleibt der gespeicherte; ein leerer String löscht ihn
+        if (recipe.getSourceUrl() == null) recipe.setSourceUrl(stored.getSourceUrl());
         recipe.setId(id);
         RecipeValidator.validate(recipe);
         Recipe updated = recipeService.saveForUser(recipe, userDetails);
