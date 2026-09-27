@@ -174,4 +174,17 @@ class RecipeValidatorTest {
 
         assertNull(r.getIngredients());
     }
+
+    @Test
+    void languageMustBeGermanOrEnglish() {
+        Recipe r = recipe("Dal");
+        r.setLanguage("fr");
+        assertEquals(List.of("language"), fields(invalid(r)));
+
+        Recipe ok = recipe("Dal");
+        ok.setLanguage("en");
+        RecipeValidator.validate(ok);
+        Recipe unset = recipe("Dal");
+        RecipeValidator.validate(unset);
+    }
 }

@@ -1,6 +1,14 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Sprache pro Rezept',
+    changes: [
+      'Jedes Rezept kennt jetzt seine Sprache (Deutsch oder Englisch). Beim Speichern erkennt die App sie automatisch aus Titel, Zutaten und Schritten',
+      'Im Formular steht unter der Zubereitungszeit ein Feld „Sprache des Rezepts“. Dort lässt sich die Erkennung korrigieren; eine von Hand gewählte Sprache bleibt beim nächsten Speichern erhalten',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Rezepteingabe: Foto-Knopf, Einheiten per Tastatur, Bruch-Tasten',
     changes: [
       'Das Bildfeld hat jetzt einen Knopf „Foto aufnehmen oder auswählen“ mit Vorschau daneben. Auf dem Handy stehen weiter Kamera und Mediathek zur Wahl. Ohne eigenes Foto sucht die App beim Anlegen automatisch ein passendes Bild',

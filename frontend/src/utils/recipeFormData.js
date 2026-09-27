@@ -61,3 +61,21 @@ export async function runSave(state, action) {
     state.saving = false
   }
 }
+
+export const LANGUAGE_NAMES = { de: 'Deutsch', en: 'Englisch' }
+
+// Dropdown value: 'auto' while the backend detects the language on save, otherwise the language set by hand
+export const languageChoice = (formData) => (formData.languageAuto === false ? formData.language : 'auto')
+
+export function applyLanguageChoice(formData, choice) {
+  if (choice === 'auto') {
+    formData.languageAuto = true
+  } else {
+    formData.language = choice
+    formData.languageAuto = false
+  }
+}
+
+export function autoLanguageLabel(detected) {
+  return LANGUAGE_NAMES[detected] ? `Automatisch (erkannt: ${LANGUAGE_NAMES[detected]})` : 'Automatisch erkennen'
+}

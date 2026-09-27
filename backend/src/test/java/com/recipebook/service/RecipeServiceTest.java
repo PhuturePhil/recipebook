@@ -460,4 +460,62 @@ class RecipeServiceTest {
         assertEquals(List.of("St", "TL", "Dosen", "Dose"),
             result.getIngredients().stream().map(Ingredient::getUnit).toList());
     }
+
+    @Test
+    void save_detectsLanguageWhenNotSetByHand() {
+        Recipe english = new Recipe();
+        english.setTitle("Turkish green beans");
+        english.setIngredients(new ArrayList<>(List.of(
+            ingredient(null, "400", "g", "runner beans"),
+            ingredient(null, "150", "ml", "extra virgin olive oil"),
+            ingredient(null, "1", "pc", "finely chopped onion"))));
+        english.setInstructions(List.of("Heat the oil in a pan and cook the onion until soft."));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(english, testUser);
+
+        assertEquals("en", result.getLanguage());
+        assertTrue(result.getLanguageAuto());
+    }
+
+    @Test
+    void save_keepsLanguageSetByHand() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Turkish green beans");
+        recipe.setInstructions(List.of("Heat the oil in a pan and cook the onion until soft."));
+        recipe.setLanguage("de");
+        recipe.setLanguageAuto(false);
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(recipe, testUser);
+
+        assertEquals("de", result.getLanguage());
+        assertFalse(result.getLanguageAuto());
+    }
+
+    @Test
+    void applyLanguage_explicitLanguageWithoutFlagCountsAsManual() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Linsensuppe mit Zwiebeln und Knoblauch");
+        recipe.setLanguage("en");
+
+        RecipeService.applyLanguage(recipe);
+
+        assertEquals("en", recipe.getLanguage());
+        assertFalse(recipe.getLanguageAuto());
+    }
+
+    @Test
+    void applyLanguage_autoRecipeIsDetectedAgainOnEverySave() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Linsensuppe mit Zwiebeln und Knoblauch");
+        recipe.setInstructions(List.of("Die Zwiebeln in der Pfanne mit dem Öl andünsten."));
+        recipe.setLanguage("en");
+        recipe.setLanguageAuto(true);
+
+        RecipeService.applyLanguage(recipe);
+
+        assertEquals("de", recipe.getLanguage());
+        assertTrue(recipe.getLanguageAuto());
+    }
 }

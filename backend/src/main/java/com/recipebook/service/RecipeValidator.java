@@ -2,6 +2,7 @@ package com.recipebook.service;
 
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.Recipe;
+import com.recipebook.translation.RecipeLanguage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +57,10 @@ public final class RecipeValidator {
         checkLength(errors, "author", "Der Autor", recipe.getAuthor());
         checkLength(errors, "source", "Die Quelle", recipe.getSource());
         checkLength(errors, "page", "Die Seitenangabe", recipe.getPage());
+
+        if (recipe.getLanguage() != null && !RecipeLanguage.isSupported(recipe.getLanguage())) {
+            errors.add(error("language", "Die Sprache muss „de“ oder „en“ sein."));
+        }
 
         validateIngredients(recipe, errors);
 

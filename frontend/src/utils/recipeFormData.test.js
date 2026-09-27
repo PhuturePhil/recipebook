@@ -1,6 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  languageChoice,
+  applyLanguageChoice,
+  autoLanguageLabel,
   emptyIngredient,
   cleanRecipeData,
   isIngredientNameRequired,
@@ -120,4 +123,20 @@ test('rows at the edge do not move', () => {
   assert.equal(moveRow(rows, 1, 1), -1)
   assert.equal(moveRow(rows, 5, -1), -1)
   assert.deepEqual(rows, ['a', 'b'])
+})
+
+test('language dropdown shows auto until a language is picked by hand', () => {
+  const form = { language: 'en', languageAuto: true }
+  assert.equal(languageChoice(form), 'auto')
+  applyLanguageChoice(form, 'de')
+  assert.deepEqual(form, { language: 'de', languageAuto: false })
+  assert.equal(languageChoice(form), 'de')
+  applyLanguageChoice(form, 'auto')
+  assert.equal(form.languageAuto, true)
+  assert.equal(languageChoice({ language: null, languageAuto: undefined }), 'auto')
+})
+
+test('auto option names the detected language', () => {
+  assert.equal(autoLanguageLabel('en'), 'Automatisch (erkannt: Englisch)')
+  assert.equal(autoLanguageLabel(null), 'Automatisch erkennen')
 })

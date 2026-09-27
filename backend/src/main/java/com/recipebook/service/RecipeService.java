@@ -14,6 +14,7 @@ import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.RecipeRepository.RecipeSummaryProjection;
 import com.recipebook.repository.RecipeRepository.StoredIngredient;
 import com.recipebook.repository.UserRepository;
+import com.recipebook.translation.RecipeLanguage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
@@ -104,6 +105,7 @@ public class RecipeService {
                 ingredient.setRecipe(recipe);
             }
         }
+        applyLanguage(recipe);
         if (recipe.getImageCredit() == null) {
             recipe.setImageCredit(exists ? keptImageCredit(recipe) : ImageCredit.forUpload(recipe.getImageUrl()));
         }
@@ -112,6 +114,21 @@ public class RecipeService {
         return recipeRepository.save(recipe);
     }
     
+    // Von Hand gesetzte Sprache bleibt; sonst wird sie bei jedem Speichern aus den Texten neu erkannt
+    static void applyLanguage(Recipe recipe) {
+        boolean manual = Boolean.FALSE.equals(recipe.getLanguageAuto())
+            || (recipe.getLanguageAuto() == null && recipe.getLanguage() != null);
+        if (manual && RecipeLanguage.isSupported(recipe.getLanguage())) {
+            recipe.setLanguageAuto(false);
+            return;
+        }
+        List<String> names = recipe.getIngredients() == null ? List.of()
+            : recipe.getIngredients().stream().map(Ingredient::getName).toList();
+        recipe.setLanguage(RecipeLanguage.detect(recipe.getTitle(), recipe.getDescription(), names,
+            recipe.getInstructions()));
+        recipe.setLanguageAuto(true);
+    }
+
     // Rows saved again without an edit keep their unit as stored; only new or edited rows get the unified spelling
     private static boolean unchanged(Ingredient ingredient, StoredIngredient stored) {
         return sameText(ingredient.getName(), stored.getName())

@@ -148,6 +148,15 @@
     </div>
 
     <div class="form-group">
+      <label for="language">Sprache des Rezepts</label>
+      <select id="language" v-model="languageSelection" class="language-select">
+        <option value="auto">{{ autoLanguageLabel(formData.language) }}</option>
+        <option value="de">Deutsch</option>
+        <option value="en">Englisch</option>
+      </select>
+    </div>
+
+    <div class="form-group">
       <label>Quelle</label>
       <div class="source-fields">
         <div class="source-input-wrapper">
@@ -460,7 +469,10 @@ import {
   addIngredientBelow,
   moveRow,
   preventsImplicitSubmit,
-  formSnapshot
+  formSnapshot,
+  languageChoice,
+  applyLanguageChoice,
+  autoLanguageLabel
 } from '@/utils/recipeFormData'
 import { ingredientsFromText, ingredientsToText, insertPastedIngredients } from '@/utils/ingredientText'
 import {
@@ -521,6 +533,8 @@ const formData = ref({
   baseServings: 4,
   servingsTo: null,
   prepTimeMinutes: null,
+  language: null,
+  languageAuto: true,
   imageUrl: '',
   author: '',
   source: '',
@@ -530,6 +544,11 @@ const formData = ref({
 })
 
 const formRef = ref(null)
+
+const languageSelection = computed({
+  get: () => languageChoice(formData.value),
+  set: (choice) => applyLanguageChoice(formData.value, choice)
+})
 const savedSnapshot = ref(formSnapshot(formData.value))
 
 const isDirty = () => formSnapshot(formData.value) !== savedSnapshot.value
@@ -866,6 +885,8 @@ watch(
         baseServings: newRecipe.baseServings,
         servingsTo: newRecipe.servingsTo || null,
         prepTimeMinutes: newRecipe.prepTimeMinutes || null,
+        language: newRecipe.language || null,
+        languageAuto: newRecipe.languageAuto ?? true,
         imageUrl: newRecipe.imageUrl || '',
         author: newRecipe.author || '',
         source: newRecipe.source || '',
@@ -1420,6 +1441,15 @@ const handleSubmit = () => {
   resize: none;
   overflow: hidden;
   min-height: 44px;
+}
+
+.language-select {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: white;
 }
 
 .servings-fields {

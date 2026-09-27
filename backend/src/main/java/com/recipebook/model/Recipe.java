@@ -49,6 +49,13 @@ public class Recipe {
 
     private Integer servingsTo;
 
+    @Column(nullable = false, length = 2)
+    private String language;
+
+    // null im Request = automatisch erkennen; false = von Hand gesetzt, bleibt beim Speichern stehen
+    @Column(name = "language_auto", nullable = false)
+    private Boolean languageAuto;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @JsonIgnore
@@ -158,6 +165,29 @@ public class Recipe {
 
     public void setServingsTo(Integer servingsTo) {
         this.servingsTo = servingsTo;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
+    }
+
+    public Boolean getLanguageAuto() {
+        return languageAuto;
+    }
+
+    public void setLanguageAuto(Boolean languageAuto) {
+        this.languageAuto = languageAuto;
+    }
+
+    @PrePersist
+    @PreUpdate
+    void defaultLanguage() {
+        if (language == null) language = "de";
+        if (languageAuto == null) languageAuto = true;
     }
 
     public User getUser() {
