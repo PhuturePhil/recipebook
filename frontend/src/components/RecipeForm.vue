@@ -196,7 +196,7 @@
           <input
             v-model="formData.source"
             type="text"
-            placeholder="Buch oder Website"
+            placeholder="Buch, Website oder Eigenrezept"
             autocomplete="off"
             @focus="activeSourceField = 'source'"
             @blur="onSourceFieldBlur('source')"
@@ -529,6 +529,7 @@ import {
   pendingRecognition,
   recognitionHint
 } from '@/utils/ingredientSuggest'
+import { sourceSuggestions, authorSuggestions, sourcesOfAuthor } from '@/utils/recipeSources'
 import {
   DRAFT_DELAY_MS,
   draftKey,
@@ -642,26 +643,11 @@ const unitOptions = (index) => {
 
 const unitListOpen = (index) => activeUnitIndex.value === index && unitOptions(index).length > 0
 
-const filteredSources = computed(() => {
-  const query = formData.value.source?.trim().toLowerCase() ?? ''
-  const currentAuthor = formData.value.author?.trim().toLowerCase() ?? ''
-  const list = currentAuthor
-    ? knownSources.value.filter(s => s.author?.toLowerCase() === currentAuthor)
-    : knownSources.value
-  if (!query) return list
-  return list.filter(s => s.source.toLowerCase().includes(query))
-})
+const filteredSources = computed(() =>
+  sourceSuggestions(knownSources.value, formData.value.source, formData.value.author))
 
-const filteredAuthors = computed(() => {
-  const query = formData.value.author?.trim().toLowerCase() ?? ''
-  const uniqueAuthors = [...new Map(
-    knownSources.value
-      .filter(s => s.author)
-      .map(s => [s.author, s])
-  ).values()]
-  if (!query) return uniqueAuthors
-  return uniqueAuthors.filter(s => s.author.toLowerCase().includes(query))
-})
+const filteredAuthors = computed(() =>
+  authorSuggestions(knownSources.value, formData.value.author).map(author => ({ author })))
 
 const selectSource = (item) => {
   formData.value.source = item.source
@@ -673,8 +659,8 @@ const selectSource = (item) => {
 
 const selectAuthor = (item) => {
   formData.value.author = item.author
-  const booksOfAuthor = knownSources.value.filter(s => s.author === item.author && s.source)
-  if (booksOfAuthor.length === 1) {
+  const booksOfAuthor = sourcesOfAuthor(knownSources.value, item.author)
+  if (booksOfAuthor.length === 1 && !formData.value.source?.trim()) {
     formData.value.source = booksOfAuthor[0].source
   }
   activeSourceField.value = null
