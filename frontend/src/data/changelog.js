@@ -1,5 +1,17 @@
 export const changelog = [
   {
+    date: '27.09.2026',
+    title: 'Rezepteingabe: weniger Stolperfallen',
+    changes: [
+      'Enter speichert das Rezept nicht mehr versehentlich. In einer Zutatenzeile legt Enter eine neue Zeile darunter an und springt hinein, gespeichert wird nur über den Knopf',
+      'Schlägt das Speichern fehl, bleiben alle Eingaben stehen und die Fehlermeldung erscheint direkt über den Knöpfen',
+      'Leere Zutaten- oder Schrittzeilen blockieren das Speichern nicht mehr, sie werden beim Speichern einfach weggelassen',
+      'Zutatenzeile in der Reihenfolge Menge, Einheit, Zutat. Die Tab-Taste springt nicht mehr auf den Löschen-Knopf oder in die Einheiten-Liste',
+      '„Abbrechen“ beim Bearbeiten führt zurück zum Rezept. Bei ungespeicherten Änderungen kommt vorher eine Nachfrage, auch beim Zurück-Wischen oder Neuladen',
+      'Ein Foto-Scan fragt nach, bevor er vorhandene Zutaten und Schritte ersetzt',
+    ]
+  },
+  {
     date: '25.09.2026',
     title: 'Schneller laden, Suche beim Tippen, Mengen mit Brüchen',
     changes: [

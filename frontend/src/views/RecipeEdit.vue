@@ -4,19 +4,29 @@
       <h1 ref="titleRef">{{ isEdit ? (recipe?.title || 'Rezept bearbeiten') : (currentTitle || 'Neues Rezept erstellen') }}</h1>
     </header>
 
-    <div v-if="store.loading" class="loading">Lädt...</div>
+    <div v-if="loadingRecipe" class="loading">Lädt...</div>
 
-    <div v-else-if="store.error" class="error">{{ store.error }}</div>
+    <div v-else-if="loadError" class="error">{{ loadError }}</div>
 
-    <RecipeForm v-else :recipe="recipe" @submit="handleSubmit" @title-change="onTitleChange" />
+    <RecipeForm
+      v-else
+      ref="formRef"
+      :recipe="recipe"
+      :saving="saveState.saving"
+      :save-error="saveState.error"
+      @submit="handleSubmit"
+      @cancel="handleCancel"
+      @title-change="onTitleChange"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
+import { runSave } from '@/utils/recipeFormData'
 import RecipeForm from '@/components/RecipeForm.vue'
 
 const route = useRoute()
@@ -26,10 +36,29 @@ const uiStore = useUiStore()
 
 const isEdit = computed(() => !!route.params.id)
 const recipe = computed(() => {
-  if (isEdit.value && store.currentRecipe) {
+  if (isEdit.value && store.currentRecipe?.id === Number(route.params.id)) {
     return store.currentRecipe
   }
   return null
+})
+
+const formRef = ref(null)
+const loadingRecipe = ref(isEdit.value)
+const loadError = ref('')
+const saveState = reactive({ saving: false, error: '' })
+let leaveConfirmed = false
+
+const hasUnsavedChanges = () => !leaveConfirmed && !!formRef.value?.isDirty()
+
+function onBeforeUnload(event) {
+  if (!hasUnsavedChanges()) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onBeforeRouteLeave(() => {
+  if (!hasUnsavedChanges()) return true
+  return confirm('Ungespeicherte Änderungen verwerfen?')
 })
 
 const titleRef = ref(null)
@@ -65,8 +94,15 @@ function onTitleChange(title) {
 }
 
 onMounted(async () => {
+  window.addEventListener('beforeunload', onBeforeUnload)
   if (isEdit.value) {
-    await store.fetchRecipeById(route.params.id)
+    try {
+      await store.fetchRecipeById(route.params.id)
+    } catch (error) {
+      loadError.value = error.message
+    } finally {
+      loadingRecipe.value = false
+    }
   }
   setupObserver()
 })
@@ -76,25 +112,24 @@ watch(recipe, (r) => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
   titleObserver?.disconnect()
   uiStore.clearNavTitle()
 })
 
 const handleSubmit = async (recipeData) => {
   uiStore.showLoading('Rezept wird gespeichert…')
-  try {
-    if (isEdit.value) {
-      await store.updateRecipe(route.params.id, recipeData)
-      router.push(`/recipe/${route.params.id}`)
-    } else {
-      const newRecipe = await store.createRecipe(recipeData)
-      router.push(`/recipe/${newRecipe.id}`)
-    }
-  } catch (error) {
-    alert('Fehler beim Speichern des Rezepts: ' + error.message)
-  } finally {
-    uiStore.hideLoading()
-  }
+  const { ok, result } = await runSave(saveState, () => isEdit.value
+    ? store.updateRecipe(route.params.id, recipeData)
+    : store.createRecipe(recipeData))
+  uiStore.hideLoading()
+  if (!ok) return
+  leaveConfirmed = true
+  router.push(`/recipe/${isEdit.value ? route.params.id : result.id}`)
+}
+
+const handleCancel = () => {
+  router.push(isEdit.value ? `/recipe/${route.params.id}` : '/')
 }
 </script>
 

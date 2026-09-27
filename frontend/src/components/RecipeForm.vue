@@ -1,5 +1,5 @@
 <template>
-  <form class="recipe-form" @submit.prevent="handleSubmit">
+  <form ref="formRef" class="recipe-form" @submit.prevent="handleSubmit" @keydown.enter="blockImplicitSubmit">
 
     <div class="scan-section">
       <p class="scan-hint">Rezept aus Foto laden</p>
@@ -147,6 +147,7 @@
           <ul
             v-if="activeSourceField === 'author' && filteredAuthors.length > 0"
             class="source-dropdown"
+            tabindex="-1"
           >
             <li
               v-for="item in filteredAuthors"
@@ -174,6 +175,7 @@
           <ul
             v-if="activeSourceField === 'source' && filteredSources.length > 0"
             class="source-dropdown"
+            tabindex="-1"
           >
             <li
               v-for="item in filteredSources"
@@ -194,26 +196,11 @@
       <label>Zutaten</label>
       <div v-for="(ingredient, index) in formData.ingredients" :key="index" class="ingredient-row">
         <input
-          v-model="ingredient.name"
-          type="text"
-          placeholder="Zutat"
-          class="ingredient-name"
-          required
-        />
-        <button type="button" class="btn-remove-icon" @click="removeIngredient(index)" title="Zutat entfernen">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <path d="M10 11v6M14 11v6"/>
-            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-          </svg>
-        </button>
-        <div class="ingredient-secondary">
-        <input
           v-model="ingredient.amount"
           type="text"
           placeholder="Menge"
           class="ingredient-amount-input"
+          @keydown.enter="onIngredientEnter($event, index)"
         />
         <div class="unit-input-wrapper">
           <input
@@ -223,10 +210,12 @@
             autocomplete="off"
             @focus="activeUnitIndex = index"
             @blur="closeUnitDropdown"
+            @keydown.enter="onIngredientEnter($event, index)"
           />
           <ul
             v-if="activeUnitIndex === index && unitDropdownItems(index).length > 0"
             class="unit-dropdown"
+            tabindex="-1"
           >
             <li
               v-for="unit in filteredKnownUnits(index)"
@@ -244,7 +233,22 @@
             </li>
           </ul>
         </div>
-        </div>
+        <input
+          v-model="ingredient.name"
+          type="text"
+          placeholder="Zutat"
+          class="ingredient-name"
+          :required="isIngredientNameRequired(formData.ingredients, index)"
+          @keydown.enter="onIngredientEnter($event, index)"
+        />
+        <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeIngredient(index)" title="Zutat entfernen" aria-label="Zutat entfernen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
       </div>
       <button type="button" class="btn-add" @click="addIngredient">
         + Zutat hinzufügen
@@ -259,10 +263,10 @@
           v-model="formData.instructions[index]"
           rows="1"
           placeholder="Arbeitsschritt eingeben"
-          required
+          :required="isInstructionRequired(formData.instructions, index)"
           @input="autoResize"
         ></textarea>
-        <button type="button" class="btn-remove-icon" @click="removeInstruction(index)" title="Schritt entfernen">
+        <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeInstruction(index)" title="Schritt entfernen" aria-label="Schritt entfernen">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -277,11 +281,14 @@
     </div>
 
     <div class="form-actions">
-      <button type="button" class="btn-cancel" @click="handleCancel">
+      <div v-if="saveError" class="save-error" role="alert">
+        Speichern fehlgeschlagen: {{ saveError }} Deine Eingaben sind noch da, du kannst es erneut versuchen.
+      </div>
+      <button type="button" class="btn-cancel" @click="emit('cancel')">
         Abbrechen
       </button>
-      <button type="submit" class="btn-submit">
-        {{ isEdit ? 'Rezept aktualisieren' : 'Rezept erstellen' }}
+      <button type="submit" class="btn-submit" :disabled="saving">
+        {{ saving ? 'Wird gespeichert…' : (isEdit ? 'Rezept aktualisieren' : 'Rezept erstellen') }}
       </button>
     </div>
   </form>
@@ -289,22 +296,38 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipeService'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { resizeImageFile } from '@/utils/resizeImage'
+import {
+  emptyIngredient,
+  isBlankIngredient,
+  cleanRecipeData,
+  isIngredientNameRequired,
+  isInstructionRequired,
+  addIngredientBelow,
+  preventsImplicitSubmit,
+  formSnapshot
+} from '@/utils/recipeFormData'
 
 const props = defineProps({
   recipe: {
     type: Object,
     default: null
+  },
+  saving: {
+    type: Boolean,
+    default: false
+  },
+  saveError: {
+    type: String,
+    default: ''
   }
 })
 
 const emit = defineEmits(['submit', 'cancel', 'titleChange'])
 
-const router = useRouter()
 const store = useRecipeStore()
 const uiStore = useUiStore()
 const isEdit = ref(!!props.recipe)
@@ -325,9 +348,16 @@ const formData = ref({
   author: '',
   source: '',
   page: '',
-  ingredients: [{ name: '', amount: '', unit: '' }],
+  ingredients: [emptyIngredient()],
   instructions: ['']
 })
+
+const formRef = ref(null)
+const savedSnapshot = ref(formSnapshot(formData.value))
+
+const isDirty = () => formSnapshot(formData.value) !== savedSnapshot.value
+
+defineExpose({ isDirty })
 
 const activeUnitIndex = ref(null)
 const descriptionRef = ref(null)
@@ -465,12 +495,13 @@ watch(
         source: newRecipe.source || '',
         page: newRecipe.page || '',
         ingredients: newRecipe.ingredients?.length
-          ? [...newRecipe.ingredients]
-          : [{ name: '', amount: '', unit: '' }],
+          ? newRecipe.ingredients.map((i) => ({ ...i }))
+          : [emptyIngredient()],
         instructions: newRecipe.instructions?.length
           ? [...newRecipe.instructions]
           : ['']
       }
+      savedSnapshot.value = formSnapshot(formData.value)
       resizeAllTextareas()
     }
   },
@@ -500,7 +531,12 @@ const removeScanImage = (index) => {
   selectedImages.value.splice(index, 1)
 }
 
+const hasIngredientsOrSteps = () =>
+  formData.value.ingredients.some((i) => !isBlankIngredient(i)) ||
+  formData.value.instructions.some((i) => i.trim())
+
 const handleScan = async () => {
+  if (hasIngredientsOrSteps() && !confirm('Ersetzt vorhandene Zutaten und Schritte — fortfahren?')) return
   scanning.value = true
   scanError.value = ''
   unrecognizedText.value = ''
@@ -564,7 +600,20 @@ const copyUnrecognizedText = async () => {
 }
 
 const addIngredient = () => {
-  formData.value.ingredients.push({ name: '', amount: '', unit: '' })
+  formData.value.ingredients.push(emptyIngredient())
+}
+
+const blockImplicitSubmit = (event) => {
+  if (preventsImplicitSubmit(event)) event.preventDefault()
+}
+
+const onIngredientEnter = async (event, index) => {
+  if (event.isComposing) return
+  event.preventDefault()
+  activeUnitIndex.value = null
+  const target = addIngredientBelow(formData.value.ingredients, index)
+  await nextTick()
+  formRef.value?.querySelectorAll('.ingredient-row')[target]?.querySelector('input')?.focus()
 }
 
 const handleImageUpload = async (event) => {
@@ -595,16 +644,8 @@ const removeInstruction = (index) => {
 }
 
 const handleSubmit = () => {
-  const recipeData = {
-    ...formData.value,
-    ingredients: formData.value.ingredients.filter((i) => i.name.trim()),
-    instructions: formData.value.instructions.filter((i) => i.trim())
-  }
-  emit('submit', recipeData)
-}
-
-const handleCancel = () => {
-  router.push('/')
+  if (props.saving) return
+  emit('submit', cleanRecipeData(formData.value))
 }
 </script>
 
@@ -889,7 +930,8 @@ const handleCancel = () => {
 }
 
 .ingredient-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 80px 120px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   padding: 8px 0;
@@ -900,32 +942,8 @@ const handleCancel = () => {
   border-bottom: none;
 }
 
-.ingredient-row .ingredient-name {
-  flex: 1;
+.ingredient-row > * {
   min-width: 0;
-  order: 1;
-}
-
-.ingredient-secondary {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  order: 2;
-}
-
-.ingredient-secondary .ingredient-amount-input {
-  flex: 0 0 28%;
-  min-width: 0;
-}
-
-.ingredient-secondary .unit-input-wrapper {
-  flex: 1;
-  min-width: 0;
-}
-
-.ingredient-row .btn-remove-icon {
-  order: 3;
 }
 
 .btn-remove-icon {
@@ -948,21 +966,26 @@ const handleCancel = () => {
 
 @media (max-width: 600px) {
   .ingredient-row {
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+    grid-template-areas:
+      "amount unit unit"
+      "name name remove";
+  }
+
+  .ingredient-row .ingredient-amount-input {
+    grid-area: amount;
+  }
+
+  .ingredient-row .unit-input-wrapper {
+    grid-area: unit;
   }
 
   .ingredient-row .ingredient-name {
-    flex: 1 1 calc(100% - 44px);
-    order: 1;
+    grid-area: name;
   }
 
   .ingredient-row .btn-remove-icon {
-    order: 2;
-  }
-
-  .ingredient-secondary {
-    flex: 1 1 100%;
-    order: 3;
+    grid-area: remove;
   }
 }
 
@@ -1013,6 +1036,7 @@ const handleCancel = () => {
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: flex-end;
   margin-top: 32px;
@@ -1047,8 +1071,23 @@ const handleCancel = () => {
   color: white;
 }
 
-.btn-submit:hover {
+.btn-submit:hover:not(:disabled) {
   background: var(--color-primary-dark, #2d3748);
+}
+
+.btn-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.save-error {
+  flex-basis: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(229, 62, 62, 0.08);
+  border: 1px solid var(--color-error, #e53e3e);
+  color: var(--color-error, #e53e3e);
+  font-size: 0.9rem;
 }
 
 .unit-input-wrapper {
