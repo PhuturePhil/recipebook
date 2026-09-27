@@ -33,14 +33,17 @@ public class RecipeService {
     private final RecipeImageService recipeImageService;
     private final NutritionService nutritionService;
     private final IngredientAiService ingredientAiService;
+    private final RecipeTranslationService translationService;
 
     public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, RecipeImageService recipeImageService,
-            NutritionService nutritionService, IngredientAiService ingredientAiService) {
+            NutritionService nutritionService, IngredientAiService ingredientAiService,
+            RecipeTranslationService translationService) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.recipeImageService = recipeImageService;
         this.nutritionService = nutritionService;
         this.ingredientAiService = ingredientAiService;
+        this.translationService = translationService;
     }
     
     public List<RecipeSummaryDto> findAllSummaries() {
@@ -48,6 +51,7 @@ public class RecipeService {
         Map<Long, Integer> servings = new LinkedHashMap<>();
         projections.forEach(p -> servings.put(p.getId(), p.getBaseServings()));
         Map<Long, RecipeNutrition> nutrition = nutritionService.calculateAll(servings);
+        Map<Long, String> translatedSearch = translationService.searchTexts(RecipeLanguage.GERMAN);
         return projections.stream().map(p -> {
             RecipeSummaryDto dto = new RecipeSummaryDto(
                 p.getId(), p.getTitle(), p.getDescription(), p.getImageUrl(),
@@ -58,6 +62,7 @@ public class RecipeService {
             dto.setSource(p.getSource());
             dto.setCreatedBy(p.getCreatedBy());
             dto.setIngredientNames(p.getIngredientNames());
+            dto.setTranslatedSearchText(translatedSearch.get(p.getId()));
             RecipeNutrition n = nutrition.get(p.getId());
             if (n != null) dto.setNutrition(NutritionSummaryDto.of(n));
             return dto;

@@ -274,4 +274,27 @@ class RecipeTranslationServiceTest {
         assertTrue(service.currentIngredients(List.of(92L, 51L), "de").isEmpty());
         verify(ai, times(1)).complete(anyString(), anyString(), any(), anyInt(), any(Duration.class));
     }
+
+    @Test
+    void searchTextsJoinTranslatedTitleAndIngredientNames() {
+        RecipeTranslationRepository.SearchRow ok = searchRow(92L, "Türkische grüne Bohnen",
+            "[{\"amount\":\"400\",\"unit\":\"g\",\"name\":\"Stangenbohnen\"},"
+                + "{\"amount\":\"1\",\"unit\":\"\",\"name\":\"Olivenöl\"}]");
+        RecipeTranslationRepository.SearchRow broken = searchRow(50L, "Tomatensuppe", "kein json");
+        when(repository.findSearchRows("de")).thenReturn(List.of(ok, broken));
+
+        var texts = service.searchTexts("de");
+
+        assertEquals("Türkische grüne Bohnen | Stangenbohnen | Olivenöl", texts.get(92L));
+        assertEquals("Tomatensuppe", texts.get(50L));
+        verifyNoInteractions(ai);
+    }
+
+    private static RecipeTranslationRepository.SearchRow searchRow(Long id, String title, String ingredients) {
+        return new RecipeTranslationRepository.SearchRow() {
+            @Override public Long getRecipeId() { return id; }
+            @Override public String getTitle() { return title; }
+            @Override public String getIngredients() { return ingredients; }
+        };
+    }
 }

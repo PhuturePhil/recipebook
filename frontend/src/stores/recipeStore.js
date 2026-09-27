@@ -1,11 +1,32 @@
 import { defineStore } from 'pinia'
 import { recipeService } from '@/services/recipeService'
 import { useUiStore } from '@/stores/uiStore'
+import { filterRecipes, normalizeText, sortRecipes, SORT_OPTIONS } from '@/utils/recipeSearch'
 
 export const QUICK_MAX_MINUTES = 30
 
 const BADGE_NAMES = ['Energiearm', 'Proteinreich', 'Ballaststoffreich', 'Fettarm', 'Schnell']
 const BADGE_SEARCH_ALIASES = { kalorienarm: 'Energiearm' }
+const SORT_PREF_KEY = 'recipeSort'
+
+const readSortPreference = () => {
+  try {
+    const value = localStorage.getItem(SORT_PREF_KEY)
+    return SORT_OPTIONS.some((o) => o.value === value) ? value : 'default'
+  } catch {
+    return 'default'
+  }
+}
+
+const recipeSearchText = (recipe) => normalizeText([
+  recipe.title,
+  recipe.description,
+  recipe.author,
+  recipe.source,
+  recipe.createdBy,
+  recipe.ingredientNames,
+  recipe.translatedSearchText,
+].filter(Boolean).join(' | '))
 
 const toSummary = (recipe) => ({
   id: recipe.id,
@@ -20,6 +41,7 @@ const toSummary = (recipe) => ({
   source: recipe.source ?? '',
   createdBy: recipe.createdBy ?? '',
   ingredientNames: recipe.ingredientNames ?? '',
+  translatedSearchText: recipe.translatedSearchText ?? null,
   nutrition: recipe.nutrition ?? null,
 })
 
@@ -31,6 +53,7 @@ export const useRecipeStore = defineStore('recipe', {
     error: null,
     searchTerms: [],
     pendingSearchTerm: '',
+    sortMode: readSortPreference(),
     _lastFetched: null,
   }),
 
@@ -52,37 +75,20 @@ export const useRecipeStore = defineStore('recipe', {
         : state.searchTerms
     },
 
+    searchTexts: (state) => new Map(state.recipes.map((r) => [r.id, recipeSearchText(r)])),
+
     filteredRecipes() {
-      const terms = this.activeSearchTerms
-      if (!terms.length) return this.recipes
-      const timeRegex = /^([<>])\s*(\d+)$/
       const badgeMap = this.computedBadges
-      return this.recipes.filter((recipe) =>
-        terms.every((term) => {
-          const timeMatch = term.match(timeRegex)
-          if (timeMatch) {
-            const op = timeMatch[1]
-            const minutes = parseInt(timeMatch[2], 10)
-            const prep = recipe.prepTimeMinutes ?? null
-            if (prep === null) return false
-            return op === '<' ? prep < minutes : prep > minutes
-          }
-          const termLower = term.toLowerCase()
-          const matchedBadge = BADGE_SEARCH_ALIASES[termLower] ?? BADGE_NAMES.find(b => b.toLowerCase() === termLower)
-          if (matchedBadge) {
-            return (badgeMap.get(recipe.id) ?? []).includes(matchedBadge)
-          }
-          const q = termLower
-          return (
-            (recipe.title || '').toLowerCase().includes(q) ||
-            (recipe.description || '').toLowerCase().includes(q) ||
-            (recipe.author || '').toLowerCase().includes(q) ||
-            (recipe.source || '').toLowerCase().includes(q) ||
-            (recipe.createdBy || '').toLowerCase().includes(q) ||
-            (recipe.ingredientNames || '').toLowerCase().includes(q)
-          )
-        })
-      )
+      const searchTexts = this.searchTexts
+      const matchKeyword = (recipe, text) => {
+        const badge = BADGE_SEARCH_ALIASES[text] ?? BADGE_NAMES.find((b) => normalizeText(b) === text)
+        return badge ? (badgeMap.get(recipe.id) ?? []).includes(badge) : undefined
+      }
+      const filtered = filterRecipes(this.recipes, this.activeSearchTerms, {
+        searchText: (recipe) => searchTexts.get(recipe.id) ?? '',
+        matchKeyword,
+      })
+      return sortRecipes(filtered, this.sortMode)
     },
 
     searchQuery() {
@@ -203,6 +209,15 @@ export const useRecipeStore = defineStore('recipe', {
 
     setPendingSearchTerm(term) {
       this.pendingSearchTerm = term
+    },
+
+    setSortMode(mode) {
+      this.sortMode = SORT_OPTIONS.some((o) => o.value === mode) ? mode : 'default'
+      try {
+        localStorage.setItem(SORT_PREF_KEY, this.sortMode)
+      } catch {
+        // Ohne Speicher gilt die Wahl nur bis zum Neuladen
+      }
     },
 
     clearError() {

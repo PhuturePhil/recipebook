@@ -1,5 +1,7 @@
 package com.recipebook.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 public class RecipeSummaryDto {
 
   private Long id;
@@ -15,6 +17,8 @@ public class RecipeSummaryDto {
   private String createdBy;
   private String ingredientNames;
   private NutritionSummaryDto nutrition;
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private String translatedSearchText;
 
   public RecipeSummaryDto(Long id, String title, String description, String imageUrl,
       Integer prepTimeMinutes, Integer baseServings, Integer servingsTo, Long ingredientCount) {
@@ -54,4 +58,6 @@ public class RecipeSummaryDto {
   public void setIngredientNames(String ingredientNames) { this.ingredientNames = ingredientNames; }
   public NutritionSummaryDto getNutrition() { return nutrition; }
   public void setNutrition(NutritionSummaryDto nutrition) { this.nutrition = nutrition; }
+  public String getTranslatedSearchText() { return translatedSearchText; }
+  public void setTranslatedSearchText(String translatedSearchText) { this.translatedSearchText = translatedSearchText; }
 }

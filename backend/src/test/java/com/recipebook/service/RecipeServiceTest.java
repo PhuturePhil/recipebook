@@ -42,6 +42,9 @@ class RecipeServiceTest {
     @Mock
     private RecipeImageService recipeImageService;
 
+    @Mock
+    private RecipeTranslationService translationService;
+
     @InjectMocks
     private RecipeService recipeService;
 

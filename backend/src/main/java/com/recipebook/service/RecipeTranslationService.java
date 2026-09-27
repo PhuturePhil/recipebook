@@ -144,6 +144,25 @@ public class RecipeTranslationService {
         return result;
     }
 
+    /**
+     * Übersetzter Titel und Zutatennamen je Rezept als kompakter Suchtext für die Rezeptliste – ohne KI-Aufruf.
+     */
+    public Map<Long, String> searchTexts(String language) {
+        Map<Long, String> result = new HashMap<>();
+        for (RecipeTranslationRepository.SearchRow row : repository.findSearchRows(language)) {
+            StringBuilder text = new StringBuilder(row.getTitle() == null ? "" : row.getTitle());
+            try {
+                for (Line line : objectMapper.readValue(row.getIngredients(), new TypeReference<List<Line>>() { })) {
+                    if (line.name() != null && !line.name().isBlank()) text.append(" | ").append(line.name());
+                }
+            } catch (JacksonException e) {
+                log.warn("Zutaten der Übersetzung von Rezept {} unlesbar: {}", row.getRecipeId(), e.getOriginalMessage());
+            }
+            if (!text.isEmpty()) result.put(row.getRecipeId(), text.toString());
+        }
+        return result;
+    }
+
     public static boolean needsTranslation(Recipe recipe, String language) {
         return RecipeLanguage.GERMAN.equals(language) && RecipeLanguage.ENGLISH.equals(recipe.getLanguage());
     }

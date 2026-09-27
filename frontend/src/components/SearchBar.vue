@@ -1,16 +1,30 @@
 <template>
   <div class="search-bar">
-    <div class="search-input-row">
-      <input
-        :value="inputValue"
-        type="text"
-        aria-label="Rezepte durchsuchen"
-        placeholder="Suchen… (Komma = neuer Begriff)"
-        @input="handleInput"
-        @keydown.enter="commitInput"
-        @keydown.backspace="handleBackspace"
-      />
-      <span v-if="badges.length || inputValue" class="search-clear-all" @click="clearAll">&times;</span>
+    <div class="search-controls">
+      <div class="search-input-row">
+        <input
+          :value="inputValue"
+          type="text"
+          aria-label="Rezepte durchsuchen"
+          placeholder="Suchen… (Komma = neuer Begriff)"
+          @input="handleInput"
+          @keydown.enter="commitInput"
+          @keydown.backspace="handleBackspace"
+        />
+        <span v-if="badges.length || inputValue" class="search-clear-all" @click="clearAll">&times;</span>
+      </div>
+      <select
+        class="search-sort"
+        :class="{ 'search-sort--active': store.sortMode !== 'default' }"
+        :value="store.sortMode"
+        aria-label="Sortierung"
+        title="Sortierung"
+        @change="store.setSortMode($event.target.value)"
+      >
+        <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
+          {{ option.value === 'default' ? 'Sortieren' : option.label }}
+        </option>
+      </select>
     </div>
     <div v-if="badges.length" class="search-badges">
       <span v-for="(badge, index) in badges" :key="index" class="search-badge">
@@ -24,6 +38,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
+import { SORT_OPTIONS } from '@/utils/recipeSearch'
 
 const store = useRecipeStore()
 const badges = ref([])
@@ -106,8 +121,38 @@ const clearAll = () => {
   gap: 8px;
 }
 
+.search-controls {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
 .search-input-row {
   position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-sort {
+  flex: 0 0 auto;
+  max-width: 9.5rem;
+  padding: 0 8px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  background: var(--color-bg-card, #fff);
+  color: var(--color-text-muted, #999);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.search-sort:focus {
+  outline: none;
+  border-color: var(--color-primary, #4a5568);
+}
+
+.search-sort--active {
+  color: var(--color-text-primary, #333);
+  border-color: var(--color-primary, #4a5568);
 }
 
 .search-input-row input {

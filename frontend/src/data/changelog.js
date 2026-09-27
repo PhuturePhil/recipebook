@@ -1,6 +1,15 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Schlauere Suche und Sortierung',
+    changes: [
+      'Englische Rezepte werden jetzt auch mit deutschen Begriffen gefunden, zum Beispiel „Bohnen“ für „Turkish green beans“. Die englischen Begriffe funktionieren weiterhin',
+      'Akzente und ß spielen bei der Suche keine Rolle mehr: „Creme“ findet auch „Crème fraîche“, „Sosse“ auch „Soße“. Kleine Tippfehler in längeren Wörtern werden verziehen',
+      'Neben dem Suchfeld lässt sich die Liste sortieren: neueste zuerst, nach Zubereitungszeit oder nach kcal pro Portion. Die Wahl bleibt auf dem Gerät gespeichert',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Übersetzungen deutlich gekennzeichnet',
     changes: [
       'Zeigt die App die deutsche Übersetzung eines englischen Rezepts, steht direkt unter dem Titel ein farbiger Hinweis „Automatisch übersetzte Fassung — Original: Englisch“ mit dem Knopf „Original anzeigen“. Das gilt auch auf geteilten Seiten',
