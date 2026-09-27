@@ -304,6 +304,7 @@ const clearAll = () => {
 @media (max-width: 600px) {
   .search-tags:not(.search-tags--expanded) .search-tags__list {
     flex: 1;
+    width: 0;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
