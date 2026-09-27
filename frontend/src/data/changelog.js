@@ -1,6 +1,16 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Rezepteingabe: Foto-Knopf, Einheiten per Tastatur, Bruch-Tasten',
+    changes: [
+      'Das Bildfeld hat jetzt einen Knopf „Foto aufnehmen oder auswählen“ mit Vorschau daneben. Auf dem Handy stehen weiter Kamera und Mediathek zur Wahl. Ohne eigenes Foto sucht die App beim Anlegen automatisch ein passendes Bild',
+      'In der Einheiten-Liste wählt man mit ↑/↓ und Enter, Esc schließt die Liste. Enter speichert dabei nie das Rezept',
+      'Ist unter dem Einheitenfeld zu wenig Platz, etwa über der Tastatur oder den Knöpfen unten, klappt die Liste nach oben auf',
+      'Im Mengenfeld erscheinen die Tasten ½ ¼ ¾. Aus „1“ und ½ wird „1 1/2“, ein vorhandener Bruch wird ersetzt',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Rezepteingabe: einheitliche Einheiten, Zutaten-Vorschläge, Nährwert-Hinweis',
     changes: [
       'Die Einheiten-Liste zeigt jetzt eine feste Auswahl: g, kg, ml, l, EL, TL, Prise, Stück, Zehe, Scheibe, Bund, Zweig, Handvoll, Dose, Glas, Packung, Becher, Tasse. Eigene Angaben wie „daumengroßes Stück“ lassen sich weiterhin eintippen',

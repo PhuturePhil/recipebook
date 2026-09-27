@@ -79,15 +79,28 @@
 
     <div class="form-group">
       <label>Bild</label>
-      <div class="image-upload">
-        <input
-          type="file"
-          accept="image/*"
-          @change="handleImageUpload"
-          id="image-upload"
-        />
+      <div class="image-upload" :class="{ 'has-image': formData.imageUrl }">
+        <div class="image-picker">
+          <input
+            type="file"
+            accept="image/*"
+            class="visually-hidden"
+            @change="handleImageUpload"
+            id="image-upload"
+          />
+          <label for="image-upload" class="btn-image-pick">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {{ imageLoading ? 'Foto wird geladen…' : (formData.imageUrl ? 'Anderes Foto wählen' : 'Foto aufnehmen oder auswählen') }}
+          </label>
+          <p v-if="!formData.imageUrl && !isEdit" class="image-hint">
+            Ohne eigenes Foto sucht die App automatisch ein passendes Bild (Unsplash).
+          </p>
+        </div>
         <div v-if="formData.imageUrl" class="image-preview">
-          <img :src="formData.imageUrl" alt="Rezept-Bild" />
+          <img :src="formData.imageUrl" alt="Vorschau des Rezeptbilds" />
           <button type="button" class="btn-remove-image" @click="removeImage">
             Bild entfernen
           </button>
@@ -220,47 +233,73 @@
       </div>
       <template v-else>
         <div v-for="(ingredient, index) in formData.ingredients" :key="index" class="ingredient-row">
-          <input
-            v-model="ingredient.amount"
-            type="text"
-            placeholder="Menge"
-            class="ingredient-amount-input"
-            @keydown.enter="onIngredientEnter($event, index)"
-            @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
-            @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
-            @paste="onIngredientPaste($event, index)"
-          />
+          <div class="amount-input-wrapper">
+            <input
+              v-model="ingredient.amount"
+              type="text"
+              placeholder="Menge"
+              class="ingredient-amount-input"
+              @focus="activeAmountIndex = index"
+              @blur="activeAmountIndex = null"
+              @keydown.enter="onIngredientEnter($event, index)"
+              @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
+              @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
+              @paste="onIngredientPaste($event, index)"
+            />
+            <div v-if="activeAmountIndex === index" class="fraction-keys">
+              <button
+                v-for="key in FRACTION_KEYS"
+                :key="key.value"
+                type="button"
+                tabindex="-1"
+                class="fraction-key"
+                :aria-label="`${key.label} einfügen`"
+                @pointerdown.prevent="pickFraction($event, index, key.value)"
+                @mousedown.prevent
+              >{{ key.label }}</button>
+            </div>
+          </div>
           <div class="unit-input-wrapper">
             <input
               v-model="ingredient.unit"
               type="text"
               placeholder="Einheit"
               autocomplete="off"
-              @focus="activeUnitIndex = index"
+              role="combobox"
+              aria-autocomplete="list"
+              :aria-expanded="unitListOpen(index)"
+              :aria-controls="`unit-options-${index}`"
+              :aria-activedescendant="unitListOpen(index) && highlightedUnit >= 0 ? `unit-option-${index}-${highlightedUnit}` : undefined"
+              @focus="openUnitDropdown($event, index)"
+              @input="openUnitDropdown($event, index)"
               @blur="closeUnitDropdown"
-              @keydown.enter="onIngredientEnter($event, index)"
+              @keydown.enter="onUnitEnter($event, index)"
+              @keydown.down.exact="onUnitArrow($event, index, 1)"
+              @keydown.up.exact="onUnitArrow($event, index, -1)"
+              @keydown.esc="onUnitEscape($event, index)"
               @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
               @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
               @paste="onIngredientPaste($event, index)"
             />
             <ul
-              v-if="activeUnitIndex === index && unitDropdownItems(index).length > 0"
+              v-if="unitListOpen(index)"
+              :id="`unit-options-${index}`"
               class="unit-dropdown"
+              :class="{ 'drop-up': unitPlacement.up }"
+              :style="{ maxHeight: `${unitPlacement.maxHeight}px` }"
+              role="listbox"
               tabindex="-1"
             >
               <li
-                v-for="unit in filteredKnownUnits(index)"
-                :key="unit"
-                @mousedown.prevent="selectUnit(index, unit)"
+                v-for="(option, oIndex) in unitOptions(index)"
+                :id="`unit-option-${index}-${oIndex}`"
+                :key="option.value + (option.custom ? '+' : '')"
+                role="option"
+                :aria-selected="oIndex === highlightedUnit"
+                :class="{ highlighted: oIndex === highlightedUnit, 'unit-add': option.custom }"
+                @mousedown.prevent="selectUnit(index, option.value)"
               >
-                {{ unit }}
-              </li>
-              <li
-                v-if="showAddOption(index)"
-                class="unit-add"
-                @mousedown.prevent="selectUnit(index, ingredient.unit)"
-              >
-                {{ ingredient.unit }} <span class="unit-add-label">(eigene Angabe)</span>
+                {{ option.value }}<span v-if="option.custom" class="unit-add-label">(eigene Angabe)</span>
               </li>
             </ul>
           </div>
@@ -410,6 +449,8 @@ import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { resizeImageFile } from '@/utils/resizeImage'
+import { FRACTION_KEYS, applyFraction } from '@/utils/fractionKeys'
+import { DROPDOWN_MAX_HEIGHT, dropdownPlacement } from '@/utils/dropdownPlacement'
 import {
   emptyIngredient,
   isBlankIngredient,
@@ -494,6 +535,9 @@ const savedSnapshot = ref(formSnapshot(formData.value))
 const isDirty = () => formSnapshot(formData.value) !== savedSnapshot.value
 
 const activeUnitIndex = ref(null)
+const highlightedUnit = ref(-1)
+const unitPlacement = ref({ up: false, maxHeight: DROPDOWN_MAX_HEIGHT })
+let unitField = null
 const descriptionRef = ref(null)
 const knownUnits = ref([])
 const knownSources = ref([])
@@ -527,11 +571,13 @@ const showAddOption = (index) => {
   return !knownUnits.value.some(u => u.toLowerCase() === val.toLowerCase())
 }
 
-const unitDropdownItems = (index) => {
-  return filteredKnownUnits(index).length > 0 || showAddOption(index)
-    ? [true]
-    : []
+const unitOptions = (index) => {
+  const options = filteredKnownUnits(index).map((value) => ({ value, custom: false }))
+  if (showAddOption(index)) options.push({ value: formData.value.ingredients[index].unit, custom: true })
+  return options
 }
+
+const unitListOpen = (index) => activeUnitIndex.value === index && unitOptions(index).length > 0
 
 const filteredSources = computed(() => {
   const query = formData.value.source?.trim().toLowerCase() ?? ''
@@ -590,10 +636,90 @@ const onSourceFieldKeydown = (event) => {
 const selectUnit = (index, value) => {
   formData.value.ingredients[index].unit = value
   activeUnitIndex.value = null
+  highlightedUnit.value = -1
 }
 
+let unitBlurTimer = null
+
 const closeUnitDropdown = () => {
-  setTimeout(() => { activeUnitIndex.value = null }, 150)
+  clearTimeout(unitBlurTimer)
+  unitBlurTimer = setTimeout(() => {
+    activeUnitIndex.value = null
+    highlightedUnit.value = -1
+  }, 150)
+}
+
+// Room below the field ends at the keyboard (visual viewport) or the sticky Abbrechen/Speichern bar, whichever is higher
+const placeUnitDropdown = () => {
+  const field = unitField
+  if (!field?.isConnected) return
+  const rect = field.getBoundingClientRect()
+  const viewport = window.visualViewport
+  const viewportBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight
+  const actionsTop = formRef.value?.querySelector('.form-actions')?.getBoundingClientRect().top ?? viewportBottom
+  const headerBottom = document.querySelector('.navbar')?.getBoundingClientRect().bottom ?? 0
+  unitPlacement.value = dropdownPlacement({
+    fieldTop: rect.top,
+    fieldBottom: rect.bottom,
+    topLimit: Math.max(headerBottom, viewport?.offsetTop ?? 0) + 4,
+    bottomLimit: Math.min(viewportBottom, actionsTop) - 4
+  })
+}
+
+const openUnitDropdown = (event, index) => {
+  clearTimeout(unitBlurTimer)
+  unitField = event.target
+  activeUnitIndex.value = index
+  highlightedUnit.value = -1
+  placeUnitDropdown()
+}
+
+const scrollHighlightedUnit = async (index) => {
+  await nextTick()
+  document.getElementById(`unit-option-${index}-${highlightedUnit.value}`)?.scrollIntoView({ block: 'nearest' })
+}
+
+// ↓ also reopens a list closed with Esc
+const onUnitArrow = (event, index, delta) => {
+  if (!unitListOpen(index)) {
+    if (delta < 0) return
+    openUnitDropdown(event, index)
+  }
+  const options = unitOptions(index)
+  if (!options.length) return
+  event.preventDefault()
+  highlightedUnit.value = moveHighlight(highlightedUnit.value, delta, options.length)
+  scrollHighlightedUnit(index)
+}
+
+const onUnitEscape = (event, index) => {
+  if (!unitListOpen(index)) return
+  event.preventDefault()
+  activeUnitIndex.value = null
+  highlightedUnit.value = -1
+}
+
+// Enter takes the highlighted unit and stays in the row; without one it adds a row below as before
+const onUnitEnter = (event, index) => {
+  const options = unitOptions(index)
+  if (unitListOpen(index) && highlightedUnit.value >= 0 && highlightedUnit.value < options.length && !event.isComposing) {
+    event.preventDefault()
+    selectUnit(index, options[highlightedUnit.value].value)
+    return
+  }
+  onIngredientEnter(event, index)
+}
+
+// Menge field: ½ ¼ ¾ keys while it has the focus; the key press never takes the focus away from the field
+const activeAmountIndex = ref(null)
+
+const pickFraction = async (event, index, fraction) => {
+  const field = event.currentTarget.closest('.amount-input-wrapper')?.querySelector('input')
+  formData.value.ingredients[index].amount = applyFraction(formData.value.ingredients[index].amount, fraction)
+  await nextTick()
+  if (!field) return
+  field.focus()
+  field.setSelectionRange(field.value.length, field.value.length)
 }
 
 // Zutat field: suggestions from the ingredient catalog while typing (arrow keys + Enter, or tap)
@@ -809,6 +935,10 @@ const discardDraftOffer = () => {
   discardDraft()
 }
 
+const onViewportChange = () => {
+  if (activeUnitIndex.value !== null) placeUnitDropdown()
+}
+
 const onPageHide = () => saveDraftNow()
 const onVisibilityChange = () => {
   if (document.visibilityState === 'hidden') saveDraftNow()
@@ -817,14 +947,21 @@ const onVisibilityChange = () => {
 onMounted(() => {
   window.addEventListener('pagehide', onPageHide)
   document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('scroll', onViewportChange, { passive: true })
+  window.visualViewport?.addEventListener('resize', onViewportChange)
+  window.visualViewport?.addEventListener('scroll', onViewportChange)
 })
 
 onBeforeUnmount(() => {
   clearTimeout(draftTimer)
   clearTimeout(suggestTimer)
   clearTimeout(recognizeTimer)
+  clearTimeout(unitBlurTimer)
   window.removeEventListener('pagehide', onPageHide)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('scroll', onViewportChange)
+  window.visualViewport?.removeEventListener('resize', onViewportChange)
+  window.visualViewport?.removeEventListener('scroll', onViewportChange)
 })
 
 defineExpose({ isDirty, saveDraftNow, discardDraft })
@@ -998,10 +1135,17 @@ const onIngredientEnter = async (event, index) => {
   formRef.value?.querySelectorAll('.ingredient-row')[target]?.querySelector('input')?.focus()
 }
 
+const imageLoading = ref(false)
+
 const handleImageUpload = async (event) => {
   const file = event.target.files[0]
-  if (file) {
+  if (!file) return
+  imageLoading.value = true
+  try {
     formData.value.imageUrl = await resizeImageFile(file)
+  } finally {
+    imageLoading.value = false
+    event.target.value = ''
   }
 }
 
@@ -1307,20 +1451,81 @@ const handleSubmit = () => {
 
 .image-upload {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+}
+
+.image-picker {
+  flex: 1 1 220px;
+  display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.btn-image-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--color-primary, #4a5568);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 400;
+  transition: background-color 0.2s ease;
+}
+
+.btn-image-pick:hover {
+  background: var(--color-primary-dark, #2d3748);
+}
+
+.image-upload.has-image .btn-image-pick {
+  background: var(--color-bg-secondary, #f0f0f0);
+  color: var(--color-text-primary, #333);
+}
+
+.image-upload.has-image .btn-image-pick:hover {
+  background: var(--color-border, #ddd);
+}
+
+.visually-hidden:focus-visible + .btn-image-pick {
+  outline: 2px solid var(--color-primary, #4a5568);
+  outline-offset: 2px;
+}
+
+.image-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #666);
 }
 
 .image-preview {
-  position: relative;
-  display: inline-block;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .image-preview img {
-  max-width: 300px;
-  max-height: 200px;
+  width: 160px;
+  height: 120px;
   border-radius: 8px;
   object-fit: cover;
+  border: 1px solid var(--color-border, #ddd);
 }
 
 .btn-remove-image {
@@ -1482,7 +1687,7 @@ const handleSubmit = () => {
       "name name actions";
   }
 
-  .ingredient-row .ingredient-amount-input {
+  .ingredient-row .amount-input-wrapper {
     grid-area: amount;
   }
 
@@ -1609,9 +1814,54 @@ const handleSubmit = () => {
   font-size: 0.9rem;
 }
 
-.unit-input-wrapper {
+.unit-input-wrapper,
+.amount-input-wrapper {
   position: relative;
   flex: 1;
+}
+
+.amount-input-wrapper input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fraction-keys {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 0;
+  z-index: 100;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: white;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.fraction-key {
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--color-bg-secondary, #f0f0f0);
+  color: var(--color-text-primary, #333);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fraction-key:hover {
+  background: var(--color-border, #ddd);
+}
+
+@media (pointer: coarse) {
+  .fraction-key {
+    width: 38px;
+    height: 34px;
+    font-size: 1.05rem;
+  }
 }
 
 .unit-input-wrapper input {
@@ -1649,6 +1899,13 @@ const handleSubmit = () => {
 
 .unit-dropdown li.highlighted {
   background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.unit-dropdown.drop-up {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 2px;
 }
 
 .name-input-wrapper {
