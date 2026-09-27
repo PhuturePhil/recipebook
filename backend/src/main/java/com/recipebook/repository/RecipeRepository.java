@@ -68,6 +68,15 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       "GROUP BY r.source, r.author ORDER BY r.source")
   List<SourceAuthorDto> findDistinctSourceAuthorPairs();
 
+  // Häufigste Schreibweise zuerst, damit beim Angleichen die verbreitete Variante gewinnt
+  @Query("SELECT r.source FROM Recipe r WHERE r.source IS NOT NULL AND r.id <> :excludeId " +
+      "GROUP BY r.source ORDER BY COUNT(r) DESC, r.source")
+  List<String> findSourcesExcept(@Param("excludeId") Long excludeId);
+
+  @Query("SELECT r.author FROM Recipe r WHERE r.author IS NOT NULL AND r.id <> :excludeId " +
+      "GROUP BY r.author ORDER BY COUNT(r) DESC, r.author")
+  List<String> findAuthorsExcept(@Param("excludeId") Long excludeId);
+
   @Query("SELECT r.createdAt FROM Recipe r WHERE r.id = :recipeId")
   Optional<LocalDateTime> findCreatedAt(@Param("recipeId") Long recipeId);
 

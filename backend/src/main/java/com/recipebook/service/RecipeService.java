@@ -129,6 +129,7 @@ public class RecipeService {
             }
         }
         applyLanguage(recipe);
+        applySource(recipe);
         if (recipe.getImageCredit() == null) {
             recipe.setImageCredit(exists ? keptImageCredit(recipe) : ImageCredit.forUpload(recipe.getImageUrl()));
         }
@@ -151,6 +152,16 @@ public class RecipeService {
         recipe.setLanguage(RecipeLanguage.detect(recipe.getTitle(), recipe.getDescription(), names,
             recipe.getInstructions()));
         recipe.setLanguageAuto(true);
+    }
+
+    // Quelle/Autor übernehmen eine schon vorhandene Schreibweise; das Rezept selbst zählt nicht mit, damit Korrekturen möglich bleiben
+    void applySource(Recipe recipe) {
+        Long self = recipe.getId() == null ? -1L : recipe.getId();
+        String source = RecipeSources.clean(recipe.getSource());
+        recipe.setSource(source == null ? null : RecipeSources.canonicalSource(source, recipeRepository.findSourcesExcept(self)));
+        String author = RecipeSources.clean(recipe.getAuthor());
+        recipe.setAuthor(author == null ? null : RecipeSources.canonical(author, recipeRepository.findAuthorsExcept(self)));
+        recipe.setPage(RecipeSources.clean(recipe.getPage()));
     }
 
     // Rows saved again without an edit keep their unit as stored; only new or edited rows get the unified spelling

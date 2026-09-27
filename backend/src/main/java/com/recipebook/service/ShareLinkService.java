@@ -119,8 +119,9 @@ public class ShareLinkService {
                 .map(i -> new SharedIngredientDto(i.name(), i.amount(), i.unit(), i.group()))
                 .toList();
         List<String> instructions = new ArrayList<>(content.instructions());
-        String source = recipe.getSource();
-        String attribution = source != null && !source.isBlank() ? "nach: " + source.trim() : null;
+        String source = RecipeSources.clean(recipe.getSource());
+        String attribution = source == null ? null
+                : RecipeSources.isOwnRecipe(source) ? RecipeSources.OWN_RECIPE : "nach: " + source;
         boolean hasImage = recipe.getImageUrl() != null && !recipe.getImageUrl().isBlank();
         SharedRecipeDto dto = new SharedRecipeDto(content.title(), recipe.getBaseServings(), ingredients, instructions,
                 attribution, hasImage, hasImage ? recipe.getImageCredit() : null, content.sourceLanguage(),

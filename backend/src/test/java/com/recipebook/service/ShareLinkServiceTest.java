@@ -239,6 +239,17 @@ class ShareLinkServiceTest {
     }
 
     @Test
+    void getSharedRecipe_ownRecipeHasNoNachPrefix() {
+        recipe.setSource("Eigenrezept");
+        when(shareLinkRepository.findByToken("abc123DEF456ghi789JKLm"))
+                .thenReturn(Optional.of(linkCreatedAt(NOW)));
+
+        SharedRecipeDto result = shareLinkService.getSharedRecipe("abc123DEF456ghi789JKLm");
+
+        assertEquals("Eigenrezept", result.getAttribution());
+    }
+
+    @Test
     void getSharedRecipe_shouldStillWorkShortlyBefore30Days() {
         ShareLink link = linkCreatedAt(NOW);
         when(shareLinkRepository.findByToken(link.getToken())).thenReturn(Optional.of(link));

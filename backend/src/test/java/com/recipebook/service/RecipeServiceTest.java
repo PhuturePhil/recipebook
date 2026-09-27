@@ -500,6 +500,58 @@ class RecipeServiceTest {
     }
 
     @Test
+    void save_takesOverExistingSpellingOfSourceAndAuthor() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Neu");
+        recipe.setSource("  genussvoll   VEGETARISCH ");
+        recipe.setAuthor("yotam  ottolenghi");
+        recipe.setPage(" 87 ");
+        when(recipeRepository.findSourcesExcept(-1L)).thenReturn(List.of("Genussvoll vegetarisch", "Veggies"));
+        when(recipeRepository.findAuthorsExcept(-1L)).thenReturn(List.of("Yotam Ottolenghi"));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(recipe, testUser);
+
+        assertEquals("Genussvoll vegetarisch", result.getSource());
+        assertEquals("Yotam Ottolenghi", result.getAuthor());
+        assertEquals("87", result.getPage());
+    }
+
+    @Test
+    void save_keepsNewSourceTidiedAndEmptyFieldsBecomeNull() {
+        Recipe recipe = new Recipe();
+        recipe.setTitle("Neu");
+        recipe.setSource(" Das  neue Buch ");
+        recipe.setAuthor("   ");
+        recipe.setPage("");
+        when(recipeRepository.findSourcesExcept(-1L)).thenReturn(List.of("Genussvoll vegetarisch"));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(recipe, testUser);
+
+        assertEquals("Das neue Buch", result.getSource());
+        assertNull(result.getAuthor());
+        assertNull(result.getPage());
+        verify(recipeRepository, never()).findAuthorsExcept(any());
+    }
+
+    @Test
+    void save_selfMadeVariantsBecomeEigenrezeptAndOwnRowDoesNotCount() {
+        testRecipe.setSource("Eigenkreation");
+        testRecipe.setAuthor("paco");
+        when(recipeRepository.existsById(1L)).thenReturn(true);
+        when(recipeRepository.findSourcesExcept(1L)).thenReturn(List.of());
+        when(recipeRepository.findAuthorsExcept(1L)).thenReturn(List.of("Paco"));
+        when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Recipe result = recipeService.save(testRecipe, testUser);
+
+        assertEquals("Eigenrezept", result.getSource());
+        assertEquals("Paco", result.getAuthor());
+    }
+
+    @Test
     void applyLanguage_explicitLanguageWithoutFlagCountsAsManual() {
         Recipe recipe = new Recipe();
         recipe.setTitle("Linsensuppe mit Zwiebeln und Knoblauch");
