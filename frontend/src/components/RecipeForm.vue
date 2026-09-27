@@ -1,5 +1,5 @@
 <template>
-  <form ref="formRef" class="recipe-form" @submit.prevent="handleSubmit" @keydown.enter="blockImplicitSubmit">
+  <form ref="formRef" class="recipe-form" @submit.prevent="handleSubmit" @keydown.enter="blockImplicitSubmit" @focusin="openHintIndex = null">
 
     <div v-if="draftOffer" class="draft-offer" role="status">
       <span class="draft-offer-text">Entwurf {{ formatDraftTime(draftOffer.savedAt) }} wiederherstellen?</span>
@@ -129,6 +129,7 @@
         v-model.number="formData.prepTimeMinutes"
         type="number"
         min="1"
+        max="10080"
         placeholder="z.B. 30"
       />
     </div>
@@ -259,21 +260,71 @@
                 class="unit-add"
                 @mousedown.prevent="selectUnit(index, ingredient.unit)"
               >
-                {{ ingredient.unit }} <span class="unit-add-label">(hinzufügen)</span>
+                {{ ingredient.unit }} <span class="unit-add-label">(eigene Angabe)</span>
               </li>
             </ul>
           </div>
-          <input
-            v-model="ingredient.name"
-            type="text"
-            placeholder="Zutat"
-            class="ingredient-name"
-            :required="isIngredientNameRequired(formData.ingredients, index)"
-            @keydown.enter="onIngredientEnter($event, index)"
-            @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
-            @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
-            @paste="onIngredientPaste($event, index)"
-          />
+          <div class="name-input-wrapper" :class="{ 'has-hint': nutritionHint(ingredient) }">
+            <input
+              v-model="ingredient.name"
+              type="text"
+              placeholder="Zutat"
+              class="ingredient-name"
+              autocomplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              :aria-expanded="nameSuggestionsFor(index).length > 0"
+              :aria-controls="`name-suggestions-${index}`"
+              :aria-activedescendant="nameSuggestionsFor(index).length && highlightedSuggestion >= 0 ? `name-suggestion-${index}-${highlightedSuggestion}` : undefined"
+              :required="isIngredientNameRequired(formData.ingredients, index)"
+              @input="onNameInput(index)"
+              @blur="closeNameSuggestions"
+              @keydown.enter="onNameEnter($event, index)"
+              @keydown.down.exact="onNameArrow($event, index, 1)"
+              @keydown.up.exact="onNameArrow($event, index, -1)"
+              @keydown.esc="onNameEscape($event, index)"
+              @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
+              @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
+              @paste="onIngredientPaste($event, index)"
+            />
+            <button
+              v-if="nutritionHint(ingredient)"
+              type="button"
+              tabindex="-1"
+              class="nutrition-hint"
+              :class="`nutrition-hint-${nutritionHint(ingredient).state}`"
+              :title="nutritionHint(ingredient).title"
+              :aria-label="nutritionHint(ingredient).title"
+              @click="toggleHintBubble(index)"
+            >{{ nutritionHint(ingredient).symbol }}</button>
+            <span v-if="openHintIndex === index && nutritionHint(ingredient)" class="nutrition-hint-bubble" role="tooltip">
+              {{ nutritionHint(ingredient).title }}
+            </span>
+            <ul
+              v-if="nameSuggestionsFor(index).length > 0"
+              :id="`name-suggestions-${index}`"
+              class="unit-dropdown name-dropdown"
+              role="listbox"
+              tabindex="-1"
+            >
+              <li
+                v-for="(suggestion, sIndex) in nameSuggestionsFor(index)"
+                :id="`name-suggestion-${index}-${sIndex}`"
+                :key="suggestion.name"
+                role="option"
+                :aria-selected="sIndex === highlightedSuggestion"
+                :class="{ highlighted: sIndex === highlightedSuggestion }"
+                @mousedown.prevent="selectNameSuggestion(index, suggestion)"
+              >
+                <span>{{ suggestion.name }}</span>
+                <span
+                  class="suggestion-mark"
+                  :class="suggestion.recognized ? 'nutrition-hint-ok' : 'nutrition-hint-unknown'"
+                  :title="suggestion.recognized ? 'Nährwerte vorhanden' : UNKNOWN_HINT"
+                >{{ suggestion.recognized ? '✓' : '?' }}</span>
+              </li>
+            </ul>
+          </div>
           <div class="row-actions">
             <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="index === 0" @click="moveIngredient(index, -1, $event)" title="Zutat nach oben" aria-label="Zutat nach oben">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
@@ -354,6 +405,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { recipeService } from '@/services/recipeService'
+import { ingredientCatalogService } from '@/services/ingredientCatalogService'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -370,6 +422,18 @@ import {
   formSnapshot
 } from '@/utils/recipeFormData'
 import { ingredientsFromText, ingredientsToText, insertPastedIngredients } from '@/utils/ingredientText'
+import {
+  SUGGEST_LIMIT,
+  SUGGEST_DELAY_MS,
+  RECOGNIZE_DELAY_MS,
+  UNKNOWN_HINT,
+  suggestionQuery,
+  visibleSuggestions,
+  moveHighlight,
+  recognitionKey,
+  pendingRecognition,
+  recognitionHint
+} from '@/utils/ingredientSuggest'
 import {
   DRAFT_DELAY_MS,
   draftKey,
@@ -532,6 +596,120 @@ const closeUnitDropdown = () => {
   setTimeout(() => { activeUnitIndex.value = null }, 150)
 }
 
+// Zutat field: suggestions from the ingredient catalog while typing (arrow keys + Enter, or tap)
+const activeNameIndex = ref(null)
+const nameSuggestions = ref([])
+const highlightedSuggestion = ref(-1)
+let suggestTimer = null
+let suggestRequest = 0
+
+const nameSuggestionsFor = (index) =>
+  activeNameIndex.value === index
+    ? visibleSuggestions(formData.value.ingredients[index]?.name, nameSuggestions.value)
+    : []
+
+const resetNameSuggestions = () => {
+  clearTimeout(suggestTimer)
+  suggestRequest++
+  activeNameIndex.value = null
+  nameSuggestions.value = []
+  highlightedSuggestion.value = -1
+}
+
+const onNameInput = (index) => {
+  clearTimeout(suggestTimer)
+  highlightedSuggestion.value = -1
+  const query = suggestionQuery(formData.value.ingredients[index]?.name)
+  if (!query) {
+    resetNameSuggestions()
+    return
+  }
+  const request = ++suggestRequest
+  suggestTimer = setTimeout(async () => {
+    try {
+      const result = await ingredientCatalogService.suggest(query, SUGGEST_LIMIT)
+      if (request !== suggestRequest) return
+      activeNameIndex.value = index
+      nameSuggestions.value = result
+      highlightedSuggestion.value = -1
+    } catch {
+      // Vorschläge sind nur eine Hilfe, das Feld bleibt frei beschreibbar
+    }
+  }, SUGGEST_DELAY_MS)
+}
+
+const selectNameSuggestion = (index, suggestion) => {
+  formData.value.ingredients[index].name = suggestion.name
+  resetNameSuggestions()
+}
+
+const closeNameSuggestions = () => {
+  setTimeout(resetNameSuggestions, 150)
+}
+
+const onNameArrow = (event, index, delta) => {
+  const list = nameSuggestionsFor(index)
+  if (!list.length) return
+  event.preventDefault()
+  highlightedSuggestion.value = moveHighlight(highlightedSuggestion.value, delta, list.length)
+}
+
+const onNameEscape = (event, index) => {
+  if (!nameSuggestionsFor(index).length) return
+  event.preventDefault()
+  resetNameSuggestions()
+}
+
+// Enter takes a highlighted suggestion; without one it keeps adding a row below
+const onNameEnter = (event, index) => {
+  const list = nameSuggestionsFor(index)
+  if (list.length && highlightedSuggestion.value >= 0 && !event.isComposing) {
+    event.preventDefault()
+    selectNameSuggestion(index, list[highlightedSuggestion.value])
+    return
+  }
+  resetNameSuggestions()
+  onIngredientEnter(event, index)
+}
+
+// ✓ / ? per row: the server tells whether the row gets nutrition values (same matching as the calculation)
+const recognition = ref({})
+const openHintIndex = ref(null)
+let recognizeTimer = null
+
+const nutritionHint = (ingredient) => {
+  const key = recognitionKey(ingredient)
+  return key ? recognitionHint(recognition.value[key]) : null
+}
+
+const toggleHintBubble = (index) => {
+  openHintIndex.value = openHintIndex.value === index ? null : index
+}
+
+const recognizeIngredients = async () => {
+  const pending = pendingRecognition(formData.value.ingredients, recognition.value)
+  if (!pending.length) return
+  try {
+    const results = await ingredientCatalogService.recognize(pending.map((p) => p.line))
+    const next = { ...recognition.value }
+    pending.forEach((p, i) => {
+      if (results?.[i]) next[p.key] = results[i]
+    })
+    recognition.value = next
+  } catch {
+    // ohne Antwort bleibt die Zeile einfach ohne Hinweis
+  }
+}
+
+watch(
+  () => formData.value.ingredients.map(recognitionKey).join('\n'),
+  () => {
+    clearTimeout(recognizeTimer)
+    recognizeTimer = setTimeout(recognizeIngredients, RECOGNIZE_DELAY_MS)
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
   try {
     const [units, sources] = await Promise.all([
@@ -641,6 +819,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearTimeout(draftTimer)
+  clearTimeout(suggestTimer)
+  clearTimeout(recognizeTimer)
   window.removeEventListener('pagehide', onPageHide)
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
@@ -1308,7 +1488,7 @@ const handleSubmit = () => {
     grid-area: unit;
   }
 
-  .ingredient-row .ingredient-name {
+  .ingredient-row .name-input-wrapper {
     grid-area: name;
   }
 
@@ -1463,6 +1643,74 @@ const handleSubmit = () => {
 
 .unit-dropdown li:hover {
   background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.unit-dropdown li.highlighted {
+  background: var(--color-bg-secondary, #f0f0f0);
+}
+
+.name-input-wrapper {
+  position: relative;
+}
+
+.name-input-wrapper.has-hint input {
+  padding-right: 34px;
+}
+
+.nutrition-hint {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 0.8rem;
+  line-height: 22px;
+  cursor: help;
+}
+
+.nutrition-hint-ok {
+  color: var(--color-success, #38a169);
+}
+
+.nutrition-hint-unknown {
+  color: var(--color-text-muted, #999);
+}
+
+button.nutrition-hint-unknown {
+  border: 1px solid var(--color-border, #ddd);
+  line-height: 20px;
+}
+
+.nutrition-hint-bubble {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 101;
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--color-text-primary, #333);
+  color: white;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.name-dropdown li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestion-mark {
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 .unit-add {

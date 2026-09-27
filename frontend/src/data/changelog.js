@@ -1,6 +1,17 @@
 export const changelog = [
   {
     date: '27.09.2026',
+    title: 'Rezepteingabe: einheitliche Einheiten, Zutaten-Vorschläge, Nährwert-Hinweis',
+    changes: [
+      'Die Einheiten-Liste zeigt jetzt eine feste Auswahl: g, kg, ml, l, EL, TL, Prise, Stück, Zehe, Scheibe, Bund, Zweig, Handvoll, Dose, Glas, Packung, Becher, Tasse. Eigene Angaben wie „daumengroßes Stück“ lassen sich weiterhin eintippen',
+      'Beim Speichern neuer oder geänderter Zutaten werden gängige Schreibweisen vereinheitlicht, z. B. „St.“ oder „pc“ zu „Stück“, „tablespoon“ zu „EL“, „Teel.“ zu „TL“, „Dosen“ zu „Dose“. Bestehende Zutaten bleiben, wie sie sind',
+      'Beim Tippen im Zutatenfeld erscheinen Vorschläge aus dem Zutatenkatalog, z. B. „Kicher…“ → Kichererbsen. Mit ↑/↓ und Enter oder per Antippen übernehmen, Esc schließt die Liste',
+      'Neben jeder Zutat zeigt ✓, dass Nährwerte dafür hinterlegt sind. Ein ? heißt: keine Nährwertdaten, die Zutat wird per KI geschätzt. Antippen zeigt die Details',
+      'Beim Speichern prüft der Server die Angaben: Titel ist Pflicht, Portionen zwischen 1 und 100. Fehlt die Portionenzahl, gilt 4. Bei Fehlern erscheint eine verständliche Meldung',
+    ]
+  },
+  {
+    date: '27.09.2026',
     title: 'Rezepteingabe: Zutatenliste einfügen, Entwürfe, Umsortieren',
     changes: [
       'Eine kopierte Zutatenliste lässt sich in eine Zutatenzeile einfügen. Jede Zeile wird eine eigene Zutat, Menge und Einheit werden erkannt, z. B. „200 g Zwiebeln“ oder „½ TL Salz“. Zeilen ohne Menge wie „Salz und Pfeffer“ landen komplett im Namen',

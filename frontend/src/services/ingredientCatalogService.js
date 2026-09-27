@@ -89,6 +89,14 @@ class IngredientCatalogService {
     return request('/ingredient-catalog/ai-requests/resolve-unknown', { method: 'POST', fallback: 'Fehler beim Anstoßen der Zuordnung.' })
   }
 
+  suggest(query, limit) {
+    return request(`/ingredient-catalog/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`, { fallback: 'Fehler bei den Zutaten-Vorschlägen.' })
+  }
+
+  recognize(lines) {
+    return request('/ingredient-catalog/recognize', { method: 'POST', body: lines, fallback: 'Fehler bei der Nährwert-Erkennung.' })
+  }
+
   searchReferenceFoods(query) {
     return request(`/nutrition/reference-foods?q=${encodeURIComponent(query)}`, { fallback: 'Fehler bei der BLS-Suche.' })
   }
