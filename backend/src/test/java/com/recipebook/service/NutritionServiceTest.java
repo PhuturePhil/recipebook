@@ -19,6 +19,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -31,6 +32,7 @@ class NutritionServiceTest {
     private NutritionReferenceService referenceService;
     private RecipeIngredientRowRepository rowRepository;
     private RecipeTranslationService translationService;
+    private IngredientAiService ingredientAiService;
     private NutritionService service;
     private Recipe english;
 
@@ -39,9 +41,10 @@ class NutritionServiceTest {
         referenceService = mock(NutritionReferenceService.class);
         rowRepository = mock(RecipeIngredientRowRepository.class);
         translationService = mock(RecipeTranslationService.class);
+        ingredientAiService = mock(IngredientAiService.class);
         when(referenceService.reference()).thenReturn(
             new NutritionReference(List.of(FLOUR), Map.of(), List.of(), Map.of(), Map.of()));
-        service = new NutritionService(referenceService, rowRepository, translationService);
+        service = new NutritionService(referenceService, rowRepository, translationService, ingredientAiService);
 
         english = new Recipe();
         english.setId(92L);
@@ -64,6 +67,16 @@ class NutritionServiceTest {
         assertEquals(1, n.calculatedCount());
         assertEquals(348.0, n.perServing().kcal(), 1e-9);
         assertEquals("Mehl", n.items().get(0).originalName());
+        verifyNoInteractions(ingredientAiService);
+    }
+
+    @Test
+    void openLinesOfTheTranslationAreAskedAgain() {
+        when(translationService.translate(english, "de")).thenReturn(translation("translated", "Dinkelgrieß"));
+
+        assertEquals(0, service.calculate(english).calculatedCount());
+        verify(ingredientAiService).enqueueForIngredients(argThat(list ->
+            list.size() == 1 && "Dinkelgrieß".equals(list.get(0).getName()) && "g".equals(list.get(0).getUnit())));
     }
 
     @Test

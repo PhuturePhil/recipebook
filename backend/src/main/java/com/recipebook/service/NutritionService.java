@@ -25,12 +25,15 @@ public class NutritionService {
     private final NutritionReferenceService referenceService;
     private final RecipeIngredientRowRepository ingredientRowRepository;
     private final RecipeTranslationService translationService;
+    private final IngredientAiService ingredientAiService;
 
     public NutritionService(NutritionReferenceService referenceService,
-            RecipeIngredientRowRepository ingredientRowRepository, RecipeTranslationService translationService) {
+            RecipeIngredientRowRepository ingredientRowRepository, RecipeTranslationService translationService,
+            IngredientAiService ingredientAiService) {
         this.referenceService = referenceService;
         this.ingredientRowRepository = ingredientRowRepository;
         this.translationService = translationService;
+        this.ingredientAiService = ingredientAiService;
     }
 
     /**
@@ -41,11 +44,24 @@ public class NutritionService {
         if (RecipeTranslationService.needsTranslation(recipe, RecipeLanguage.GERMAN)) {
             TranslatedRecipe translated = translationService.translate(recipe, RecipeLanguage.GERMAN);
             if (translated.translated()) {
-                return NutritionCalculator.calculate(lines(translated.ingredients()), recipe.getBaseServings(),
-                    referenceService.reference());
+                RecipeNutrition n = NutritionCalculator.calculate(lines(translated.ingredients()),
+                    recipe.getBaseServings(), referenceService.reference());
+                if (n.calculatedCount() < n.relevantCount()) enqueueOpenLines(translated.ingredients());
+                return n;
             }
         }
         return calculate(recipe.getIngredients(), recipe.getBaseServings());
+    }
+
+    // Übersetzte Zeilen stehen nicht in der Zutatentabelle: offene Namen oder Stückgewichte (z. B. nach einer frisch
+    // gelernten Zuordnung) werden hier nachgefragt; bereits gestellte Anfragen legt die KI-Warteschlange nicht doppelt an
+    private void enqueueOpenLines(List<TranslatedRecipe.Line> translated) {
+        try {
+            ingredientAiService.enqueueForIngredients(translated.stream()
+                .map(l -> new Ingredient(l.name(), l.amount(), l.unit())).toList());
+        } catch (RuntimeException e) {
+            // Nährwerte bleiben trotzdem abrufbar
+        }
     }
 
     private static List<IngredientLine> lines(List<TranslatedRecipe.Line> translated) {
