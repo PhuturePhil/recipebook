@@ -1,7 +1,7 @@
 <template>
   <div class="ingredients-container">
     <div class="ingredients-header">
-      <h1>Zutaten</h1>
+      <h1 class="sr-only">Zutaten</h1>
       <button v-if="isAdmin && tab === 'ingredients'" @click="openCreate" class="btn-primary">Neue Zutat</button>
     </div>
 
@@ -599,7 +599,7 @@ async function resolveUnknown() {
 .tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--linie);
   margin-bottom: 16px;
   overflow-x: auto;
 }
@@ -612,14 +612,14 @@ async function resolveUnknown() {
   padding: 8px 14px;
   margin-bottom: -2px;
   font-weight: 600;
-  color: #a0aec0;
+  color: var(--text3);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .tab.active {
-  color: #2d3748;
-  border-bottom-color: #4a5568;
+  color: var(--text);
+  border-bottom-color: var(--akzent);
 }
 
 .filters {
@@ -633,46 +633,46 @@ async function resolveUnknown() {
   flex: 1;
   min-width: 200px;
   padding: 8px 10px;
-  border: 1px solid #cbd5e0;
+  border: 1px solid var(--linie);
   border-radius: 4px;
   font-size: 0.95rem;
 }
 
 .select {
   padding: 8px 10px;
-  border: 1px solid #cbd5e0;
+  border: 1px solid var(--linie);
   border-radius: 4px;
 }
 
 .hint {
   font-size: 0.85rem;
-  color: #718096;
+  color: var(--text2);
 }
 
 .btn-primary {
   padding: 10px 20px;
-  background: #4a5568;
-  color: white;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
 }
 
-.btn-primary:hover:not(:disabled) { background: #2d3748; }
+.btn-primary:hover:not(:disabled) { background: var(--akzent-hover); }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-secondary {
   padding: 8px 16px;
-  background: #e2e8f0;
-  color: #333;
+  background: var(--flaeche2);
+  color: var(--text);
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
 }
 
-.btn-secondary:hover { background: #cbd5e0; }
+.btn-secondary:hover { background: var(--linie); }
 .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .add-btn {
@@ -681,8 +681,8 @@ async function resolveUnknown() {
 
 .btn-edit {
   padding: 4px 10px;
-  background: #ebf8ff;
-  color: #2b6cb0;
+  background: var(--info-weich);
+  color: var(--info-text);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -690,12 +690,12 @@ async function resolveUnknown() {
   margin-left: 6px;
 }
 
-.btn-edit:hover { background: #bee3f8; }
+.btn-edit:hover { background: var(--info-weich); }
 
 .btn-delete {
   padding: 4px 10px;
-  background: #fff5f5;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -703,18 +703,18 @@ async function resolveUnknown() {
   margin-left: 6px;
 }
 
-.btn-delete:hover { background: #fed7d7; }
+.btn-delete:hover { background: var(--neg-weich); }
 
 .loading {
   text-align: center;
   padding: 48px 24px;
-  color: #666;
+  color: var(--text2);
 }
 
 .error-banner,
 .error-message {
-  background: #fed7d7;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   padding: 10px 14px;
   border-radius: 4px;
   margin-bottom: 12px;
@@ -735,14 +735,14 @@ async function resolveUnknown() {
 .ingredients-table td {
   padding: 8px 10px;
   text-align: left;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--linie);
   vertical-align: top;
 }
 
 .ingredients-table th {
-  background: #f7fafc;
+  background: var(--flaeche2);
   font-weight: 600;
-  color: #4a5568;
+  color: var(--text2);
   white-space: nowrap;
 }
 
@@ -761,13 +761,13 @@ async function resolveUnknown() {
 }
 
 .clickable-row:hover {
-  background: #f7fafc;
+  background: var(--flaeche2);
 }
 
 .sub {
   display: block;
   font-size: 0.75rem;
-  color: #a0aec0;
+  color: var(--text3);
 }
 
 .actions-cell {
@@ -783,24 +783,24 @@ async function resolveUnknown() {
   white-space: nowrap;
 }
 
-.source-chip--bls { background: #e6fffa; color: #234e52; }
-.source-chip--manual { background: #ebf8ff; color: #2a4365; }
-.source-chip--ai_estimate { background: #fffaf0; color: #7b341e; border: 1px dashed #ed8936; }
+.source-chip--bls { background: var(--pos-weich); color: var(--info-text); }
+.source-chip--manual { background: var(--info-weich); color: var(--info-text); }
+.source-chip--ai_estimate { background: var(--warn-bg); color: var(--warn-text); border: 1px dashed var(--warn-linie); }
 
 .status {
   font-size: 0.8rem;
   font-weight: 600;
 }
 
-.status--failed { color: #c53030; }
-.status--done { color: #276749; }
+.status--failed { color: var(--neg); }
+.status--done { color: var(--pos); }
 .status--pending,
-.status--running { color: #b7791f; }
+.status--running { color: var(--warn-text); }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -810,8 +810,8 @@ async function resolveUnknown() {
 }
 
 .modal-content {
-  background: white;
-  color: #2d3748;
+  background: var(--flaeche);
+  color: var(--text);
   padding: 20px 24px;
   border-radius: 8px;
   width: 100%;
@@ -840,18 +840,18 @@ async function resolveUnknown() {
   line-height: 1;
   padding: 0 4px;
   cursor: pointer;
-  color: #718096;
+  color: var(--text2);
 }
 
 .modal-content h4 {
   margin: 20px 0 8px;
   font-size: 0.95rem;
-  color: #4a5568;
+  color: var(--text2);
 }
 
 .detail-source {
   font-size: 0.85rem;
-  color: #4a5568;
+  color: var(--text2);
 }
 
 .detail-table {
@@ -862,7 +862,7 @@ async function resolveUnknown() {
 
 .detail-table td {
   padding: 5px 8px;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--linie);
 }
 
 .detail-table td:last-child {
@@ -877,7 +877,7 @@ async function resolveUnknown() {
 }
 
 .alias-chip {
-  background: #edf2f7;
+  background: var(--flaeche2);
   border-radius: 12px;
   padding: 2px 10px;
   font-size: 0.8rem;
@@ -888,7 +888,7 @@ async function resolveUnknown() {
   border: none;
   padding: 0 0 0 4px;
   cursor: pointer;
-  color: #c53030;
+  color: var(--neg);
 }
 
 .inline-form {
@@ -900,7 +900,7 @@ async function resolveUnknown() {
 .inline-form input {
   flex: 1;
   padding: 6px 8px;
-  border: 1px solid #cbd5e0;
+  border: 1px solid var(--linie);
   border-radius: 4px;
 }
 
@@ -915,7 +915,7 @@ async function resolveUnknown() {
 .conversion-list li,
 .legacy-list li {
   padding: 6px 0;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--linie);
 }
 
 .stack-form {
@@ -930,13 +930,13 @@ async function resolveUnknown() {
   gap: 4px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #4a5568;
+  color: var(--text2);
 }
 
 .stack-form input,
 .stack-form select {
   padding: 8px;
-  border: 1px solid #cbd5e0;
+  border: 1px solid var(--linie);
   border-radius: 4px;
   font-size: 0.95rem;
 }

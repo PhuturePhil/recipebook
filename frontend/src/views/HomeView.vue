@@ -54,9 +54,15 @@ onUnmounted(() => {
 
 <style scoped>
 .home-view {
-  max-width: 1000px;
+  max-width: var(--shell-max);
   margin: 0 auto;
-  padding: 24px;
+  padding: 4px 16px 24px;
+}
+
+@media (min-width: 1024px) {
+  .home-view {
+    padding: 8px 34px 40px;
+  }
 }
 
 .error,
@@ -73,13 +79,13 @@ onUnmounted(() => {
 .recipe-count {
   font-size: 0.875rem;
   color: var(--color-text-muted, #a0aec0);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   text-align: center;
 }
 
 .recipe-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  gap: 16px;
 }
 </style>

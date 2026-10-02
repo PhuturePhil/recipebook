@@ -236,10 +236,10 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
 
 .coverage--incomplete {
   padding: 10px 12px;
-  background: #fffaf0;
-  border: 1px solid #fbd38d;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-linie);
   border-radius: 6px;
-  color: #744210;
+  color: var(--warn-text);
 }
 
 .coverage__missing {
@@ -267,10 +267,10 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
   text-decoration: none;
 }
 
-.badge--energiearm { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
-.badge--fettarm { background: #fefcbf; color: #744210; }
-.badge--proteinreich { background: #bee3f8; color: #2a4365; }
-.badge--ballaststoffreich { background: #e9d8fd; color: #44337a; }
+.badge--energiearm { background: var(--pos-weich); color: var(--pos); border: 1px solid var(--pos-linie); }
+.badge--fettarm { background: var(--warn-bg); color: var(--warn-text); }
+.badge--proteinreich { background: var(--info-weich); color: var(--info-text); }
+.badge--ballaststoffreich { background: var(--lila-weich); color: var(--lila-text); }
 
 .table-scroll {
   overflow-x: auto;
@@ -321,8 +321,8 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
   white-space: normal;
 }
 
-.nutrition-table td.dv--high { color: #2f855a; }
-.nutrition-table td.dv--medium { color: #2b6cb0; }
+.nutrition-table td.dv--high { color: var(--pos); }
+.nutrition-table td.dv--medium { color: var(--info-text); }
 .nutrition-table td.dv--low,
 .nutrition-table td.dv--none {
   color: var(--color-text-muted, #a0aec0);
@@ -362,7 +362,7 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
 }
 
 .weight-note--incomplete {
-  color: #744210;
+  color: var(--warn-text);
 }
 
 .sources {
@@ -381,9 +381,9 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
   vertical-align: middle;
 }
 
-.source-chip--bls { background: #e6fffa; color: #234e52; }
-.source-chip--manual { background: #ebf8ff; color: #2a4365; }
-.source-chip--ai_estimate { background: #fffaf0; color: #7b341e; border: 1px dashed #ed8936; }
+.source-chip--bls { background: var(--pos-weich); color: var(--info-text); }
+.source-chip--manual { background: var(--info-weich); color: var(--info-text); }
+.source-chip--ai_estimate { background: var(--warn-bg); color: var(--warn-text); border: 1px dashed var(--warn-linie); }
 
 .nutrition-details {
   margin-top: 12px;
@@ -415,7 +415,7 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
 }
 
 .breakdown__item--missing .breakdown__name {
-  color: #c05621;
+  color: var(--warn-text);
 }
 
 .breakdown__main {
@@ -437,7 +437,7 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
 
 .breakdown__status {
   font-size: 0.8rem;
-  color: #c05621;
+  color: var(--warn-text);
   white-space: nowrap;
 }
 
@@ -458,7 +458,7 @@ const formatAmount = (value) => value.toLocaleString('de-DE', { maximumFractionD
 
 .breakdown__reason {
   margin-top: 2px;
-  color: #c05621;
+  color: var(--warn-text);
 }
 
 .micro-note {

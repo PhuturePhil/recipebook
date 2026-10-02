@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026-10-02.2",
+    "datum": "02.10.2026",
+    "titel": "Neues Design mit Dunkelmodus",
+    "punkte": [
+      "Neue Leiste unten: Rezepte, Neu, Zutaten und Mehr – am Computer als Seitenleiste links",
+      "Suche und Tags stehen oben, ein Tipp auf einen Tag filtert, „Alle“ hebt den Filter auf",
+      "Unter „Mehr“: Nährwerte & Badges, Neuerungen, Persönliche Daten, Abmelden und Benutzerverwaltung (nur für Admins)",
+      "Dunkelmodus: folgt dem Handy oder unter „Mehr“ fest auf Hell oder Dunkel stellen",
+      "Einheitliche Symbole statt Emojis, die Seite „Neuerungen“ zeigt alle Versionen als Karten"
+    ]
+  },
+  {
     "version": "2026-10-02.1",
     "datum": "02.10.2026",
     "titel": "Automatische Updates",

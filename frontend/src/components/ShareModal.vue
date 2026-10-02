@@ -132,7 +132,7 @@ function formatDate(value) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -180,11 +180,11 @@ function formatDate(value) {
   flex: 1;
   min-width: 0;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--linie);
   border-radius: 4px;
   font-size: 0.875rem;
-  color: #4a5568;
-  background: #f7fafc;
+  color: var(--text2);
+  background: var(--flaeche2);
 }
 
 .expires {
@@ -219,7 +219,7 @@ function formatDate(value) {
 .btn-copy,
 .btn-primary {
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
   border: none;
 }
 
@@ -245,7 +245,7 @@ function formatDate(value) {
 }
 
 .btn-revoke:hover:not(:disabled) {
-  background: rgba(229, 62, 62, 0.1);
+  background: var(--neg-weich);
 }
 
 button:disabled {

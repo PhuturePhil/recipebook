@@ -1,65 +1,91 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { RouterView } from 'vue-router'
+import { ref, computed, watchEffect, onMounted } from 'vue'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import NavBar from '@/components/NavBar.vue'
+import { useUiStore } from '@/stores/uiStore'
+import AppHeader from '@/components/shell/AppHeader.vue'
+import TabBar from '@/components/shell/TabBar.vue'
+import MoreSheet from '@/components/shell/MoreSheet.vue'
 import ProfileModal from '@/components/ProfileModal.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import WhatsNewModal from '@/components/WhatsNewModal.vue'
 import { useUpdateCheck } from '@/composables/useUpdateCheck'
+import '@/composables/useTheme'
 
+const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
-const showProfileSetup = ref(false)
+const uiStore = useUiStore()
+const showProfile = ref(false)
+const moreOpen = ref(false)
 const { popup: whatsNew, close: closeWhatsNew } = useUpdateCheck()
+
+// Seiten der App-Hülle: aktiver Tab, Seitenleisten-Punkt, Titel, Zurück-Pfeil
+const PAGES = {
+  home: { tab: 'rezepte', title: 'Rezepte', search: true },
+  'recipe-new': { tab: 'neu', title: 'Neues Rezept', navTitle: true },
+  ingredients: { tab: 'zutaten', title: 'Zutaten' },
+  'recipe-detail': { tab: 'rezepte', title: 'Rezept', back: '/', navTitle: true },
+  'recipe-edit': { tab: 'rezepte', title: 'Rezept bearbeiten', back: true, navTitle: true },
+  'nutrition-info': { tab: 'mehr', side: 'naehrwerte', title: 'Nährwerte & Badges', back: true },
+  changelog: { tab: 'mehr', side: 'neuerungen', title: 'Neuerungen', back: true },
+  'admin-users': { tab: 'mehr', side: 'admin', title: 'Benutzerverwaltung', back: true },
+  'shared-recipe': { title: 'Pastoors Familienrezepte' },
+  'not-found': { title: 'Pastoors Familienrezepte' },
+}
+// Anmelde-Abläufe haben ihre eigene Karte, dort keine Kopfzeile/Navigation
+const AUTH_FLOW = ['login', 'oidc-callback', 'reset-password', 'invite']
+
+const page = computed(() => PAGES[route.name] ?? { title: 'Rezepte' })
+const showHeader = computed(() => !!route.name && !AUTH_FLOW.includes(route.name))
+const showShell = computed(() => showHeader.value && authStore.isAuthenticated)
+const headerTitle = computed(() => (page.value.navTitle && uiStore.navTitle) || page.value.title)
+
+const mehr = computed(() => [
+  { id: 'naehrwerte', label: 'Nährwerte & Badges', icon: 'balken', to: '/naehrwerte' },
+  { id: 'neuerungen', label: 'Neuerungen', icon: 'neuerungen', to: '/changelog' },
+  ...(authStore.isAdmin ? [{ id: 'admin', label: 'Benutzerverwaltung', icon: 'personen', to: '/admin/users' }] : []),
+  { id: 'profil', label: 'Persönliche Daten', icon: 'benutzer', onClick: () => { showProfile.value = true } },
+  { id: 'abmelden', label: 'Abmelden', icon: 'abmelden', onClick: logout },
+])
+
+function logout() {
+  authStore.logout()
+  router.push('/login')
+}
+
+watchEffect(() => {
+  document.body.classList.toggle('has-shell', showShell.value)
+  if (!showShell.value) moreOpen.value = false
+})
 
 onMounted(async () => {
   await authStore.init()
   if (authStore.isAuthenticated && authStore.needsProfileSetup) {
-    showProfileSetup.value = true
+    showProfile.value = true
   }
 })
 </script>
 
 <template>
-  <NavBar />
+  <AppHeader
+    v-if="showHeader"
+    :title="headerTitle"
+    :back="page.back ?? false"
+    :search="!!page.search && authStore.isAuthenticated"
+    :login-link="!authStore.isAuthenticated"
+  />
   <RouterView />
-  <ProfileModal v-if="showProfileSetup" @close="showProfileSetup = false" />
+  <TabBar
+    v-if="showShell"
+    :active="page.tab ?? ''"
+    :side-active="page.side ?? ''"
+    :mehr="mehr"
+    :more-open="moreOpen"
+    @more="moreOpen = true"
+  />
+  <MoreSheet v-if="moreOpen" :mehr="mehr" @close="moreOpen = false" />
+  <ProfileModal v-if="showProfile" @close="showProfile = false" />
   <LoadingOverlay />
   <WhatsNewModal v-if="whatsNew" :title="whatsNew.title" :entries="whatsNew.entries" @close="closeWhatsNew" />
 </template>
-
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  background: var(--color-bg, #f5f5f5);
-  color: var(--color-text-primary, #333);
-  line-height: 1.5;
-}
-
-:root {
-  --color-primary: #4a5568;
-  --color-primary-dark: #2d3748;
-  --color-secondary: #718096;
-  --color-bg: #f9fafb;
-  --color-bg-card: #ffffff;
-  --color-bg-secondary: #e2e8f0;
-  --color-text-primary: #1a202c;
-  --color-text-secondary: #4a5568;
-  --color-text-muted: #a0aec0;
-  --color-border: #e2e8f0;
-  --color-border-light: #edf2f7;
-  --color-error: #e53e3e;
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-}
-</style>

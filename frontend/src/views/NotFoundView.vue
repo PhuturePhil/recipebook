@@ -27,7 +27,7 @@
   padding: 10px 20px;
   border-radius: 8px;
   background: var(--color-primary, #4a5568);
-  color: #fff;
+  color: var(--akzent-kontrast);
   text-decoration: none;
 }
 </style>

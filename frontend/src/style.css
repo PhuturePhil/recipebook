@@ -1,79 +1,80 @@
+/* Rezepte-App: App-eigene Ergänzungen zum Design-System (nach shell/design-tokens.css, akzent.css, app-shell.css).
+   Farben NUR über Tokens — jede Ansicht hell UND dunkel prüfen. */
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  --akzent-hover: color-mix(in srgb, var(--akzent) 86%, #000);
+  --neg-weich:  color-mix(in srgb, var(--neg) 12%, var(--flaeche));
+  --pos-weich:  color-mix(in srgb, var(--pos) 13%, var(--flaeche));
+  --pos-linie:  color-mix(in srgb, var(--pos) 40%, var(--flaeche));
+  --info-text:  #1D4ED8;
+  --info-weich: color-mix(in srgb, #3B82F6 13%, var(--flaeche));
+  --lila-text:  #6D28D9;
+  --lila-weich: color-mix(in srgb, #8B5CF6 14%, var(--flaeche));
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Alte Namen der Rezepte-App → Tokens (die Komponenten nutzen sie weiter) */
+  --color-primary: var(--akzent);
+  --color-primary-dark: var(--akzent-hover);
+  --color-secondary: var(--text2);
+  --color-bg: var(--bg);
+  --color-bg-card: var(--flaeche);
+  --color-bg-secondary: var(--flaeche2);
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--text2);
+  --color-text-muted: var(--text3);
+  --color-border: var(--linie);
+  --color-border-light: var(--linie);
+  --color-error: var(--neg);
+  --color-success: var(--pos);
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+[data-theme="dark"] {
+  --akzent-hover: color-mix(in srgb, var(--akzent) 85%, #fff);
+  --info-text:  #93C5FD;
+  --info-weich: color-mix(in srgb, #3B82F6 22%, var(--flaeche));
+  --lila-text:  #C4B5FD;
+  --lila-weich: color-mix(in srgb, #8B5CF6 22%, var(--flaeche));
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { line-height: 1.5; min-width: 320px; }
+a { color: var(--akzent-text); }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+/* Formularfelder: Token-Farben, iOS ohne Zoom/Überlauf */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+  background-color: var(--flaeche);
+  color: var(--text);
+  border-color: var(--linie);
+  min-width: 0;
   font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+:where(input, select, textarea)::placeholder { color: var(--text3); }
+input, select, textarea, button { accent-color: var(--akzent); }
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em); }
 }
 
-.card {
-  padding: 2em;
+/* Platz der schwebenden Tab-Leiste: klebende Aktionsleisten (Rezept, Formular) sitzen darüber */
+body.has-shell { --shell-bottom: calc(max(20px, env(safe-area-inset-bottom, 0px) + 8px) + 64px); }
+@media (min-width: 1024px) { body.has-shell { --shell-bottom: 0px; } }
+
+/* Seitenleiste: lange Mehr-Punkte („Nährwerte & Badges“) umbrechen statt abschneiden */
+@media (min-width: 1024px) {
+  .shell-side-more .shell-tab > span:not(.icon-slot) { white-space: normal; overflow: visible; }
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* Druck/PDF immer hell, ohne Navigation */
+@media print {
+  :root, [data-theme="dark"] {
+    --bg: #fff; --flaeche: #fff; --flaeche2: #F7F7FA; --linie: #E3E3E8;
+    --text: #1C1C1E; --text2: #6E6E73; --text3: #8E8E93;
+    --akzent: var(--akzent-600); --akzent-text: var(--akzent-700); --akzent-kontrast: #fff;
+    color-scheme: light;
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  body.has-shell { padding: 0 !important; --shell-bottom: 0px; }
+  .shell-nav, .shell-header, .shell-sheet-backdrop { display: none !important; }
 }

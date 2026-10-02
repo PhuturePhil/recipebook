@@ -119,7 +119,7 @@ async function handleSubmit() {
 }
 
 .invite-card {
-  background: white;
+  background: var(--flaeche);
   border-radius: 8px;
   padding: 40px;
   width: 100%;
@@ -157,7 +157,7 @@ h1 {
   width: 100%;
   padding: 12px;
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 4px;
   font-size: 1rem;
@@ -175,22 +175,22 @@ h1 {
 }
 
 .error-message {
-  background: #fed7d7;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 16px;
 }
 
 .success-message {
-  background: #c6f6d5;
-  color: #276749;
+  background: var(--pos-weich);
+  color: var(--pos);
   padding: 16px;
   border-radius: 4px;
 }
 
 .success-message a {
-  color: #276749;
+  color: var(--pos);
   font-weight: 600;
   margin-left: 8px;
 }

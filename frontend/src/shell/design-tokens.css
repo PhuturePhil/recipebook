@@ -1,0 +1,91 @@
+/* design-tokens v1 — Master: workspace/snippets/design-tokens.css
+   Gemeinsame Farben/Maße der Pastoors-PWAs (Plan: plans/design-vereinheitlichung.md, §3).
+   Pro App kopiert — Änderungen zuerst hier, dann in alle Apps übernehmen.
+   Akzentfarbe kommt pro App aus akzent.css (--akzent-600 / -700 / -400).
+   Hell/Dunkel: app-shell.js setzt <html data-theme="light|dark"> (Auto = Systemeinstellung). */
+
+:root {
+  /* HELL (Default) */
+  --bg:        #F2F2F7;
+  --flaeche:   #FFFFFF;
+  --flaeche2:  #F7F7FA;   /* leicht abgesetzte Fläche: Tabellenkopf, Monatszeilen, Eingabefelder auf Karten */
+  --linie:     #E3E3E8;
+  --text:      #1C1C1E;
+  --text2:     #6E6E73;
+  --text3:     #8E8E93;   /* nur für Nebensächliches (IDs), nicht für Fließtext */
+  --pos:       #15803D;
+  --neg:       #B42318;
+  --warn-bg:   #FFF4E5;
+  --warn-linie:#F0C36D;
+  --warn-text: #8A5A00;
+  --radius:       12px;
+  --radius-karte: 16px;
+  --radius-sheet: 22px;
+  --radius-dialog:20px;
+  --schrift: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --schrift-zahl: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+
+  /* Akzent-Fallback (Haushalt-Grün), eigentliche Werte aus akzent.css */
+  --akzent-600: #16A34A;
+  --akzent-700: #15803D;
+  --akzent-400: #4ADE80;
+  --akzent:          var(--akzent-600);  /* Flächen: Buttons, aktive Pille, Badges */
+  --akzent-text:     var(--akzent-700);  /* kleiner farbiger Text auf hellem Grund */
+  --akzent-kontrast: #FFFFFF;            /* Schrift auf der Akzentfläche */
+  --akzent-weich: color-mix(in srgb, var(--akzent-600) 12%, var(--flaeche));  /* zarte Akzentfläche (Chips, Hover) */
+
+  --chip-bg:   #14161D;   /* App-Chip = Mini-Homescreen-Icon, auch im Hellmodus dunkel */
+  --chip-text: var(--akzent-400);
+  --chip-rand: transparent;
+
+  --bar-bg:    rgba(255,255,255,.82);
+  --bar-blur:  14px;
+  --bar-schatten: 0 10px 30px rgba(28,28,30,.16);
+  --overlay:   rgba(28,28,30,.45);
+  --schatten-karte: 0 1px 2px rgba(28,28,30,.04);
+  --schatten-sheet: 0 -12px 40px rgba(28,28,30,.22);
+  --schatten-dialog: 0 16px 48px rgba(28,28,30,.28);
+
+  --theme-color: #F2F2F7;  /* für <meta name="theme-color"> */
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg:        #14161D;
+  --flaeche:   #1D2129;
+  --flaeche2:  #232834;
+  --linie:     #2B303C;
+  --text:      #E7E9EE;
+  --text2:     #9AA1AE;
+  --text3:     #7D8494;
+  --pos:       #4ADE80;
+  --neg:       #F09595;
+  --warn-bg:   #33270F;
+  --warn-linie:#7A5A1E;
+  --warn-text: #E8B96A;
+  --akzent:          var(--akzent-400);
+  --akzent-text:     var(--akzent-400);
+  --akzent-kontrast: #14161D;
+  --akzent-weich: color-mix(in srgb, var(--akzent-400) 14%, var(--flaeche));
+  --chip-bg:   var(--flaeche);
+  --chip-rand: var(--linie);
+  --bar-bg:    rgba(29,33,41,.94);
+  --bar-blur:  8px;
+  --bar-schatten: 0 10px 30px rgba(0,0,0,.5);
+  --overlay:   rgba(0,0,0,.6);
+  --schatten-karte: none;
+  --schatten-sheet: 0 -12px 40px rgba(0,0,0,.6);
+  --schatten-dialog: 0 16px 48px rgba(0,0,0,.6);
+  --theme-color: #14161D;
+  color-scheme: dark;
+}
+
+/* „Was ist neu“-Popup (update-check.js) auf die Tokens mappen */
+:root {
+  --uc-surface: var(--flaeche);
+  --uc-text: var(--text);
+  --uc-muted: var(--text2);
+  --uc-border: var(--linie);
+  --uc-accent: var(--akzent);
+  --uc-accent-text: var(--akzent-kontrast);
+}

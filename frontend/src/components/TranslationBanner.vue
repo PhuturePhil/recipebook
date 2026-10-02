@@ -1,7 +1,7 @@
 <template>
   <div class="translation-banner" role="note">
     <p class="translation-banner__text">
-      <span class="translation-banner__icon" aria-hidden="true">🌐</span>
+      <AppIcon class="translation-banner__icon" name="globus" :size="17" />
       {{ banner.screen }}
     </p>
     <button type="button" class="translation-banner__btn" @click="emit('show-original')">Original anzeigen</button>
@@ -10,6 +10,7 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/shell/AppIcon.vue'
 defineProps({
   banner: { type: Object, required: true },
 })
@@ -26,11 +27,11 @@ const emit = defineEmits(['show-original'])
   gap: 8px 12px;
   margin: 12px 0;
   padding: 10px 14px;
-  background: #fffaf0;
-  border: 1px solid #fbd38d;
-  border-left: 4px solid #dd6b20;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-linie);
+  border-left: 4px solid var(--akzent);
   border-radius: 8px;
-  color: #744210;
+  color: var(--warn-text);
 }
 
 .translation-banner__text {
@@ -45,10 +46,10 @@ const emit = defineEmits(['show-original'])
 
 .translation-banner__btn {
   padding: 6px 12px;
-  border: 1px solid #dd6b20;
+  border: 1px solid var(--akzent);
   border-radius: 6px;
-  background: white;
-  color: #9c4221;
+  background: var(--flaeche);
+  color: var(--warn-text);
   font-size: 0.85rem;
   font-family: inherit;
   font-weight: 600;
@@ -57,7 +58,7 @@ const emit = defineEmits(['show-original'])
 }
 
 .translation-banner__btn:hover {
-  background: #feebc8;
+  background: var(--warn-bg);
 }
 
 .translation-banner__print {

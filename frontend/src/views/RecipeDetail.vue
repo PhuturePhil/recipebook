@@ -445,13 +445,13 @@ const handleDelete = async () => {
 
 .lang-btn.active {
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
 }
 
 .translation-note {
   margin: 8px 0 0;
   font-size: 0.875rem;
-  color: #744210;
+  color: var(--warn-text);
 }
 
 .recipe-header h1 {
@@ -465,7 +465,7 @@ const handleDelete = async () => {
   gap: 12px;
   justify-content: flex-end;
   position: sticky;
-  bottom: 0;
+  bottom: var(--shell-bottom, 0px);
   background: var(--color-bg, #f9fafb);
   padding: 12px 0;
   border-top: 1px solid var(--color-border, #e2e8f0);
@@ -491,7 +491,7 @@ const handleDelete = async () => {
 
 .btn-edit {
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
 }
 
 .btn-edit:hover {
@@ -505,7 +505,7 @@ const handleDelete = async () => {
 }
 
 .btn-delete:hover {
-  background: rgba(229, 62, 62, 0.1);
+  background: var(--neg-weich);
 }
 
 .btn-cancel {
@@ -559,18 +559,18 @@ const handleDelete = async () => {
   border: 1px solid transparent;
   font-family: inherit;
   font-size: inherit;
-  color: #22543d;
-  background: #f0fff4;
+  color: var(--pos);
+  background: var(--pos-weich);
   cursor: pointer;
 }
 
 .meta-item--kcal:hover {
-  border-color: #9ae6b4;
+  border-color: var(--pos-linie);
 }
 
 .meta-item--incomplete {
-  color: #744210;
-  background: #fffaf0;
+  color: var(--warn-text);
+  background: var(--warn-bg);
 }
 
 .nutrition-state {
@@ -844,7 +844,8 @@ const handleDelete = async () => {
     margin: 18mm 16mm;
   }
 
-  :global(.navbar) {
+  :global(.shell-header),
+  :global(.shell-nav) {
     display: none !important;
   }
 

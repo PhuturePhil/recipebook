@@ -1,6 +1,6 @@
 <template>
   <div class="info-view">
-    <h1>Nährwerte &amp; Badges</h1>
+    <h1 class="sr-only">Nährwerte &amp; Badges</h1>
 
     <div v-if="loading" class="state">Lädt…</div>
     <div v-else-if="error" class="state state--error">{{ error }}</div>
@@ -169,11 +169,11 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-.badge--energiearm { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
-.badge--fettarm { background: #fefcbf; color: #744210; }
-.badge--proteinreich { background: #bee3f8; color: #2a4365; }
-.badge--ballaststoffreich { background: #e9d8fd; color: #44337a; }
-.badge--schnell { background: #c6f6d5; color: #22543d; }
+.badge--energiearm { background: var(--pos-weich); color: var(--pos); border: 1px solid var(--pos-linie); }
+.badge--fettarm { background: var(--warn-bg); color: var(--warn-text); }
+.badge--proteinreich { background: var(--info-weich); color: var(--info-text); }
+.badge--ballaststoffreich { background: var(--lila-weich); color: var(--lila-text); }
+.badge--schnell { background: var(--pos-weich); color: var(--pos); }
 
 .note {
   font-size: 0.85rem;
@@ -203,9 +203,9 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.source-chip--bls { background: #e6fffa; color: #234e52; }
-.source-chip--manual { background: #ebf8ff; color: #2a4365; }
-.source-chip--ai_estimate { background: #fffaf0; color: #7b341e; border: 1px dashed #ed8936; }
+.source-chip--bls { background: var(--pos-weich); color: var(--info-text); }
+.source-chip--manual { background: var(--info-weich); color: var(--info-text); }
+.source-chip--ai_estimate { background: var(--warn-bg); color: var(--warn-text); border: 1px dashed var(--warn-linie); }
 
 @media (max-width: 600px) {
   .info-view {

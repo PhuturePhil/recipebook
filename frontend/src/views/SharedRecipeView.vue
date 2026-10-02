@@ -223,13 +223,13 @@ const ingredientSections = computed(() => groupSections(scaledIngredients.value)
 
 .lang-btn.active {
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
 }
 
 .translation-note {
   margin: 8px 0 0;
   font-size: 0.875rem;
-  color: #744210;
+  color: var(--warn-text);
 }
 
 .recipe-header {
@@ -288,8 +288,8 @@ const ingredientSections = computed(() => groupSections(scaledIngredients.value)
 .guest-hint {
   margin-bottom: 24px;
   padding: 16px;
-  background: #ebf4ff;
-  border: 1px solid #bee3f8;
+  background: var(--info-weich);
+  border: 1px solid var(--info-weich);
   border-radius: 8px;
   font-size: 0.925rem;
   color: var(--color-text-primary, #333);

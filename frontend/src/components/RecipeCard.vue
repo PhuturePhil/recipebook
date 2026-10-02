@@ -91,10 +91,11 @@ const navigateToDetail = () => {
 
 <style scoped>
 .recipe-card {
-  background: var(--color-bg-card, #fff);
-  border-radius: 8px;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius-karte);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--schatten-karte);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
@@ -104,7 +105,7 @@ const navigateToDetail = () => {
 
 .recipe-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--bar-schatten);
 }
 
 .recipe-card__image {
@@ -128,7 +129,9 @@ const navigateToDetail = () => {
 }
 
 .recipe-card__title {
-  font-size: 1.25rem;
+  font-size: 1.12rem;
+  font-weight: 650;
+  line-height: 1.3;
   color: var(--color-text-primary, #333);
   margin: 0 0 8px 0;
 }
@@ -160,7 +163,8 @@ const navigateToDetail = () => {
   background: none;
   font: inherit;
   font-size: 0.8rem;
-  color: var(--color-text-muted, #999);
+  font-weight: 600;
+  color: var(--akzent-text);
   cursor: pointer;
 }
 
@@ -184,9 +188,9 @@ const navigateToDetail = () => {
   letter-spacing: 0.02em;
 }
 
-.badge--schnell { background: #c6f6d5; color: #22543d; }
-.badge--proteinreich { background: #bee3f8; color: #2a4365; }
-.badge--energiearm { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
-.badge--fettarm { background: #fefcbf; color: #744210; }
-.badge--ballaststoffreich { background: #e9d8fd; color: #44337a; }
+.badge--schnell { background: var(--pos-weich); color: var(--pos); }
+.badge--proteinreich { background: var(--info-weich); color: var(--info-text); }
+.badge--energiearm { background: var(--pos-weich); color: var(--pos); border: 1px solid var(--pos-linie); }
+.badge--fettarm { background: var(--warn-bg); color: var(--warn-text); }
+.badge--ballaststoffreich { background: var(--lila-weich); color: var(--lila-text); }
 </style>

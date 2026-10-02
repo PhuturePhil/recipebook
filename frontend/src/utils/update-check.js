@@ -1,4 +1,4 @@
-// update-check v1 — Master: workspace/snippets/update-check.js
+// update-check v2 — Master: workspace/snippets/update-check.js
 // Gemeinsames Auto-Update + „Was ist neu“ für die Pastoors-PWAs (Plan: plans/pwa-auto-update-changelog.md).
 // Pro App kopiert — Änderungen zuerst hier, dann in alle Apps übernehmen.
 //
@@ -10,14 +10,19 @@
 //     builtinVersion: '2026-10-02.1',    // optional (Rezepte): ins Bundle eingebaute Version
 //     versionOf:      (data) => string,  // optional: Version aus der versionUrl-Antwort lesen
 //     openPopup:      (title, entries, onClose) => void,  // optional: eigener Renderer (React/Vue)
+//     changelogPage:  () => void,        // optional (v2): Menüpunkt öffnet eine eigene Seite statt des Popups
 //   });
-//   window.__showChangelog()             // Menüpunkt „Neuerungen“
+//   window.__showChangelog()             // Menüpunkt „Neuerungen“ (Popup, bzw. changelogPage falls gesetzt)
+//   window.__ucChangelog()               // v2: Promise mit der kompletten Historie (für die Seite „Neuerungen“)
+//   window.__ucMarkSeen(version?)        // v2: als gesehen merken (Seite geöffnet) → Event 'uc:seen'
+//   window.__ucState()                   // v2: {seen, current} für den NEU-Badge; Event 'uc:version' sobald bekannt
 //   window.__appBusy.add('grund') / .delete('grund')   // laufende Arbeit melden
 //
 // Verhalten: Versionscheck beim Start, beim Zurückholen (visibilitychange/pageshow) und alle 5 Min.
 // Neue Version + App frei → still neu laden; App beschäftigt → nachholen, sobald frei.
 // Höchstens 1 Auto-Reload pro 2 Min, sonst Banner „Neue Version verfügbar – Aktualisieren“.
-// Nach dem Laden zeigt ein Popup alle Einträge seit der zuletzt gesehenen Version.
+// Nach dem Laden zeigt ein Popup alle Einträge seit der zuletzt gesehenen Version — nur bei neuer Version.
+// v2 ist abwärtskompatibel: ohne changelogPage verhält sich alles wie v1.
 // Kein Tracking: nur anonyme GETs, gemerkt wird ausschließlich lokal (localStorage/sessionStorage).
 (function () {
   'use strict';
@@ -73,6 +78,8 @@
       return fetchJson(changelogUrl).then(function (d) { return Array.isArray(d) && d.length ? d : null; });
     }
 
+    function emit(name) { try { window.dispatchEvent(new Event(name)); } catch (e) {} }
+
     // ---------- Reload ----------
     function doReload() {
       try { sessionStorage.setItem(SS_RELOAD, String(Date.now())); } catch (e) {}
@@ -107,7 +114,7 @@
     function checkVersion() {
       return fetchVersion().then(function (v) {
         if (!v) return;
-        if (!loadedVersion) { loadedVersion = v; maybePopup(v); return; }
+        if (!loadedVersion) { loadedVersion = v; emit('uc:version'); maybePopup(v); return; }
         if (v !== loadedVersion) tryReload();
         else { if (reloadPending) stopPending(); maybePopup(v); }
       });
@@ -128,7 +135,7 @@
     }
 
     // ---------- „Was ist neu“ ----------
-    function markSeen(v) { if (v) lsSet(LS_SEEN, v); }
+    function markSeen(v) { if (v) { lsSet(LS_SEEN, v); emit('uc:seen'); } }
     function maybePopup(current) {
       if (popupShownThisLoad) return;
       var seen = lsGet(LS_SEEN);
@@ -141,6 +148,7 @@
         for (var i = 0; i < log.length; i++) if (log[i].version === seen) { idx = i; break; }
         var entries = idx > 0 ? log.slice(0, idx) : log.slice(0, 5);
         showWhenFree(function () {
+          if (lsGet(LS_SEEN) === current) return;   // inzwischen gesehen (z. B. Seite „Neuerungen“ offen)
           open('Was ist neu', entries, function () { markSeen(current); });
         }, 0);
       });
@@ -156,11 +164,16 @@
     }
 
     window.__showChangelog = function () {
+      if (cfg.changelogPage) { cfg.changelogPage(); return Promise.resolve(); }
       return fetchChangelog().then(function (log) {
         if (!log) return;
         open('Neuerungen', log, function () { markSeen(loadedVersion || log[0].version); });
       });
     };
+
+    window.__ucChangelog = fetchChangelog;
+    window.__ucMarkSeen = function (v) { markSeen(v || loadedVersion); };
+    window.__ucState = function () { return { seen: lsGet(LS_SEEN), current: loadedVersion }; };
 
     // ---------- Start ----------
     checkVersion();

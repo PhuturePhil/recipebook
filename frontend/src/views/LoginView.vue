@@ -176,7 +176,7 @@ async function handlePasswordReset() {
 }
 
 .login-card {
-  background: white;
+  background: var(--flaeche);
   padding: 40px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -188,14 +188,14 @@ h1 {
   font-size: 1.5rem;
   text-align: center;
   margin-bottom: 10px;
-  color: #2c3e50;
+  color: var(--text);
 }
 
 h2 {
   font-size: 1.25rem;
   text-align: center;
   margin-bottom: 30px;
-  color: #666;
+  color: var(--text2);
 }
 
 .form-group {
@@ -206,27 +206,27 @@ label {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
 }
 
 input {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--linie);
   border-radius: 4px;
   font-size: 1rem;
 }
 
 input:focus {
   outline: none;
-  border-color: #4a5568;
+  border-color: var(--akzent);
 }
 
 button {
   width: 100%;
   padding: 12px;
-  background: #4a5568;
-  color: white;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 4px;
   font-size: 1rem;
@@ -235,11 +235,11 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #2d3748;
+  background: var(--akzent-hover);
 }
 
 button:disabled {
-  background: #a0aec0;
+  background: var(--linie);
   cursor: not-allowed;
 }
 
@@ -247,8 +247,8 @@ button:disabled {
   display: block;
   width: 100%;
   padding: 16px 12px;
-  background: #2c3e50;
-  color: white;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
   border-radius: 6px;
   font-size: 1.1rem;
   font-weight: 600;
@@ -261,7 +261,7 @@ button:disabled {
   margin: 8px 0 0;
   text-align: center;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text2);
 }
 
 .email-login-secondary .form-group {
@@ -280,24 +280,24 @@ button:disabled {
 .email-login-secondary button {
   padding: 9px;
   font-size: 0.95rem;
-  background: white;
-  color: #2d3748;
-  border: 1px solid #4a5568;
+  background: var(--flaeche);
+  color: var(--text);
+  border: 1px solid var(--akzent);
 }
 
 .email-login-secondary button:hover:not(:disabled) {
-  background: #edf2f7;
+  background: var(--flaeche2);
 }
 
 .reset-sso-hint {
   font-size: 0.85rem;
-  background: #edf2f7;
+  background: var(--flaeche2);
   padding: 8px 10px;
   border-radius: 4px;
 }
 
 .oidc-button:hover {
-  background: #1a252f;
+  background: var(--akzent-hover);
 }
 
 .divider {
@@ -305,7 +305,7 @@ button:disabled {
   align-items: center;
   gap: 10px;
   margin: 25px 0;
-  color: #999;
+  color: var(--text3);
   font-size: 0.85rem;
 }
 
@@ -313,20 +313,20 @@ button:disabled {
 .divider::after {
   content: '';
   flex: 1;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--linie);
 }
 
 .error-message {
-  background: #fed7d7;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 20px;
 }
 
 .success-message {
-  background: #c6f6d5;
-  color: #2f855a;
+  background: var(--pos-weich);
+  color: var(--pos);
   padding: 10px;
   border-radius: 4px;
   margin-top: 15px;
@@ -339,7 +339,7 @@ button:disabled {
 }
 
 .links a {
-  color: #4a5568;
+  color: var(--text2);
   text-decoration: none;
   font-size: 0.9rem;
 }
@@ -354,7 +354,7 @@ button:disabled {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -362,7 +362,7 @@ button:disabled {
 }
 
 .modal-content {
-  background: white;
+  background: var(--flaeche);
   padding: 30px;
   border-radius: 8px;
   width: 90%;
@@ -375,7 +375,7 @@ button:disabled {
 
 .modal-content p {
   margin-bottom: 20px;
-  color: #666;
+  color: var(--text2);
 }
 
 .modal-actions {
@@ -388,11 +388,11 @@ button:disabled {
 }
 
 .btn-secondary {
-  background: #e2e8f0;
-  color: #333;
+  background: var(--flaeche2);
+  color: var(--text);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #cbd5e0;
+  background: var(--linie);
 }
 </style>

@@ -1,0 +1,262 @@
+/* app-shell v1.1 — Master: workspace/snippets/app-shell.css
+   Gemeinsame Hülle der Pastoors-PWAs (Plan: plans/design-vereinheitlichung.md, §4–6):
+   Kopfzeile mit App-Chip, schwebende Tab-Leiste (mobil) ↔ Seitenleiste (≥1024 px),
+   „Mehr“-Sheet, Darstellungs-Schalter, Seite „Neuerungen“, Grundbausteine (ui-*).
+   Pro App kopiert — Änderungen zuerst hier, dann in alle Apps übernehmen.
+   Braucht design-tokens.css (+ akzent.css) davor; App-eigenes CSS danach. */
+
+/* ── Grundlage ─────────────────────────────────────────────────────────── */
+html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+body {
+  font-family: var(--schrift);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+body.has-shell { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+:root { --shell-max: 1100px; }   /* Inhaltsspalte am Desktop; Apps richten .page o. ä. daran aus */
+.icon { display: inline-block; flex-shrink: 0; vertical-align: middle; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ── Kopfzeile ─────────────────────────────────────────────────────────── */
+/* iOS 26+ legt in installierten Web-Apps (black-translucent) eine System-Unschärfe
+   („Liquid Glass scroll edge effect“) über den oberen Rand, ca. 40 pt unter die Statusleiste.
+   Abhilfe (v1.1): Kopfzeile deckend ohne backdrop-filter (WebKit nimmt dann deren Farbe)
+   UND im Home-Bildschirm-Modus zusätzlicher Abstand, damit Titel/Chip unter der Unschärfe sitzen.
+   min(…, inset) → kein Zusatzabstand, wenn es oben keinen Inset gibt (Querformat, Browser-Tab). */
+:root { --shell-top: env(safe-area-inset-top, 0px); }
+@media (display-mode: standalone) {
+  :root { --shell-top: calc(env(safe-area-inset-top, 0px) + min(2.5rem, env(safe-area-inset-top, 0px))); }
+}
+html.is-standalone { --shell-top: calc(env(safe-area-inset-top, 0px) + min(2.5rem, env(safe-area-inset-top, 0px))); }
+.shell-header {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 10px;
+  min-height: 54px;
+  padding: 10px 16px;
+  padding-top: max(10px, var(--shell-top));
+  background: var(--bg);   /* deckend, bewusst ohne backdrop-filter (s. o.) */
+}
+.shell-header h1 { flex: 1; min-width: 0; font-size: 17.5px; font-weight: 650; letter-spacing: -.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+.shell-header .shell-title-page { display: none; }
+.shell-header-actions { display: flex; align-items: center; gap: 8px; }
+.app-chip {
+  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--chip-bg); color: var(--chip-text);
+  border: 1px solid var(--chip-rand);
+  font-size: 15px; font-weight: 750; line-height: 1;
+}
+.shell-back {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; margin-left: -8px;
+  border: 0; background: none; color: var(--akzent-text); border-radius: 10px; cursor: pointer;
+}
+.shell-back:hover { background: var(--akzent-weich); }
+
+/* ── Navigation: ein Markup, mobil Tab-Leiste, Desktop Seitenleiste ────── */
+.shell-nav {
+  position: fixed; z-index: 80;
+  left: 18px; right: 18px;
+  bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  border-radius: 999px;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  box-shadow: var(--bar-schatten);
+  padding: 6px 7px;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .shell-nav {
+    background: var(--bar-bg);
+    -webkit-backdrop-filter: saturate(1.6) blur(var(--bar-blur));
+    backdrop-filter: saturate(1.6) blur(var(--bar-blur));
+  }
+}
+.shell-brand, .shell-side-more { display: none; }
+.shell-tabs { display: flex; gap: 2px; }
+.shell-tab {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 6px 2px 5px;
+  border: 0; border-radius: 999px; background: none;
+  color: var(--text2); text-decoration: none;
+  font: inherit; font-size: 10.5px; font-weight: 600; line-height: 1.15;
+  cursor: pointer; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.shell-tab .icon { width: 21px; height: 21px; }
+.shell-tab span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.shell-tab.is-active { background: var(--akzent); color: var(--akzent-kontrast); font-weight: 700; }
+.shell-tab:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+.shell-tab .badge-neu { display: none; }
+
+/* NEU-Badge */
+.badge-neu {
+  display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 6px;
+  background: var(--akzent); color: var(--akzent-kontrast);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .3px; line-height: 1.35; vertical-align: 1px;
+}
+.badge-neu[hidden] { display: none !important; }
+.shell-dot {
+  position: absolute; top: 5px; right: calc(50% - 17px);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--akzent); border: 2px solid var(--flaeche);
+}
+.shell-tab { position: relative; }
+.shell-tab.is-active .shell-dot { background: var(--akzent-kontrast); border-color: var(--akzent); }
+
+@media (min-width: 1024px) {
+  body.has-shell { padding-bottom: 0; padding-left: 248px; }
+  .shell-nav {
+    left: 0; top: 0; bottom: 0; right: auto; width: 248px;
+    border-radius: 0; border: 0; border-right: 1px solid var(--linie);
+    background: var(--flaeche); box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    padding: 18px 12px 16px;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .shell-brand {
+    display: flex; align-items: center; gap: 11px;
+    padding: 2px 8px 18px; font-size: 15.5px; font-weight: 700; color: var(--text);
+  }
+  .shell-brand .app-chip { width: 36px; height: 36px; border-radius: 10px; font-size: 17px; }
+  .shell-tabs { flex-direction: column; gap: 3px; }
+  .shell-tab {
+    flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 12px;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 14.5px; font-weight: 600; color: var(--text2);
+  }
+  .shell-tab .icon { width: 19px; height: 19px; }
+  .shell-tab:hover:not(.is-active) { background: var(--flaeche2); color: var(--text); }
+  .shell-tab-mehr { display: none; }
+  .shell-tab .badge-neu { display: inline-block; margin-left: auto; }
+  .shell-dot { display: none; }
+  .shell-side-more { display: block; margin-top: auto; padding-top: 18px; }
+  .shell-side-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+    color: var(--text2); padding: 0 12px 6px;
+  }
+  .shell-side-more .shell-tab { width: 100%; }
+  .shell-side-more .ui-seg { margin: 10px 4px 0; }
+  .shell-header {
+    padding: 22px 34px 14px; min-height: 0;
+    padding-left: max(34px, calc((100% - var(--shell-max)) / 2 + 34px));
+    padding-right: max(34px, calc((100% - var(--shell-max)) / 2 + 34px));
+  }
+  .shell-view .shell-header h1 { font-size: 22px; font-weight: 700; }
+  .shell-header .app-chip, .shell-header .shell-title-app { display: none; }
+  .shell-header .shell-title-page { display: block; font-size: 22px; font-weight: 700; letter-spacing: -.2px; }
+}
+
+/* ── „Mehr“-Sheet (nur mobil) ──────────────────────────────────────────── */
+.shell-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 120;
+  background: var(--overlay);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: shellFade .18s ease-out;
+}
+.shell-sheet-backdrop[hidden] { display: none; }
+.shell-sheet {
+  width: 100%; max-width: 560px;
+  background: var(--flaeche); color: var(--text);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  box-shadow: var(--schatten-sheet);
+  padding: 10px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+  animation: shellUp .22s cubic-bezier(.2,.8,.2,1);
+}
+.shell-grab { width: 40px; height: 4.5px; border-radius: 3px; background: var(--linie); margin: 4px auto 12px; }
+.shell-sheet h2 {
+  font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--text2); margin: 4px 2px 6px;
+}
+.shell-mi {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 4px; border: 0; border-bottom: 1px solid var(--linie);
+  background: none; color: var(--text); text-decoration: none; text-align: left;
+  font: inherit; font-size: 15.5px; cursor: pointer;
+}
+.shell-mi:last-child { border-bottom: 0; }
+.shell-mi .icon { color: var(--akzent-text); width: 21px; height: 21px; }
+.shell-mi-label { flex: 1; }
+.shell-mi-row { cursor: default; flex-wrap: wrap; }
+.shell-mi-row .ui-seg { flex: 1 0 100%; display: flex; margin: 10px 0 2px; }
+.shell-mi-row .ui-seg button { flex: 1; justify-content: center; padding: 8px 6px; font-size: 13.5px; }
+@media (min-width: 1024px) { .shell-sheet-backdrop { display: none !important; } }
+@keyframes shellFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes shellUp { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .shell-sheet-backdrop, .shell-sheet { animation: none; } }
+
+/* ── Segment-Schalter (Darstellung Auto/Hell/Dunkel u. a.) ─────────────── */
+.ui-seg {
+  display: inline-flex; padding: 2px; gap: 2px;
+  background: var(--flaeche2); border: 1px solid var(--linie); border-radius: 10px;
+}
+.ui-seg button {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 0; background: none; color: var(--text2);
+  font: inherit; font-size: 13px; font-weight: 600;
+  padding: 6px 10px; border-radius: 8px; cursor: pointer;
+}
+.ui-seg button .icon { width: 15px; height: 15px; }
+.ui-seg button[aria-checked="true"], .ui-seg button.active {
+  background: var(--flaeche); color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+[data-theme="dark"] .ui-seg button[aria-checked="true"], [data-theme="dark"] .ui-seg button.active { background: #343A48; }
+.ui-seg button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+.shell-side-more .ui-seg { display: flex; }
+.shell-side-more .ui-seg button { flex: 1; justify-content: center; padding: 6px 4px; font-size: 12px; }
+
+/* ── Seite „Neuerungen“ ───────────────────────────────────────────────── */
+body.shell-view-open > :not(.shell-ui):not(.uc-overlay):not(.uc-banner):not(script):not(style) { display: none !important; }
+.shell-view[hidden] { display: none; }
+.shell-view-body { padding: 6px 14px 20px; }
+.shell-view-body > * { max-width: 760px; }
+@media (min-width: 1024px) { .shell-view-body { padding: 4px 34px 40px; padding-left: max(34px, calc((100% - var(--shell-max)) / 2 + 34px)); } }
+.cl-karte {
+  background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius-karte);
+  padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--schatten-karte);
+}
+.cl-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  border-bottom: 1px solid var(--linie); padding-bottom: 8px; margin-bottom: 8px;
+}
+.cl-head h2 { font-size: 15px; font-weight: 650; color: var(--akzent-text); margin: 0; }
+.cl-head span { font-size: 12px; color: var(--text2); white-space: nowrap; }
+.cl-karte ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; }
+.cl-karte li { margin: 2px 0; }
+.cl-leer { color: var(--text2); padding: 30px 4px; text-align: center; }
+
+/* ── „Was ist neu“-Popup (update-check.js) in Token-Optik ──────────────── */
+.uc-overlay { background: var(--overlay) !important; padding: 22px !important; }
+.uc-dialog { border-radius: var(--radius-dialog) !important; max-width: 420px !important; box-shadow: var(--schatten-dialog) !important; }
+.uc-dialog h2 { font-size: 19px; }
+.uc-entry { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; align-items: baseline; }
+.uc-entry h3 { color: var(--akzent-text); font-weight: 650; }
+.uc-entry .uc-date { grid-column: 2; grid-row: 1; white-space: nowrap; margin: 0 0 6px; }
+.uc-entry ul { grid-column: 1 / -1; }
+.uc-dialog .uc-close:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+.uc-dialog .uc-close { border-radius: var(--radius) !important; padding: 13px !important; font-weight: 700 !important; }
+.uc-banner { border-radius: var(--radius) !important; }
+.uc-banner button { border-radius: 8px !important; }
+
+/* ── Grundbausteine (optional für die Apps) ───────────────────────────── */
+.ui-karte {
+  background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius-karte);
+  padding: 14px 16px; box-shadow: var(--schatten-karte);
+}
+.ui-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px 16px; border-radius: var(--radius);
+  font: inherit; font-size: 15px; font-weight: 650; cursor: pointer;
+  border: 1px solid var(--linie); background: var(--flaeche); color: var(--akzent-text);
+}
+.ui-btn--primaer { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-kontrast); }
+.ui-btn--gefahr { background: transparent; border-color: var(--neg); color: var(--neg); }
+.ui-input {
+  font: inherit; font-size: 16px; color: var(--text);
+  background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.ui-input:focus { outline: 2px solid var(--akzent); outline-offset: -1px; }

@@ -50,21 +50,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Optik wie die Seite „Updates“ (ChangelogView) */
+/* Optik wie die Seite „Neuerungen“ (ChangelogView), Farben über --uc-* (design-tokens.css) */
 .whatsnew-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: max(16px, var(--shell-top)) 16px 16px;
 }
 
 .whatsnew {
-  background: var(--color-bg, #f9fafb);
-  border-radius: 12px;
+  background: var(--bg);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--schatten-dialog);
   width: 100%;
   max-width: 520px;
   max-height: min(85vh, 720px);
@@ -75,7 +76,7 @@ onUnmounted(() => {
 
 .whatsnew__title {
   font-size: 1.5rem;
-  color: var(--color-text-primary, #333);
+  color: var(--uc-text);
   padding: 20px 20px 12px;
 }
 
@@ -89,9 +90,10 @@ onUnmounted(() => {
 }
 
 .changelog-entry {
-  background: var(--color-bg-card, #fff);
-  border-radius: 8px;
-  padding: 16px 18px;
+  background: var(--uc-surface);
+  border: 1px solid var(--uc-border);
+  border-radius: var(--radius-karte);
+  padding: 14px 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -102,18 +104,19 @@ onUnmounted(() => {
   gap: 16px;
   margin-bottom: 10px;
   padding-bottom: 8px;
-  border-bottom: 2px solid var(--color-border, #ddd);
+  border-bottom: 1px solid var(--uc-border);
 }
 
 .changelog-title {
-  font-size: 1.1rem;
-  color: var(--color-text-primary, #333);
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--akzent-text);
   margin: 0;
 }
 
 .changelog-date {
   font-size: 0.875rem;
-  color: var(--color-text-secondary, #666);
+  color: var(--uc-muted);
   white-space: nowrap;
 }
 
@@ -126,21 +129,21 @@ onUnmounted(() => {
 }
 
 .changelog-changes li {
-  color: var(--color-text-primary, #333);
+  color: var(--uc-text);
   line-height: 1.5;
 }
 
 .changelog-changes li::marker {
-  color: var(--color-primary, #4a5568);
+  color: var(--uc-accent);
 }
 
 .whatsnew__ok {
   margin: 16px 20px 20px;
-  padding: 12px;
+  padding: 13px;
   border: none;
-  border-radius: 8px;
-  background: var(--color-primary, #4a5568);
-  color: #fff;
+  border-radius: var(--radius);
+  background: var(--uc-accent);
+  color: var(--uc-accent-text);
   font-size: 1rem;
   font-weight: 600;
   font-family: inherit;

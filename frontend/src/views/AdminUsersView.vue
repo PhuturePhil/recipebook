@@ -1,6 +1,6 @@
 <template>
   <div class="admin-users-container">
-    <h1>Benutzerverwaltung</h1>
+    <h1 class="sr-only">Benutzerverwaltung</h1>
 
     <div class="header-actions">
       <button @click="openCreateForm" class="btn-primary">
@@ -305,8 +305,8 @@ h1 {
 }
 
 .error-banner {
-  background: #fed7d7;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   padding: 12px 16px;
   border-radius: 4px;
   margin-top: 16px;
@@ -320,8 +320,8 @@ h1 {
 
 .btn-primary {
   padding: 10px 20px;
-  background: #4a5568;
-  color: white;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -329,21 +329,21 @@ h1 {
 }
 
 .btn-primary:hover {
-  background: #2d3748;
+  background: var(--akzent-hover);
 }
 
 .btn-secondary-action {
   padding: 10px 20px;
-  background: white;
-  color: #4a5568;
-  border: 1px solid #4a5568;
+  background: var(--flaeche);
+  color: var(--text2);
+  border: 1px solid var(--akzent);
   border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
 }
 
 .btn-secondary-action:hover:not(:disabled) {
-  background: #f7fafc;
+  background: var(--flaeche2);
 }
 
 .btn-secondary-action:disabled {
@@ -360,17 +360,17 @@ h1 {
 .invite-link-input {
   flex: 1;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--linie);
   border-radius: 4px;
   font-size: 0.875rem;
-  color: #4a5568;
-  background: #f7fafc;
+  color: var(--text2);
+  background: var(--flaeche2);
 }
 
 .btn-copy {
   padding: 10px 16px;
-  background: #4a5568;
-  color: white;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -379,13 +379,13 @@ h1 {
 }
 
 .btn-copy:hover {
-  background: #2d3748;
+  background: var(--akzent-hover);
 }
 
 .loading, .empty {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--text2);
 }
 
 .users-table {
@@ -398,11 +398,11 @@ h1 {
 .users-table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--linie);
 }
 
 .users-table th {
-  background: #f7fafc;
+  background: var(--flaeche2);
   font-weight: 600;
 }
 
@@ -414,13 +414,13 @@ h1 {
 }
 
 .role-badge.admin {
-  background: #e9d8fd;
-  color: #6b46c1;
+  background: var(--lila-weich);
+  color: var(--lila-text);
 }
 
 .role-badge.user {
-  background: #c6f6d5;
-  color: #2f855a;
+  background: var(--pos-weich);
+  color: var(--pos);
 }
 
 .actions-cell {
@@ -437,26 +437,26 @@ h1 {
 }
 
 .btn-edit {
-  background: #ebf8ff;
-  color: #2b6cb0;
+  background: var(--info-weich);
+  color: var(--info-text);
 }
 
 .btn-edit:hover {
-  background: #bee3f8;
+  background: var(--info-weich);
 }
 
 .btn-delete {
-  background: #fff5f5;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
 }
 
 .btn-delete:hover {
-  background: #fed7d7;
+  background: var(--neg-weich);
 }
 
 .hint {
   font-size: 0.85rem;
-  color: #718096;
+  color: var(--text2);
   margin-bottom: 12px;
 }
 
@@ -466,7 +466,7 @@ h1 {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -474,7 +474,7 @@ h1 {
 }
 
 .modal-content {
-  background: white;
+  background: var(--flaeche);
   padding: 30px;
   border-radius: 8px;
   width: 90%;
@@ -499,13 +499,13 @@ h1 {
 .form-group select {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--linie);
   border-radius: 4px;
 }
 
 .error-message {
-  background: #fed7d7;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 15px;
@@ -526,12 +526,12 @@ h1 {
 }
 
 .modal-actions button:not(.btn-secondary) {
-  background: #4a5568;
-  color: white;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
 }
 
 .btn-secondary {
-  background: #e2e8f0;
-  color: #333;
+  background: var(--flaeche2);
+  color: var(--text);
 }
 </style>

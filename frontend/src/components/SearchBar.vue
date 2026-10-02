@@ -2,6 +2,7 @@
   <div class="search-bar">
     <div class="search-controls">
       <div class="search-input-row">
+        <AppIcon class="search-icon" name="suche" :size="17" />
         <input
           ref="inputEl"
           :value="inputValue"
@@ -15,10 +16,10 @@
           @keydown.backspace="handleBackspace"
           @keydown.escape="inputEl?.blur()"
         />
-        <span v-if="badges.length || inputValue" class="search-clear-all" @click="clearAll">&times;</span>
+        <button v-if="badges.length || inputValue" type="button" class="search-clear-all" aria-label="Suche leeren" @click="clearAll"><AppIcon name="schliessen" :size="16" /></button>
       </div>
       <label class="search-sort" :class="{ 'search-sort--active': store.sortMode !== 'default' }" title="Sortierung">
-        <span aria-hidden="true">⇅{{ sortShort ? ` ${sortShort}` : '' }}</span>
+        <span class="search-sort__label" aria-hidden="true"><AppIcon name="sortieren" :size="18" /><span v-if="sortShort">{{ sortShort }}</span></span>
         <select :value="store.sortMode" aria-label="Sortierung" @change="store.setSortMode($event.target.value)">
           <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
             {{ option.label }}
@@ -26,10 +27,10 @@
         </select>
       </label>
     </div>
-    <div v-if="badges.length" class="search-badges">
-      <span v-for="(badge, index) in badges" :key="index" class="search-badge">
+    <div v-if="textBadges.length" class="search-badges">
+      <span v-for="badge in textBadges" :key="badge" class="search-badge">
         {{ badge }}
-        <span class="badge-remove" @click="removeBadge(index)">&times;</span>
+        <button type="button" class="badge-remove" :aria-label="`${badge} entfernen`" @click="removeTerm(badge)"><AppIcon name="schliessen" :size="14" /></button>
       </span>
     </div>
     <div
@@ -38,27 +39,43 @@
       aria-label="Tags"
       @mousedown.prevent
     >
-      <span class="search-tags__label">Tags:</span>
       <div class="search-tags__list">
+        <button
+          type="button"
+          :class="['search-tags__chip', { 'search-tags__chip--active': !activeTags.length }]"
+          :aria-pressed="!activeTags.length"
+          @click="clearTags"
+        >Alle</button>
+        <button
+          v-for="term in activeTags"
+          :key="term"
+          type="button"
+          class="search-tags__chip search-tags__chip--active"
+          aria-pressed="true"
+          :title="`${term} entfernen`"
+          @click="removeTerm(term)"
+        >{{ term }}</button>
         <button
           v-for="entry in tagBar.shown"
           :key="entry.tag"
           type="button"
           class="search-tags__chip"
+          aria-pressed="false"
           @click="pickTag(entry.tag)"
-        >{{ entry.tag }} <span class="search-tags__count">({{ entry.count }})</span></button>
+        >#{{ entry.tag }} <span class="search-tags__count">{{ entry.count }}</span></button>
+        <button v-if="tagBar.hidden" type="button" class="search-tags__more" @click="tagsExpanded = true">
+          mehr…
+        </button>
+        <button v-else-if="tagsExpanded" type="button" class="search-tags__more" @click="tagsExpanded = false">
+          weniger
+        </button>
       </div>
-      <button v-if="tagBar.hidden" type="button" class="search-tags__more" @click="tagsExpanded = true">
-        mehr…
-      </button>
-      <button v-else-if="tagsExpanded" type="button" class="search-tags__more" @click="tagsExpanded = false">
-        weniger
-      </button>
     </div>
   </div>
 </template>
 
 <script setup>
+import AppIcon from '@/components/shell/AppIcon.vue'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { SORT_OPTIONS } from '@/utils/recipeSearch'
@@ -77,11 +94,10 @@ let liveSearchTimer = null
 // Leeres, fokussiertes Feld: vorhandene Tags zum Antippen, gezählt in der aktuellen Trefferliste
 const tagEntries = computed(() => tagCounts(store.filteredRecipes, store.searchTerms))
 const tagBar = computed(() => tagBarEntries(tagEntries.value, tagsExpanded.value))
-const showTagBar = computed(() => focused.value && !inputValue.value.trim() && tagEntries.value.length > 0)
-
-watch(focused, (isFocused) => {
-  if (!isFocused) tagsExpanded.value = false
-})
+const activeTags = computed(() => badges.value.filter((b) => b.startsWith('#')))
+const textBadges = computed(() => badges.value.filter((b) => !b.startsWith('#')))
+// Tag-Chips stehen immer unter der Suche (Design-System), beim Tippen weichen sie den Treffern
+const showTagBar = computed(() => !inputValue.value.trim() && (tagEntries.value.length > 0 || activeTags.value.length > 0))
 
 onMounted(() => {
   badges.value = [...store.searchTerms]
@@ -147,8 +163,14 @@ const pickTag = (tag) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const removeBadge = (index) => {
-  badges.value.splice(index, 1)
+const removeTerm = (term) => {
+  badges.value = badges.value.filter((b) => b !== term)
+  store.setSearchTerms([...badges.value])
+}
+
+const clearTags = () => {
+  if (!activeTags.value.length) return
+  badges.value = [...textBadges.value]
   store.setSearchTerms([...badges.value])
 }
 
@@ -162,22 +184,74 @@ const clearAll = () => {
 
 <style scoped>
 .search-bar {
-  max-width: 500px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .search-controls {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: stretch;
+  min-width: 0;
 }
 
 .search-input-row {
   position: relative;
   flex: 1;
   min-width: 0;
+}
+
+.search-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text2);
+  pointer-events: none;
+}
+
+.search-input-row input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 40px 0 38px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text);
+  font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-input-row input:focus {
+  outline: none;
+  border-color: var(--akzent);
+  box-shadow: 0 0 0 3px var(--akzent-weich);
+}
+
+.search-clear-all {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.search-clear-all:hover {
+  color: var(--text);
 }
 
 .search-sort {
@@ -187,14 +261,23 @@ const clearAll = () => {
   align-items: center;
   justify-content: center;
   min-width: 44px;
+  height: 44px;
   padding: 0 10px;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 8px;
-  background: var(--color-bg-card, #fff);
-  color: var(--color-text-muted, #999);
-  font-size: 0.9rem;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.search-sort__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .search-sort select {
@@ -203,73 +286,42 @@ const clearAll = () => {
   width: 100%;
   opacity: 0;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .search-sort:focus-within {
-  border-color: var(--color-primary, #4a5568);
+  border-color: var(--akzent);
 }
 
 .search-sort--active {
-  color: var(--color-text-primary, #333);
-  border-color: var(--color-primary, #4a5568);
-}
-
-.search-input-row input {
-  width: 100%;
-  padding: 12px 40px 12px 16px;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 8px;
-  font-size: 1rem;
-  box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.search-input-row input:focus {
-  outline: none;
-  border-color: var(--color-primary, #4a5568);
-  box-shadow: 0 0 0 3px rgba(74, 85, 104, 0.1);
-}
-
-.search-input-row input::placeholder {
-  color: var(--color-text-muted, #999);
-}
-
-.search-clear-all {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 1.5rem;
-  color: var(--color-text-muted, #999);
-  cursor: pointer;
-  line-height: 1;
-}
-
-.search-clear-all:hover {
-  color: var(--color-text-primary, #333);
+  color: var(--akzent-text);
+  border-color: var(--akzent);
 }
 
 .search-tags {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 0.8rem;
-}
-
-.search-tags__label {
-  padding: 4px 0;
-  color: var(--color-text-muted, #999);
+  min-width: 0;
+  font-size: 13px;
 }
 
 .search-tags__list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-width: 0;
+  flex: 1;
+  width: 0;
+  gap: 7px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 0 16px 2px;
+}
+
+.search-tags__list::-webkit-scrollbar {
+  display: none;
 }
 
 .search-tags--expanded .search-tags__list {
+  flex-wrap: wrap;
   max-height: 40vh;
   overflow-y: auto;
 }
@@ -277,41 +329,46 @@ const clearAll = () => {
 .search-tags__chip,
 .search-tags__more {
   flex: 0 0 auto;
-  padding: 3px 9px;
-  border: 1px solid var(--color-border, #ddd);
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--linie);
   border-radius: 999px;
-  background: var(--color-bg-card, #fff);
-  color: var(--color-text-secondary, #666);
+  background: var(--flaeche);
+  color: var(--text);
   font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .search-tags__chip:hover {
-  border-color: var(--color-primary, #4a5568);
-  color: var(--color-text-primary, #333);
+  border-color: var(--akzent);
+}
+
+.search-tags__chip--active {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--akzent-kontrast);
 }
 
 .search-tags__count {
-  color: var(--color-text-muted, #999);
+  color: var(--text3);
+  font-weight: 500;
+  margin-left: 2px;
 }
 
 .search-tags__more {
   border-style: dashed;
+  color: var(--text2);
 }
 
-/* Mobil eingeklappt nur eine wischbare Zeile, damit die fixierte Kopfzeile kaum wächst */
-@media (max-width: 600px) {
-  .search-tags:not(.search-tags--expanded) .search-tags__list {
-    flex: 1;
-    width: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .search-tags:not(.search-tags--expanded) .search-tags__list::-webkit-scrollbar {
-    display: none;
+@media (min-width: 1024px) {
+  .search-tags__list {
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
   }
 }
 
@@ -324,19 +381,27 @@ const clearAll = () => {
 .search-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: var(--color-primary, #4a5568);
-  color: #fff;
+  gap: 2px;
+  padding: 3px 4px 3px 12px;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
   border-radius: 999px;
-  font-size: 0.875rem;
+  font-size: 13.5px;
+  font-weight: 600;
 }
 
 .badge-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
   cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .badge-remove:hover {

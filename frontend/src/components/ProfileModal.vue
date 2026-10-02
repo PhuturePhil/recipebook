@@ -141,7 +141,7 @@ async function handleSubmit() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -149,7 +149,7 @@ async function handleSubmit() {
 }
 
 .modal-content {
-  background: white;
+  background: var(--flaeche);
   padding: 30px;
   border-radius: 8px;
   width: 90%;
@@ -163,8 +163,8 @@ async function handleSubmit() {
 }
 
 .info-message {
-  background: #ebf8ff;
-  color: #2c5282;
+  background: var(--info-weich);
+  color: var(--info-text);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 16px;
@@ -192,8 +192,8 @@ async function handleSubmit() {
 }
 
 .error-message {
-  background: #fed7d7;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 14px;
@@ -210,7 +210,7 @@ async function handleSubmit() {
   flex: 1;
   padding: 10px;
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 4px;
   font-size: 1rem;

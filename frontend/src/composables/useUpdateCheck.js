@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/uiStore'
 import changelog from '@/data/changelog.json'
 import '@/utils/update-check.js'
@@ -13,6 +13,7 @@ const BUSY_ROUTES = ['recipe-edit', 'recipe-new', 'oidc-callback', 'reset-passwo
 // melden sich über window.__appBusy (Kochmodus/Wake Lock, Übersetzung).
 export function useUpdateCheck() {
   const route = useRoute()
+  const router = useRouter()
   const uiStore = useUiStore()
   const popup = ref(null)
 
@@ -22,6 +23,7 @@ export function useUpdateCheck() {
     builtinVersion: changelog[0].version,
     isBusy: () => BUSY_ROUTES.includes(route.name) || uiStore.loadingActive,
     openPopup: (title, entries, onClose) => { popup.value = { title, entries, onClose } },
+    changelogPage: () => router.push('/changelog'),
   })
 
   const close = () => {

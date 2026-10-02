@@ -98,7 +98,7 @@ const onKeydown = (event) => {
   padding: 6px;
   border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
-  background: white;
+  background: var(--flaeche);
 }
 
 .tag-input__chip {
@@ -156,7 +156,7 @@ const onKeydown = (event) => {
   margin: 4px 0 0;
   padding: 4px 0;
   list-style: none;
-  background: white;
+  background: var(--flaeche);
   border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);

@@ -1,16 +1,16 @@
 <template>
-  <div class="changelog">
-    <h1>Updates</h1>
-    <div class="changelog-list">
-      <div v-for="entry in changelog" :key="entry.version" class="changelog-entry">
-        <div class="changelog-header">
-          <h2 class="changelog-title">{{ entry.titel }}</h2>
-          <span class="changelog-date">{{ entry.datum }}</span>
+  <!-- Seite „Neuerungen“ im Versionskarten-Muster (app-shell.css: .cl-karte), komplette Historie -->
+  <div class="changelog shell-view-body">
+    <div>
+      <article v-for="entry in changelog" :key="entry.version" class="cl-karte">
+        <div class="cl-head">
+          <h2>{{ entry.titel }}</h2>
+          <span>{{ entry.datum }}</span>
         </div>
-        <ul class="changelog-changes">
+        <ul>
           <li v-for="(change, i) in entry.punkte" :key="i">{{ change }}</li>
         </ul>
-      </div>
+      </article>
     </div>
   </div>
 </template>
@@ -19,74 +19,17 @@
 import { onMounted } from 'vue'
 import changelog from '@/data/changelog.json'
 
-// Wer alle Neuerungen gelesen hat, bekommt das „Was ist neu“-Fenster dafür nicht nochmal
+// Wer alle Neuerungen gelesen hat, bekommt das „Was ist neu“-Fenster dafür nicht nochmal (und der NEU-Badge geht weg)
 onMounted(() => {
-  try { localStorage.setItem('uc:lastSeen', changelog[0].version) } catch { /* privater Modus */ }
+  if (window.__ucMarkSeen) window.__ucMarkSeen(changelog[0].version)
+  else {
+    try { localStorage.setItem('uc:lastSeen', changelog[0].version) } catch { /* privater Modus */ }
+  }
 })
 </script>
 
 <style scoped>
-.changelog {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.changelog h1 {
-  font-size: 2rem;
-  color: var(--color-text-primary, #333);
-  margin-bottom: 32px;
-}
-
-.changelog-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.changelog-entry {
-  background: var(--color-bg-card, #fff);
-  border-radius: 8px;
-  padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.changelog-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--color-border, #ddd);
-}
-
-.changelog-title {
-  font-size: 1.25rem;
-  color: var(--color-text-primary, #333);
-  margin: 0;
-}
-
-.changelog-date {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary, #666);
-  white-space: nowrap;
-}
-
-.changelog-changes {
-  margin: 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.changelog-changes li {
-  color: var(--color-text-primary, #333);
-  line-height: 1.5;
-}
-
-.changelog-changes li::marker {
-  color: var(--color-primary, #4a5568);
-}
+.changelog > div { max-width: 760px; margin: 0 auto; }
+.cl-karte li::marker { color: var(--akzent-text); }
+@media (min-width: 1024px) { .changelog > div { margin: 0; } }
 </style>

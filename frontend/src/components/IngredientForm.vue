@@ -132,7 +132,7 @@ label {
   gap: 4px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #4a5568;
+  color: var(--text2);
 }
 
 .checkbox {
@@ -145,7 +145,7 @@ label {
 input,
 select {
   padding: 8px;
-  border: 1px solid #cbd5e0;
+  border: 1px solid var(--linie);
   border-radius: 4px;
   font-size: 0.95rem;
 }
@@ -179,7 +179,7 @@ select {
   padding: 0;
   max-height: 240px;
   overflow-y: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--linie);
   border-radius: 4px;
 }
 
@@ -189,22 +189,22 @@ select {
   align-items: flex-start;
   width: 100%;
   text-align: left;
-  background: white;
+  background: var(--flaeche);
   border: none;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--linie);
   border-radius: 0;
   padding: 6px 10px;
   cursor: pointer;
-  color: #2d3748;
+  color: var(--text);
 }
 
 .results button:hover {
-  background: #f7fafc;
+  background: var(--flaeche2);
 }
 
 .meta {
   font-size: 0.75rem;
-  color: #a0aec0;
+  color: var(--text3);
 }
 
 .actions {
@@ -214,8 +214,8 @@ select {
 
 .btn-primary {
   padding: 10px 20px;
-  background: #4a5568;
-  color: white;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 4px;
   cursor: pointer;

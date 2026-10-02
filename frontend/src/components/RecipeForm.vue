@@ -26,8 +26,8 @@
           <div v-for="(img, index) in selectedImages" :key="index" class="selected-image-item">
             <img :src="img.previewUrl" :alt="img.fileName" />
             <span class="image-name">{{ img.fileName }}</span>
-            <button type="button" class="btn-remove-scan-image" @click="removeScanImage(index)">
-              ✕
+            <button type="button" class="btn-remove-scan-image" aria-label="Bild entfernen" @click="removeScanImage(index)">
+              <AppIcon name="schliessen" :size="16" />
             </button>
           </div>
         </div>
@@ -178,8 +178,9 @@
             v-if="formData.author"
             type="button"
             class="source-clear-btn"
+            aria-label="Autor leeren"
             @mousedown.prevent="formData.author = ''"
-          >✕</button>
+          ><AppIcon name="schliessen" :size="16" /></button>
           <ul
             v-if="activeSourceField === 'author' && filteredAuthors.length > 0"
             class="source-dropdown"
@@ -206,8 +207,9 @@
             v-if="formData.source"
             type="button"
             class="source-clear-btn"
+            aria-label="Quelle leeren"
             @mousedown.prevent="formData.source = ''"
-          >✕</button>
+          ><AppIcon name="schliessen" :size="16" /></button>
           <ul
             v-if="activeSourceField === 'source' && filteredSources.length > 0"
             class="source-dropdown"
@@ -508,6 +510,7 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/shell/AppIcon.vue'
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { recipeService } from '@/services/recipeService'
 import { ingredientCatalogService } from '@/services/ingredientCatalogService'
@@ -739,7 +742,7 @@ const placeUnitDropdown = () => {
   const viewport = window.visualViewport
   const viewportBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight
   const actionsTop = formRef.value?.querySelector('.form-actions')?.getBoundingClientRect().top ?? viewportBottom
-  const headerBottom = document.querySelector('.navbar')?.getBoundingClientRect().bottom ?? 0
+  const headerBottom = document.querySelector('.shell-header')?.getBoundingClientRect().bottom ?? 0
   unitPlacement.value = dropdownPlacement({
     fieldTop: rect.top,
     fieldBottom: rect.bottom,
@@ -1314,7 +1317,7 @@ const handleSubmit = () => {
 .btn-draft-restore {
   border: none;
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
 }
 
 .btn-draft-restore:hover {
@@ -1355,7 +1358,7 @@ const handleSubmit = () => {
   display: inline-block;
   padding: 10px 20px;
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.95rem;
@@ -1409,7 +1412,7 @@ const handleSubmit = () => {
   border-radius: 50%;
   border: none;
   background: var(--color-error, #e53e3e);
-  color: white;
+  color: var(--akzent-kontrast);
   font-size: 0.7rem;
   cursor: pointer;
   display: flex;
@@ -1419,7 +1422,7 @@ const handleSubmit = () => {
 }
 
 .btn-remove-scan-image:hover {
-  background: #c53030;
+  background: var(--neg);
 }
 
 .btn-analyze {
@@ -1427,7 +1430,7 @@ const handleSubmit = () => {
   margin-top: 14px;
   padding: 10px 24px;
   background: var(--color-success, #38a169);
-  color: white;
+  color: var(--akzent-kontrast);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -1436,7 +1439,7 @@ const handleSubmit = () => {
 }
 
 .btn-analyze:hover:not(:disabled) {
-  background: #2f855a;
+  background: var(--pos);
 }
 
 .btn-analyze.loading,
@@ -1472,7 +1475,7 @@ const handleSubmit = () => {
   font-size: 0.875rem;
   font-family: inherit;
   box-sizing: border-box;
-  background: white;
+  background: var(--flaeche);
   resize: vertical;
 }
 
@@ -1490,7 +1493,7 @@ const handleSubmit = () => {
 
 .btn-copy:hover {
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
 }
 
 .form-group {
@@ -1528,7 +1531,7 @@ const handleSubmit = () => {
   border-radius: 6px;
   font-size: 0.95rem;
   font-family: inherit;
-  background: white;
+  background: var(--flaeche);
 }
 
 .servings-fields {
@@ -1591,7 +1594,7 @@ const handleSubmit = () => {
   gap: 8px;
   padding: 10px 18px;
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.95rem;
@@ -1649,7 +1652,7 @@ const handleSubmit = () => {
 }
 
 .btn-remove-image:hover {
-  background: rgba(229, 62, 62, 0.1);
+  background: var(--neg-weich);
 }
 
 .form-group input:focus,
@@ -1742,7 +1745,7 @@ const handleSubmit = () => {
 }
 
 .btn-remove-icon:hover {
-  background: rgba(229, 62, 62, 0.1);
+  background: var(--neg-weich);
 }
 
 .btn-move-icon:hover:not(:disabled) {
@@ -1802,7 +1805,7 @@ const handleSubmit = () => {
   cursor: pointer;
   font-size: 0.875rem;
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
 }
 
 .btn-apply-text:hover {
@@ -1889,7 +1892,7 @@ const handleSubmit = () => {
 }
 
 .btn-remove:hover {
-  background: rgba(229, 62, 62, 0.1);
+  background: var(--neg-weich);
 }
 
 .form-actions {
@@ -1899,7 +1902,7 @@ const handleSubmit = () => {
   justify-content: flex-end;
   margin-top: 32px;
   position: sticky;
-  bottom: 0;
+  bottom: var(--shell-bottom, 0px);
   background: var(--color-bg, #f9fafb);
   padding: 12px 0;
   border-top: 1px solid var(--color-border, #e2e8f0);
@@ -1926,7 +1929,7 @@ const handleSubmit = () => {
 
 .btn-submit {
   background: var(--color-primary, #4a5568);
-  color: white;
+  color: var(--akzent-kontrast);
 }
 
 .btn-submit:hover:not(:disabled) {
@@ -1942,7 +1945,7 @@ const handleSubmit = () => {
   flex-basis: 100%;
   padding: 10px 12px;
   border-radius: 6px;
-  background: rgba(229, 62, 62, 0.08);
+  background: var(--neg-weich);
   border: 1px solid var(--color-error, #e53e3e);
   color: var(--color-error, #e53e3e);
   font-size: 0.9rem;
@@ -1967,7 +1970,7 @@ const handleSubmit = () => {
   display: flex;
   gap: 4px;
   padding: 3px;
-  background: white;
+  background: var(--flaeche);
   border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -2009,7 +2012,7 @@ const handleSubmit = () => {
   left: 0;
   right: 0;
   z-index: 100;
-  background: white;
+  background: var(--flaeche);
   border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
   margin-top: 2px;
@@ -2088,7 +2091,7 @@ button.nutrition-hint-unknown {
   padding: 6px 10px;
   border-radius: 6px;
   background: var(--color-text-primary, #333);
-  color: white;
+  color: var(--akzent-kontrast);
   font-size: 0.8rem;
   line-height: 1.3;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -2145,7 +2148,7 @@ button.nutrition-hint-unknown {
 }
 
 .source-clear-btn:hover {
-  color: #c53030;
+  color: var(--neg);
 }
 
 .source-dropdown {
@@ -2154,7 +2157,7 @@ button.nutrition-hint-unknown {
   left: 0;
   right: 0;
   z-index: 100;
-  background: white;
+  background: var(--flaeche);
   border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
   margin-top: 2px;

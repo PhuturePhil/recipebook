@@ -47,7 +47,7 @@ onMounted(async () => {
 }
 
 .callback-card {
-  background: white;
+  background: var(--flaeche);
   padding: 40px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -57,14 +57,14 @@ onMounted(async () => {
 }
 
 .error-message {
-  background: #fed7d7;
-  color: #c53030;
+  background: var(--neg-weich);
+  color: var(--neg);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 20px;
 }
 
 a {
-  color: #4a5568;
+  color: var(--text2);
 }
 </style>

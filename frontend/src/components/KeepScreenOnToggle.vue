@@ -49,13 +49,13 @@ const title = computed(() => {
 }
 
 .screen-toggle--on {
-  color: #22543d;
-  background: #f0fff4;
-  border-color: #c6f6d5;
+  color: var(--pos);
+  background: var(--pos-weich);
+  border-color: var(--pos-linie);
 }
 
 .screen-toggle--on:hover {
-  background: #e6fcef;
+  background: var(--pos-weich);
 }
 
 .screen-toggle--waiting {
