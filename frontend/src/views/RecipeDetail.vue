@@ -225,6 +225,11 @@ let titleObserver = null
 const languagePref = ref(readLanguagePreference())
 const translation = ref(null)
 const translationLoading = ref(false)
+// Laufende Übersetzung = beschäftigt → kein automatisches Neuladen (update-check.js)
+const translationBusy = {}
+watch(translationLoading, (on) => {
+  if (window.__appBusy) on ? window.__appBusy.add(translationBusy) : window.__appBusy.delete(translationBusy)
+})
 const translatable = computed(() => isTranslatable(recipe.value))
 const shown = computed(() =>
   wantsTranslation(recipe.value, languagePref.value) ? applyTranslation(recipe.value, translation.value) : recipe.value
@@ -324,6 +329,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.__appBusy?.delete(translationBusy)
   // The list is served from cache, so a leftover error would otherwise show up there
   store.clearError()
   titleObserver?.disconnect()

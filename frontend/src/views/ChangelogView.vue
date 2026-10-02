@@ -2,13 +2,13 @@
   <div class="changelog">
     <h1>Updates</h1>
     <div class="changelog-list">
-      <div v-for="(entry, index) in changelog" :key="index" class="changelog-entry">
+      <div v-for="entry in changelog" :key="entry.version" class="changelog-entry">
         <div class="changelog-header">
-          <h2 class="changelog-title">{{ entry.title }}</h2>
-          <span class="changelog-date">{{ entry.date }}</span>
+          <h2 class="changelog-title">{{ entry.titel }}</h2>
+          <span class="changelog-date">{{ entry.datum }}</span>
         </div>
         <ul class="changelog-changes">
-          <li v-for="(change, i) in entry.changes" :key="i">{{ change }}</li>
+          <li v-for="(change, i) in entry.punkte" :key="i">{{ change }}</li>
         </ul>
       </div>
     </div>
@@ -16,7 +16,13 @@
 </template>
 
 <script setup>
-import { changelog } from '@/data/changelog'
+import { onMounted } from 'vue'
+import changelog from '@/data/changelog.json'
+
+// Wer alle Neuerungen gelesen hat, bekommt das „Was ist neu“-Fenster dafür nicht nochmal
+onMounted(() => {
+  try { localStorage.setItem('uc:lastSeen', changelog[0].version) } catch { /* privater Modus */ }
+})
 </script>
 
 <style scoped>

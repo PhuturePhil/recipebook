@@ -5,6 +5,12 @@ import { createWakeLock } from '@/utils/wakeLock'
 export function useWakeLock() {
   const enabled = ref(true)
   const active = ref(false)
+  // Kochmodus (Bildschirm bleibt an) = beschäftigt → kein automatisches Neuladen (update-check.js)
+  const busyToken = {}
+  const markBusy = (on) => {
+    const busy = typeof window !== 'undefined' ? window.__appBusy : undefined
+    if (busy) on ? busy.add(busyToken) : busy.delete(busyToken)
+  }
 
   const wakeLock = createWakeLock({
     nav: typeof navigator !== 'undefined' ? navigator : undefined,
@@ -13,12 +19,16 @@ export function useWakeLock() {
     onChange: (state) => {
       enabled.value = state.enabled
       active.value = state.active
+      markBusy(state.active)
     },
   })
   enabled.value = wakeLock.enabled
 
   onMounted(() => wakeLock.start())
-  onUnmounted(() => wakeLock.stop())
+  onUnmounted(() => {
+    wakeLock.stop()
+    markBusy(false)
+  })
 
   return {
     supported: wakeLock.supported,

@@ -5,9 +5,12 @@ import { useAuthStore } from '@/stores/authStore'
 import NavBar from '@/components/NavBar.vue'
 import ProfileModal from '@/components/ProfileModal.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
+import WhatsNewModal from '@/components/WhatsNewModal.vue'
+import { useUpdateCheck } from '@/composables/useUpdateCheck'
 
 const authStore = useAuthStore()
 const showProfileSetup = ref(false)
+const { popup: whatsNew, close: closeWhatsNew } = useUpdateCheck()
 
 onMounted(async () => {
   await authStore.init()
@@ -22,6 +25,7 @@ onMounted(async () => {
   <RouterView />
   <ProfileModal v-if="showProfileSetup" @close="showProfileSetup = false" />
   <LoadingOverlay />
+  <WhatsNewModal v-if="whatsNew" :title="whatsNew.title" :entries="whatsNew.entries" @close="closeWhatsNew" />
 </template>
 
 <style>
