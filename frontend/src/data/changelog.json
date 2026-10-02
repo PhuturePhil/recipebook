@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-10-02.3",
+    "datum": "02.10.2026",
+    "titel": "Dunkelmodus ohne Aufblitzen",
+    "punkte": [
+      "Beim Öffnen erscheint die App gleich in der gewählten Darstellung, ohne kurz hell aufzublitzen"
+    ]
+  },
+  {
     "version": "2026-10-02.2",
     "datum": "02.10.2026",
     "titel": "Neues Design mit Dunkelmodus",
