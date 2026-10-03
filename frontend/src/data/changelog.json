@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-10-03.1",
+    "datum": "03.10.2026",
+    "titel": "Neues App-Icon in der Kopfzeile",
+    "punkte": [
+      "Oben links steht jetzt das App-Icon (Topf mit Dampf) statt des Buchstabens „R“, auch in der Seitenleiste am großen Bildschirm"
+    ]
+  },
+  {
     "version": "2026-10-02.3",
     "datum": "02.10.2026",
     "titel": "Dunkelmodus ohne Aufblitzen",

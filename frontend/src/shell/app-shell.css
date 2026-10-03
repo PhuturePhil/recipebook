@@ -1,4 +1,4 @@
-/* app-shell v1.1 — Master: workspace/snippets/app-shell.css
+/* app-shell v1.3 — Master: workspace/snippets/app-shell.css
    Gemeinsame Hülle der Pastoors-PWAs (Plan: plans/design-vereinheitlichung.md, §4–6):
    Kopfzeile mit App-Chip, schwebende Tab-Leiste (mobil) ↔ Seitenleiste (≥1024 px),
    „Mehr“-Sheet, Darstellungs-Schalter, Seite „Neuerungen“, Grundbausteine (ui-*).
@@ -48,6 +48,9 @@ html.is-standalone { --shell-top: calc(env(safe-area-inset-top, 0px) + min(2.5re
   border: 1px solid var(--chip-rand);
   font-size: 15px; font-weight: 750; line-height: 1;
 }
+/* v1.3: App-Icon (Set C) statt Buchstabe — Farben stecken im SVG, Rand (--chip-rand) bleibt */
+.app-chip--icon { padding: 0; overflow: hidden; }
+.app-chip--icon img { width: 100%; height: 100%; display: block; }
 .shell-back {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; margin-left: -8px;

@@ -2,7 +2,7 @@
   <!-- Navigation nach app-shell-Spezifikation (gleiches Markup/CSS wie workspace/snippets/app-shell.js):
        mobil schwebende Pillen-Tab-Leiste, ab 1024 px Seitenleiste mit den Mehr-Punkten -->
   <nav class="shell-nav shell-ui" aria-label="Hauptnavigation">
-    <div class="shell-brand"><span class="app-chip" aria-hidden="true">R</span><span>Rezepte</span></div>
+    <div class="shell-brand"><span class="app-chip app-chip--icon" aria-hidden="true"><img src="/icon-v2.svg" alt="" decoding="async"></span><span>Rezepte</span></div>
     <div class="shell-tabs">
       <RouterLink
         v-for="t in TABS"

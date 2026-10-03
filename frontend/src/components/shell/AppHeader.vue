@@ -6,7 +6,7 @@
     <button v-if="back" type="button" class="shell-back" aria-label="Zurück" @click="goBack">
       <AppIcon name="zurueck" :size="22" />
     </button>
-    <span v-else class="app-chip" aria-hidden="true">R</span>
+    <span v-else class="app-chip app-chip--icon" aria-hidden="true"><img src="/icon-v2.svg" alt="" decoding="async"></span>
     <h1><span class="shell-title-app">{{ title }}</span><span class="shell-title-page">{{ title }}</span></h1>
     <div v-if="loginLink" class="shell-header-actions">
       <RouterLink to="/login" class="app-header__login">Anmelden</RouterLink>
