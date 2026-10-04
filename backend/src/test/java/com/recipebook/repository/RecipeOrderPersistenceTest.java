@@ -9,15 +9,21 @@ import com.recipebook.service.RecipeService;
 import com.recipebook.service.RecipeTagService;
 import com.recipebook.service.RecipeTranslationService;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.jpa.EntityManagerHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -34,6 +40,9 @@ class RecipeOrderPersistenceTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @MockitoBean
     private RecipeImageService recipeImageService;
@@ -145,6 +154,49 @@ class RecipeOrderPersistenceTest {
             List.of(ingredient(null, "Xxx"), ingredient(null, "Yyy")), List.of("S1")), null);
 
         assertEquals(List.of("Xxx", "Yyy"), names(reload(loaded.getId())));
+    }
+
+    // Like a real PUT: no surrounding transaction, one EntityManager per request (open-in-view)
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void putWithoutSurroundingTransactionStoresAddedRows() {
+        Long id = inRequest(() -> {
+            Recipe recipe = new Recipe();
+            recipe.setTitle("Ohne Transaktion");
+            recipe.setIngredients(new ArrayList<>(List.of(ingredient(null, "Aaa"), ingredient(null, "Bbb"))));
+            return recipeService.saveForUser(recipe, null).getId();
+        });
+        try {
+            List<Long> ids = inRequest(() -> recipeRepository.findById(id).orElseThrow()
+                .getIngredients().stream().map(Ingredient::getId).toList());
+            Recipe saved = inRequest(() -> {
+                recipeRepository.findById(id).orElseThrow();
+                Recipe update = new Recipe();
+                update.setId(id);
+                update.setTitle("Ohne Transaktion");
+                update.setIngredients(new ArrayList<>(List.of(ingredient(ids.get(0), "Aaa"), ingredient(ids.get(1), "Bbb"), ingredient(null, "Neu"))));
+                return recipeService.saveForUser(update, null);
+            });
+
+            assertNotNull(saved.getIngredients().get(2).getId());
+            assertEquals(List.of("Aaa", "Bbb", "Neu"), inRequest(() -> names(recipeRepository.findById(id).orElseThrow())));
+        } finally {
+            inRequest(() -> {
+                recipeService.deleteById(id);
+                return null;
+            });
+        }
+    }
+
+    private <T> T inRequest(Supplier<T> work) {
+        EntityManager em = entityManagerFactory.createEntityManager();
+        TransactionSynchronizationManager.bindResource(entityManagerFactory, new EntityManagerHolder(em));
+        try {
+            return work.get();
+        } finally {
+            TransactionSynchronizationManager.unbindResource(entityManagerFactory);
+            em.close();
+        }
     }
 
     @Test

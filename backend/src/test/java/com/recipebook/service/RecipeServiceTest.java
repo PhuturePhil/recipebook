@@ -293,6 +293,7 @@ class RecipeServiceTest {
             stored.getIngredients().add(row);
         }
         when(recipeRepository.findById(1L)).thenReturn(Optional.of(stored));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
         return stored;
     }
 
@@ -415,10 +416,12 @@ class RecipeServiceTest {
         when(recipeRepository.existsById(1L)).thenReturn(true);
         when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of(stored(10L, "1", "g", "a"), stored(11L, "1", "g", "b")));
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
-        storedRecipe(10L, 11L);
+        Recipe stored = storedRecipe(10L, 11L);
 
         Recipe result = recipeService.save(edited, testUser);
 
+        verify(recipeRepository).save(stored);
+        assertSame(stored, result);
         assertEquals(1L, result.getId());
         assertEquals(10L, result.getIngredients().get(0).getId());
         assertNull(result.getIngredients().get(1).getId());

@@ -139,7 +139,8 @@ public class RecipeService {
         if (!exists) return recipeRepository.save(recipe);
         Recipe managed = recipeRepository.findById(recipe.getId()).orElseThrow();
         copyInto(managed, recipe);
-        return managed;
+        // save() läuft über saveForUser ohne eigene Transaktion, erst das Repository schreibt die Änderungen
+        return recipeRepository.save(managed);
     }
 
     // Kein Merge des Request-Graphen: neue Zeilen ohne id würden vor dem Laden der Liste ohne sort_order eingefügt (HTTP 500)

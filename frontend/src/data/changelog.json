@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-10-04.2",
+    "datum": "04.10.2026",
+    "titel": "Neue Zutaten bleiben jetzt gespeichert",
+    "punkte": [
+      "Eine beim Bearbeiten hinzugefügte Zutat ist nach dem Speichern auch wirklich im Rezept – bisher ging sie teilweise ohne Fehlermeldung verloren"
+    ]
+  },
+  {
     "version": "2026-10-04.1",
     "datum": "04.10.2026",
     "titel": "Neue Zutaten speichern wieder",
