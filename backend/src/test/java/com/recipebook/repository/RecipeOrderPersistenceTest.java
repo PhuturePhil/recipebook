@@ -122,6 +122,31 @@ class RecipeOrderPersistenceTest {
         assertEquals(List.of("S1", "S1b", "S2", "S3"), reloaded.getInstructions());
     }
 
+    // Like PUT /api/recipes/{id}: the stored recipe is loaded without its ingredients, the request adds rows without id
+    @Test
+    void addingRowsToARecipeLoadedWithoutItsIngredientsWorks() {
+        Recipe loaded = createRecipe();
+        List<Long> ids = loaded.getIngredients().stream().map(Ingredient::getId).toList();
+        entityManager.clear();
+        recipeRepository.findById(loaded.getId()).orElseThrow();
+        Recipe update = asSentByForm(loaded,
+            List.of(ingredient(ids.get(0), "Aaa"), ingredient(ids.get(1), "Bbb"), ingredient(ids.get(2), "Ccc"), ingredient(null, "Neu")),
+            List.of("S1", "S2", "S3"));
+
+        recipeService.save(update, null);
+        Recipe reloaded = reload(loaded.getId());
+
+        assertEquals(List.of("Aaa", "Bbb", "Ccc", "Neu"), names(reloaded));
+        assertEquals(ids, reloaded.getIngredients().stream().limit(3).map(Ingredient::getId).toList());
+
+        entityManager.clear();
+        recipeRepository.findById(loaded.getId()).orElseThrow();
+        recipeService.save(asSentByForm(reloaded,
+            List.of(ingredient(null, "Xxx"), ingredient(null, "Yyy")), List.of("S1")), null);
+
+        assertEquals(List.of("Xxx", "Yyy"), names(reload(loaded.getId())));
+    }
+
     @Test
     void removingARowClosesTheGap() {
         Recipe loaded = createRecipe();

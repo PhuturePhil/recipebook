@@ -136,7 +136,54 @@ public class RecipeService {
         if (exists) recipe.setCreatedAt(recipeRepository.findCreatedAt(recipe.getId()).orElse(null));
         User owner = exists ? recipeRepository.findOwner(recipe.getId()).orElse(user) : user;
         recipe.setUser(owner);
-        return recipeRepository.save(recipe);
+        if (!exists) return recipeRepository.save(recipe);
+        Recipe managed = recipeRepository.findById(recipe.getId()).orElseThrow();
+        copyInto(managed, recipe);
+        return managed;
+    }
+
+    // Kein Merge des Request-Graphen: neue Zeilen ohne id würden vor dem Laden der Liste ohne sort_order eingefügt (HTTP 500)
+    private static void copyInto(Recipe managed, Recipe edited) {
+        managed.setTitle(edited.getTitle());
+        managed.setDescription(edited.getDescription());
+        replace(managed.getInstructions(), edited.getInstructions());
+        replace(managed.getTags(), edited.getTags());
+        managed.setBaseServings(edited.getBaseServings());
+        managed.setImageUrl(edited.getImageUrl());
+        managed.setImageCredit(edited.getImageCredit());
+        managed.setAuthor(edited.getAuthor());
+        managed.setSource(edited.getSource());
+        managed.setPage(edited.getPage());
+        managed.setSourceUrl(edited.getSourceUrl());
+        managed.setPrepTimeMinutes(edited.getPrepTimeMinutes());
+        managed.setServingsTo(edited.getServingsTo());
+        managed.setLanguage(edited.getLanguage());
+        managed.setLanguageAuto(edited.getLanguageAuto());
+        managed.setUser(edited.getUser());
+
+        Map<Long, Ingredient> storedRows = new HashMap<>();
+        managed.getIngredients().forEach(i -> storedRows.put(i.getId(), i));
+        List<Ingredient> rows = new ArrayList<>();
+        if (edited.getIngredients() != null) {
+            for (Ingredient ingredient : edited.getIngredients()) {
+                Ingredient row = ingredient.getId() == null ? null : storedRows.remove(ingredient.getId());
+                if (row == null) {
+                    row = new Ingredient();
+                    row.setRecipe(managed);
+                }
+                row.setName(ingredient.getName());
+                row.setAmount(ingredient.getAmount());
+                row.setUnit(ingredient.getUnit());
+                row.setGroupName(ingredient.getGroupName());
+                rows.add(row);
+            }
+        }
+        replace(managed.getIngredients(), rows);
+    }
+
+    private static <T> void replace(List<T> target, List<T> values) {
+        target.clear();
+        if (values != null) target.addAll(values);
     }
     
     // Von Hand gesetzte Sprache bleibt; sonst wird sie bei jedem Speichern aus den Texten neu erkannt

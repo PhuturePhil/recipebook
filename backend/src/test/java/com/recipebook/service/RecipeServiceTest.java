@@ -279,6 +279,23 @@ class RecipeServiceTest {
         assertFalse(result);
     }
 
+    // Updates are copied into the stored entity instead of merging the request graph
+    private Recipe storedRecipe(Long... ingredientIds) {
+        Recipe stored = new Recipe();
+        stored.setId(1L);
+        stored.setIngredients(new ArrayList<>());
+        stored.setInstructions(new ArrayList<>());
+        stored.setTags(new ArrayList<>());
+        for (Long id : ingredientIds) {
+            Ingredient row = new Ingredient("alt", "1", "g");
+            row.setId(id);
+            row.setRecipe(stored);
+            stored.getIngredients().add(row);
+        }
+        when(recipeRepository.findById(1L)).thenReturn(Optional.of(stored));
+        return stored;
+    }
+
     @Test
     void save_shouldTreatUnknownIdAsNewRecipeAndDropForeignIngredientIds() {
         Recipe incoming = new Recipe();
@@ -308,7 +325,7 @@ class RecipeServiceTest {
         when(recipeRepository.existsById(1L)).thenReturn(true);
         when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of());
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
-        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+        storedRecipe();
 
         Recipe result = recipeService.save(edited, admin);
 
@@ -323,7 +340,7 @@ class RecipeServiceTest {
         when(recipeRepository.existsById(1L)).thenReturn(true);
         when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of());
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.empty());
-        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+        storedRecipe();
 
         Recipe result = recipeService.save(edited, testUser);
 
@@ -351,7 +368,7 @@ class RecipeServiceTest {
         when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of());
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
         when(recipeRepository.findImageUrl(1L)).thenReturn(Optional.ofNullable(storedImageUrl));
-        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+        storedRecipe();
         return edited;
     }
 
@@ -398,7 +415,7 @@ class RecipeServiceTest {
         when(recipeRepository.existsById(1L)).thenReturn(true);
         when(recipeRepository.findIngredientRows(1L)).thenReturn(List.of(stored(10L, "1", "g", "a"), stored(11L, "1", "g", "b")));
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
-        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+        storedRecipe(10L, 11L);
 
         Recipe result = recipeService.save(edited, testUser);
 
@@ -459,7 +476,7 @@ class RecipeServiceTest {
             stored(11L, "2", "Teel.", "Kreuzkümmel"),
             stored(12L, "1", "Dosen", "Kichererbsen ")));
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
-        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+        storedRecipe(10L, 11L, 12L);
 
         Recipe result = recipeService.save(edited, testUser);
 
@@ -543,7 +560,7 @@ class RecipeServiceTest {
         when(recipeRepository.findSourcesExcept(1L)).thenReturn(List.of());
         when(recipeRepository.findAuthorsExcept(1L)).thenReturn(List.of("Paco"));
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
-        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+        storedRecipe();
 
         Recipe result = recipeService.save(testRecipe, testUser);
 

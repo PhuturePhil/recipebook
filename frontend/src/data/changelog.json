@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-10-04.1",
+    "datum": "04.10.2026",
+    "titel": "Neue Zutaten speichern wieder",
+    "punkte": [
+      "Wer beim Bearbeiten eines Rezepts eine Zutat hinzufügt, kann wieder speichern – vorher brach das Speichern mit einem Fehler ab"
+    ]
+  },
+  {
     "version": "2026-10-03.1",
     "datum": "03.10.2026",
     "titel": "Neues App-Icon in der Kopfzeile",
