@@ -5,7 +5,6 @@
     novalidate
     @submit.prevent="submit"
     @keydown.enter="blockImplicitSubmit"
-    @focusin="openHintIndex = null"
   >
     <StartChoice v-if="entry === 'choice'" @choose="chooseEntry" />
 
@@ -262,190 +261,61 @@
         </div>
       </div>
       <template v-else>
-        <template v-for="(row, index) in ingredientRows" :key="row.key">
-        <div v-if="row.group" class="ingredient-row ingredient-group-row">
-          <input
-            v-model="formData.sections[row.s].name"
-            type="text"
-            class="ingredient-group-input"
-            placeholder="Gruppe, z. B. Salsa (leer = ohne Gruppe)"
-            :maxlength="MAX_GROUP_NAME"
-            aria-label="Name der Zutatengruppe"
-            @keydown.enter="onIngredientEnter($event, index)"
-            @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
-            @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
-          />
-          <div class="row-actions">
-            <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="row.s === 1" @click="moveIngredient(index, -1, $event)" title="Gruppe nach oben" aria-label="Gruppe nach oben">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-            </button>
-            <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="row.s === formData.sections.length - 1" @click="moveIngredient(index, 1, $event)" title="Gruppe nach unten" aria-label="Gruppe nach unten">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeIngredient(index)" title="Gruppe entfernen (Zutaten bleiben)" aria-label="Gruppe entfernen, Zutaten bleiben">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
-                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div v-else class="ingredient-row">
-          <div class="amount-input-wrapper">
-            <!-- bewusst ohne inputmode: Brüche „1/2“ und Bereiche „1–2“ brauchen die volle Tastatur, ½ ¼ ¾ kommen über die Bruch-Tasten -->
-            <input
-              v-model="row.item.amount"
-              type="text"
-              placeholder="Menge"
-              class="ingredient-amount-input"
-              @focus="activeAmountIndex = index"
-              @blur="activeAmountIndex = null"
-              @keydown.enter="onIngredientEnter($event, index)"
-              @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
-              @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
-              @paste="onIngredientPaste($event, index)"
+        <!-- Zutaten ohne Gruppe oben ohne Karte, darunter die Gruppen-Karten; Ziehen am Griff auch zwischen den Listen -->
+        <draggable
+          :list="formData.sections[0].items"
+          :item-key="keyOf"
+          group="zutaten"
+          v-bind="DRAG_OPTIONS"
+          class="ingredient-list"
+        >
+          <template #item="{ element, index }">
+            <IngredientRow
+              v-bind="rowProps(element, 0, index)"
+              @enter="onIngredientEnter($event, element)"
+              @move="(delta, event) => moveIngredient(element, delta, event)"
+              @remove="removeIngredient(element)"
+              @paste="onIngredientPaste($event, element)"
             />
-            <div v-if="activeAmountIndex === index" class="fraction-keys">
-              <button
-                v-for="key in FRACTION_KEYS"
-                :key="key.value"
-                type="button"
-                tabindex="-1"
-                class="fraction-key"
-                :aria-label="`${key.label} einfügen`"
-                @pointerdown.prevent="pickFraction($event, index, key.value)"
-                @mousedown.prevent
-              >{{ key.label }}</button>
-            </div>
-          </div>
-          <div class="unit-input-wrapper">
-            <input
-              v-model="row.item.unit"
-              type="text"
-              placeholder="Einheit"
-              autocomplete="off"
-              role="combobox"
-              aria-autocomplete="list"
-              :aria-expanded="unitListOpen(index)"
-              :aria-controls="`unit-options-${index}`"
-              :aria-activedescendant="unitListOpen(index) && highlightedUnit >= 0 ? `unit-option-${index}-${highlightedUnit}` : undefined"
-              @focus="openUnitDropdown($event, index)"
-              @input="openUnitDropdown($event, index)"
-              @blur="closeUnitDropdown"
-              @keydown.enter="onUnitEnter($event, index)"
-              @keydown.down.exact="onUnitArrow($event, index, 1)"
-              @keydown.up.exact="onUnitArrow($event, index, -1)"
-              @keydown.esc="onUnitEscape($event, index)"
-              @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
-              @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
-              @paste="onIngredientPaste($event, index)"
-            />
-            <ul
-              v-if="unitListOpen(index)"
-              :id="`unit-options-${index}`"
-              class="unit-dropdown"
-              :class="{ 'drop-up': unitPlacement.up }"
-              :style="{ maxHeight: `${unitPlacement.maxHeight}px` }"
-              role="listbox"
-              tabindex="-1"
+          </template>
+        </draggable>
+        <draggable
+          v-model="groupSections"
+          item-key="key"
+          group="gruppen"
+          v-bind="DRAG_OPTIONS"
+          handle=".group-drag-handle"
+          class="ingredient-groups"
+        >
+          <template #item="{ element: section, index: g }">
+            <IngredientGroupCard
+              v-model:name="section.name"
+              :section-id="section.key"
+              @move="(delta, event) => moveGroup(section, delta, event)"
+              @remove="removeGroup(section)"
+              @add="addToGroup(section)"
+              @enter="onGroupEnter($event, section)"
             >
-              <li
-                v-for="(option, oIndex) in unitOptions(index)"
-                :id="`unit-option-${index}-${oIndex}`"
-                :key="option.value + (option.custom ? '+' : '')"
-                role="option"
-                :aria-selected="oIndex === highlightedUnit"
-                :class="{ highlighted: oIndex === highlightedUnit, 'unit-add': option.custom }"
-                @mousedown.prevent="selectUnit(index, option.value)"
+              <draggable
+                :list="section.items"
+                :item-key="keyOf"
+                group="zutaten"
+                v-bind="DRAG_OPTIONS"
+                class="group-items"
               >
-                {{ option.value }}<span v-if="option.custom" class="unit-add-label">(eigene Angabe)</span>
-              </li>
-            </ul>
-          </div>
-          <div class="name-input-wrapper" :class="{ 'has-hint': nutritionHint(row.item, index) }">
-            <input
-              v-model="row.item.name"
-              type="text"
-              placeholder="Zutat"
-              class="ingredient-name"
-              autocomplete="off"
-              role="combobox"
-              aria-autocomplete="list"
-              :aria-expanded="nameSuggestionsFor(index).length > 0"
-              :aria-controls="`name-suggestions-${index}`"
-              :aria-activedescendant="nameSuggestionsFor(index).length && highlightedSuggestion >= 0 ? `name-suggestion-${index}-${highlightedSuggestion}` : undefined"
-              :required="isIngredientNameRequired(formData.sections, row.s, row.i)"
-              :aria-required="isIngredientNameRequired(formData.sections, row.s, row.i) ? 'true' : undefined"
-              :aria-invalid="invalidNameRows.has(row.key) ? 'true' : undefined"
-              :aria-describedby="invalidNameRows.has(row.key) ? 'ingredients-error' : undefined"
-              @input="onNameInput(index)"
-              @blur="closeNameSuggestions"
-              @keydown.enter="onNameEnter($event, index)"
-              @keydown.down.exact="onNameArrow($event, index, 1)"
-              @keydown.up.exact="onNameArrow($event, index, -1)"
-              @keydown.esc="onNameEscape($event, index)"
-              @keydown.alt.up.prevent="moveIngredient(index, -1, $event)"
-              @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
-              @paste="onIngredientPaste($event, index)"
-            />
-            <button
-              v-if="nutritionHint(row.item, index)"
-              type="button"
-              tabindex="-1"
-              class="nutrition-hint"
-              :class="`nutrition-hint-${nutritionHint(row.item, index).state}`"
-              :title="nutritionHint(row.item, index).title"
-              :aria-label="nutritionHint(row.item, index).title"
-              @click="toggleHintBubble(index)"
-            >{{ nutritionHint(row.item, index).symbol }}</button>
-            <span v-if="openHintIndex === index && nutritionHint(row.item, index)" class="nutrition-hint-bubble" role="tooltip">
-              {{ nutritionHint(row.item, index).title }}
-            </span>
-            <ul
-              v-if="nameSuggestionsFor(index).length > 0"
-              :id="`name-suggestions-${index}`"
-              class="unit-dropdown name-dropdown"
-              role="listbox"
-              tabindex="-1"
-            >
-              <li
-                v-for="(suggestion, sIndex) in nameSuggestionsFor(index)"
-                :id="`name-suggestion-${index}-${sIndex}`"
-                :key="suggestion.name"
-                role="option"
-                :aria-selected="sIndex === highlightedSuggestion"
-                :class="{ highlighted: sIndex === highlightedSuggestion }"
-                @mousedown.prevent="selectNameSuggestion(index, suggestion)"
-              >
-                <span>{{ suggestion.name }}</span>
-                <span
-                  class="suggestion-mark"
-                  :class="suggestion.recognized ? 'nutrition-hint-ok' : 'nutrition-hint-unknown'"
-                  :title="suggestion.recognized ? 'Nährwerte vorhanden' : UNKNOWN_HINT"
-                >{{ suggestion.recognized ? '✓' : '?' }}</span>
-              </li>
-            </ul>
-          </div>
-          <div class="row-actions">
-            <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="index === 0" @click="moveIngredient(index, -1, $event)" title="Zutat nach oben" aria-label="Zutat nach oben">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-            </button>
-            <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="index === ingredientRows.length - 1" @click="moveIngredient(index, 1, $event)" title="Zutat nach unten" aria-label="Zutat nach unten">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeIngredient(index)" title="Zutat entfernen" aria-label="Zutat entfernen">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
-                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        </template>
+                <template #item="{ element, index }">
+                  <IngredientRow
+                    v-bind="rowProps(element, g + 1, index)"
+                    @enter="onIngredientEnter($event, element)"
+                    @move="(delta, event) => moveIngredient(element, delta, event)"
+                    @remove="removeIngredient(element)"
+                    @paste="onIngredientPaste($event, element)"
+                  />
+                </template>
+              </draggable>
+            </IngredientGroupCard>
+          </template>
+        </draggable>
         <p v-if="errors.ingredients" id="ingredients-error" class="field-error" role="alert">{{ errors.ingredients }}</p>
         <div class="ingredient-buttons">
           <button type="button" class="btn-add" @click="addIngredient">
@@ -463,37 +333,48 @@
 
     <div class="form-group">
       <label id="instructions-label">Arbeitsanweisungen<span class="req" aria-hidden="true">*</span></label>
-      <div v-for="(instruction, index) in formData.instructions" :key="index" class="instruction-row">
-        <span class="step-number">{{ index + 1 }}.</span>
-        <textarea
-          v-model="formData.instructions[index]"
-          rows="1"
-          placeholder="Arbeitsschritt eingeben"
-          :required="isInstructionRequired(formData.instructions, index)"
-          :aria-required="isInstructionRequired(formData.instructions, index) ? 'true' : undefined"
-          :aria-invalid="errors.instructions && index === 0 ? 'true' : undefined"
-          :aria-describedby="errors.instructions && index === 0 ? 'instructions-error' : undefined"
-          @input="autoResize"
-          @keydown.alt.up.prevent="moveInstruction(index, -1, $event)"
-          @keydown.alt.down.prevent="moveInstruction(index, 1, $event)"
-        ></textarea>
-        <div class="row-actions">
-          <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="index === 0" @click="moveInstruction(index, -1, $event)" title="Schritt nach oben" aria-label="Schritt nach oben">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-          </button>
-          <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="index === formData.instructions.length - 1" @click="moveInstruction(index, 1, $event)" title="Schritt nach unten" aria-label="Schritt nach unten">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeInstruction(index)" title="Schritt entfernen" aria-label="Schritt entfernen">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-              <path d="M10 11v6M14 11v6"/>
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+      <draggable
+        :model-value="instructionItems"
+        item-key="index"
+        group="schritte"
+        v-bind="DRAG_OPTIONS"
+        class="instruction-list"
+        @update:model-value="reorderInstructions"
+      >
+        <template #item="{ element: { index } }">
+          <div class="instruction-row" :data-step="index">
+            <span class="step-number">{{ index + 1 }}.</span>
+            <textarea
+              v-model="formData.instructions[index]"
+              rows="1"
+              placeholder="Arbeitsschritt eingeben"
+              :aria-label="`Arbeitsschritt ${index + 1}`"
+              :required="isInstructionRequired(formData.instructions, index)"
+              :aria-required="isInstructionRequired(formData.instructions, index) ? 'true' : undefined"
+              :aria-invalid="errors.instructions && index === 0 ? 'true' : undefined"
+              :aria-describedby="errors.instructions && index === 0 ? 'instructions-error' : undefined"
+              @input="autoResize"
+              @keydown.alt.up.prevent="moveInstruction(index, -1, $event)"
+              @keydown.alt.down.prevent="moveInstruction(index, 1, $event)"
+            ></textarea>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="drag-handle"
+                aria-label="Schritt verschieben: Pfeiltasten"
+                title="Ziehen zum Verschieben"
+                @keydown.up.prevent="moveInstruction(index, -1, $event)"
+                @keydown.down.prevent="moveInstruction(index, 1, $event)"
+              >
+                <GripIcon />
+              </button>
+              <button type="button" class="btn-remove-icon" title="Schritt entfernen" aria-label="Schritt entfernen" @click="removeInstruction(index)">
+                <AppIcon name="loeschen" :size="18" />
+              </button>
+            </div>
+          </div>
+        </template>
+      </draggable>
       <p v-if="errors.instructions" id="instructions-error" class="field-error" role="alert">{{ errors.instructions }}</p>
       <button type="button" class="btn-add" @click="addInstruction">
         + Schritt hinzufügen
@@ -527,9 +408,11 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import StartChoice from '@/components/form/StartChoice.vue'
 import ImportSection from '@/components/form/ImportSection.vue'
 import ImportBanner from '@/components/form/ImportBanner.vue'
+import IngredientRow from '@/components/form/IngredientRow.vue'
+import IngredientGroupCard from '@/components/form/IngredientGroupCard.vue'
+import GripIcon from '@/components/form/GripIcon.vue'
+import draggable from 'vuedraggable'
 import { resizeImageFile } from '@/utils/resizeImage'
-import { FRACTION_KEYS, applyFraction } from '@/utils/fractionKeys'
-import { DROPDOWN_MAX_HEIGHT, dropdownPlacement } from '@/utils/dropdownPlacement'
 import {
   emptyIngredient,
   isBlankIngredient,
@@ -538,6 +421,7 @@ import {
   isInstructionRequired,
   addIngredientBelow,
   addSection,
+  isSectionEmpty,
   dissolveSection,
   ensureIngredientRow,
   removeIngredientAt,
@@ -555,7 +439,6 @@ import {
 } from '@/utils/recipeFormData'
 import { ingredientsFromText, ingredientsToText, insertPastedIngredients } from '@/utils/ingredientText'
 import {
-  MAX_GROUP_NAME,
   ingredientSection,
   ingredientsToRows,
   ingredientsToSections,
@@ -563,13 +446,7 @@ import {
   sectionsToIngredients
 } from '@/utils/ingredientGroups'
 import {
-  SUGGEST_LIMIT,
-  SUGGEST_DELAY_MS,
   RECOGNIZE_DELAY_MS,
-  UNKNOWN_HINT,
-  suggestionQuery,
-  visibleSuggestions,
-  moveHighlight,
   recognitionKey,
   pendingRecognition,
   recognitionHint
@@ -633,22 +510,46 @@ const formData = ref({
   instructions: ['']
 })
 
-// All ingredients in form order, and the rows as shown: a heading row per group card, then its ingredients.
-// The position in ingredientRows is the position among the .ingredient-row elements.
+// All ingredients in form order
 const allIngredients = () => formData.value.sections.flatMap((section) => section.items)
 
-const ingredientRows = computed(() => {
-  const rows = []
-  formData.value.sections.forEach((section, s) => {
-    if (s > 0) rows.push({ key: section.key, group: true, s })
-    section.items.forEach((item, i) => rows.push({ key: `${section.key}:${i}`, s, i, item }))
-  })
-  return rows
+// Each ingredient keeps its own key while it is dragged or moved (rows have their own state, e.g. open lists)
+const rowKeys = new WeakMap()
+let rowCount = 0
+const keyOf = (item) => {
+  const raw = toRaw(item)
+  if (!rowKeys.has(raw)) rowKeys.set(raw, `z${++rowCount}`)
+  return rowKeys.get(raw)
+}
+
+// Where an ingredient is right now: [sectionIndex, itemIndex] or null
+const locate = (item) => {
+  const raw = toRaw(item)
+  const sections = formData.value.sections
+  for (let s = 0; s < sections.length; s++) {
+    const i = sections[s].items.findIndex((other) => toRaw(other) === raw)
+    if (i >= 0) return [s, i]
+  }
+  return null
+}
+
+const sectionIndexOf = (section) => formData.value.sections.findIndex((other) => toRaw(other) === toRaw(section))
+
+// Handle only (scrolling stays free); on touch the finger has to rest briefly before the row lifts
+const DRAG_OPTIONS = {
+  handle: '.drag-handle',
+  animation: 150,
+  ghostClass: 'drag-ghost',
+  delay: 150,
+  delayOnTouchOnly: true,
+  touchStartThreshold: 4
+}
+
+// The group cards as one list for dragging; "ohne Gruppe" (index 0) always stays on top
+const groupSections = computed({
+  get: () => formData.value.sections.slice(1),
+  set: (list) => formData.value.sections.splice(1, Infinity, ...list)
 })
-
-const itemAt = (index) => ingredientRows.value[index]?.item
-
-const rowIndexOf = (item) => ingredientRows.value.findIndex((row) => row.item && toRaw(row.item) === toRaw(item))
 
 const formRef = ref(null)
 
@@ -673,18 +574,22 @@ watch(formData, () => {
 // Rows marked red after a failed save: started rows without a name, or the first row when there is no ingredient
 const invalidNameRows = computed(() => {
   if (!errors.value.ingredients) return new Set()
-  const missing = ingredientsWithoutName(formData.value.sections)
-  const rows = ingredientRows.value.filter((row) => row.item)
-  const marked = missing.length
-    ? rows.filter((row) => missing.some(([s, i]) => s === row.s && i === row.i))
-    : rows.slice(0, 1)
-  return new Set(marked.map((row) => row.key))
+  const sections = formData.value.sections
+  const missing = ingredientsWithoutName(sections)
+  const items = missing.length ? missing.map(([s, i]) => sections[s].items[i]) : allIngredients().slice(0, 1)
+  return new Set(items.map(keyOf))
 })
 
-const activeUnitIndex = ref(null)
-const highlightedUnit = ref(-1)
-const unitPlacement = ref({ up: false, maxHeight: DROPDOWN_MAX_HEIGHT })
-let unitField = null
+const rowProps = (item, s, i) => ({
+  ingredient: item,
+  rowId: keyOf(item),
+  knownUnits: knownUnits.value,
+  hint: hintFor(item),
+  required: isIngredientNameRequired(formData.value.sections, s, i),
+  invalid: invalidNameRows.value.has(keyOf(item)),
+  describedby: 'ingredients-error'
+})
+
 const descriptionRef = ref(null)
 const knownUnits = ref([])
 const knownSources = ref([])
@@ -706,26 +611,6 @@ async function resizeAllTextareas() {
     el.style.height = el.scrollHeight + 'px'
   })
 }
-
-const filteredKnownUnits = (index) => {
-  const query = itemAt(index)?.unit?.trim().toLowerCase() ?? ''
-  if (!query) return knownUnits.value
-  return knownUnits.value.filter(u => u.toLowerCase().includes(query))
-}
-
-const showAddOption = (index) => {
-  const val = itemAt(index)?.unit?.trim()
-  if (!val) return false
-  return !knownUnits.value.some(u => u.toLowerCase() === val.toLowerCase())
-}
-
-const unitOptions = (index) => {
-  const options = filteredKnownUnits(index).map((value) => ({ value, custom: false }))
-  if (showAddOption(index)) options.push({ value: itemAt(index).unit, custom: true })
-  return options
-}
-
-const unitListOpen = (index) => activeUnitIndex.value === index && unitOptions(index).length > 0
 
 const filteredSources = computed(() =>
   sourceSuggestions(knownSources.value, formData.value.source, formData.value.author))
@@ -777,186 +662,13 @@ const onSourceUrlBlur = () => {
   sourceUrlTouched.value = true
 }
 
-const selectUnit = (index, value) => {
-  itemAt(index).unit = value
-  activeUnitIndex.value = null
-  highlightedUnit.value = -1
-}
-
-let unitBlurTimer = null
-
-const closeUnitDropdown = () => {
-  clearTimeout(unitBlurTimer)
-  unitBlurTimer = setTimeout(() => {
-    activeUnitIndex.value = null
-    highlightedUnit.value = -1
-  }, 150)
-}
-
-// Room below the field ends at the keyboard (visual viewport) or the Abbrechen/Speichern bar, whichever is higher
-const placeUnitDropdown = () => {
-  const field = unitField
-  if (!field?.isConnected) return
-  const rect = field.getBoundingClientRect()
-  const viewport = window.visualViewport
-  const viewportBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight
-  const actionsTop = document.querySelector('.form-action-bar')?.getBoundingClientRect().top ?? viewportBottom
-  const headerBottom = document.querySelector('.shell-header')?.getBoundingClientRect().bottom ?? 0
-  unitPlacement.value = dropdownPlacement({
-    fieldTop: rect.top,
-    fieldBottom: rect.bottom,
-    topLimit: Math.max(headerBottom, viewport?.offsetTop ?? 0) + 4,
-    bottomLimit: Math.min(viewportBottom, actionsTop) - 4
-  })
-}
-
-const openUnitDropdown = (event, index) => {
-  clearTimeout(unitBlurTimer)
-  unitField = event.target
-  activeUnitIndex.value = index
-  highlightedUnit.value = -1
-  placeUnitDropdown()
-}
-
-const scrollHighlightedUnit = async (index) => {
-  await nextTick()
-  document.getElementById(`unit-option-${index}-${highlightedUnit.value}`)?.scrollIntoView({ block: 'nearest' })
-}
-
-// ↓ also reopens a list closed with Esc
-const onUnitArrow = (event, index, delta) => {
-  if (!unitListOpen(index)) {
-    if (delta < 0) return
-    openUnitDropdown(event, index)
-  }
-  const options = unitOptions(index)
-  if (!options.length) return
-  event.preventDefault()
-  highlightedUnit.value = moveHighlight(highlightedUnit.value, delta, options.length)
-  scrollHighlightedUnit(index)
-}
-
-const onUnitEscape = (event, index) => {
-  if (!unitListOpen(index)) return
-  event.preventDefault()
-  activeUnitIndex.value = null
-  highlightedUnit.value = -1
-}
-
-// Enter takes the highlighted unit and stays in the row; without one it adds a row below as before
-const onUnitEnter = (event, index) => {
-  const options = unitOptions(index)
-  if (unitListOpen(index) && highlightedUnit.value >= 0 && highlightedUnit.value < options.length && !event.isComposing) {
-    event.preventDefault()
-    selectUnit(index, options[highlightedUnit.value].value)
-    return
-  }
-  onIngredientEnter(event, index)
-}
-
-// Menge field: ½ ¼ ¾ keys while it has the focus; the key press never takes the focus away from the field
-const activeAmountIndex = ref(null)
-
-const pickFraction = async (event, index, fraction) => {
-  const field = event.currentTarget.closest('.amount-input-wrapper')?.querySelector('input')
-  const item = itemAt(index)
-  item.amount = applyFraction(item.amount, fraction)
-  await nextTick()
-  if (!field) return
-  field.focus()
-  field.setSelectionRange(field.value.length, field.value.length)
-}
-
-// Zutat field: suggestions from the ingredient catalog while typing (arrow keys + Enter, or tap)
-const activeNameIndex = ref(null)
-const nameSuggestions = ref([])
-const highlightedSuggestion = ref(-1)
-let suggestTimer = null
-let suggestRequest = 0
-
-const nameSuggestionsFor = (index) =>
-  activeNameIndex.value === index
-    ? visibleSuggestions(itemAt(index)?.name, nameSuggestions.value)
-    : []
-
-const resetNameSuggestions = () => {
-  clearTimeout(suggestTimer)
-  suggestRequest++
-  activeNameIndex.value = null
-  nameSuggestions.value = []
-  highlightedSuggestion.value = -1
-}
-
-const onNameInput = (index) => {
-  clearTimeout(suggestTimer)
-  highlightedSuggestion.value = -1
-  const query = suggestionQuery(itemAt(index)?.name)
-  if (!query) {
-    resetNameSuggestions()
-    return
-  }
-  const request = ++suggestRequest
-  suggestTimer = setTimeout(async () => {
-    try {
-      const result = await ingredientCatalogService.suggest(query, SUGGEST_LIMIT)
-      if (request !== suggestRequest) return
-      activeNameIndex.value = index
-      nameSuggestions.value = result
-      highlightedSuggestion.value = -1
-    } catch {
-      // Vorschläge sind nur eine Hilfe, das Feld bleibt frei beschreibbar
-    }
-  }, SUGGEST_DELAY_MS)
-}
-
-const selectNameSuggestion = (index, suggestion) => {
-  itemAt(index).name = suggestion.name
-  resetNameSuggestions()
-}
-
-const closeNameSuggestions = () => {
-  setTimeout(resetNameSuggestions, 150)
-}
-
-const onNameArrow = (event, index, delta) => {
-  const list = nameSuggestionsFor(index)
-  if (!list.length) return
-  event.preventDefault()
-  highlightedSuggestion.value = moveHighlight(highlightedSuggestion.value, delta, list.length)
-}
-
-const onNameEscape = (event, index) => {
-  if (!nameSuggestionsFor(index).length) return
-  event.preventDefault()
-  resetNameSuggestions()
-}
-
-// Enter takes a highlighted suggestion; without one it keeps adding a row below
-const onNameEnter = (event, index) => {
-  const list = nameSuggestionsFor(index)
-  if (list.length && highlightedSuggestion.value >= 0 && !event.isComposing) {
-    event.preventDefault()
-    selectNameSuggestion(index, list[highlightedSuggestion.value])
-    return
-  }
-  resetNameSuggestions()
-  onIngredientEnter(event, index)
-}
-
 // ✓ / ? per row: the server tells whether the row gets nutrition values (same matching as the calculation)
 const recognition = ref({})
-const openHintIndex = ref(null)
 let recognizeTimer = null
 
-// While the suggestion list is open the name is still being typed, so the row shows no verdict yet
-const nutritionHint = (ingredient, index) => {
-  if (nameSuggestionsFor(index).length) return null
+const hintFor = (ingredient) => {
   const key = recognitionKey(ingredient)
   return key ? recognitionHint(recognition.value[key]) : null
-}
-
-const toggleHintBubble = (index) => {
-  openHintIndex.value = openHintIndex.value === index ? null : index
 }
 
 const recognizeIngredients = async () => {
@@ -1101,10 +813,6 @@ const discardDraftOffer = () => {
   if (!isEdit.value && !isDirty()) entry.value = 'choice'
 }
 
-const onViewportChange = () => {
-  if (activeUnitIndex.value !== null) placeUnitDropdown()
-}
-
 const onPageHide = () => saveDraftNow()
 const onVisibilityChange = () => {
   if (document.visibilityState === 'hidden') saveDraftNow()
@@ -1113,21 +821,13 @@ const onVisibilityChange = () => {
 onMounted(() => {
   window.addEventListener('pagehide', onPageHide)
   document.addEventListener('visibilitychange', onVisibilityChange)
-  window.addEventListener('scroll', onViewportChange, { passive: true })
-  window.visualViewport?.addEventListener('resize', onViewportChange)
-  window.visualViewport?.addEventListener('scroll', onViewportChange)
 })
 
 onBeforeUnmount(() => {
   clearTimeout(draftTimer)
-  clearTimeout(suggestTimer)
   clearTimeout(recognizeTimer)
-  clearTimeout(unitBlurTimer)
   window.removeEventListener('pagehide', onPageHide)
   document.removeEventListener('visibilitychange', onVisibilityChange)
-  window.removeEventListener('scroll', onViewportChange)
-  window.visualViewport?.removeEventListener('resize', onViewportChange)
-  window.visualViewport?.removeEventListener('scroll', onViewportChange)
 })
 
 
@@ -1217,15 +917,28 @@ const readFileAsBase64 = (file) => {
   })
 }
 
-const addIngredient = async () => {
-  const item = emptyIngredient()
-  formData.value.sections[0].items.push(item)
-  focusInRow('.ingredient-row', rowIndexOf(item), 'input')
+// Focus a field of an ingredient row once it is rendered
+const focusRow = async (item, selector = 'input') => {
+  await nextTick()
+  formRef.value?.querySelector(`[data-row="${keyOf(item)}"] ${selector}`)?.focus()
 }
 
-const addGroup = () => {
+const addIngredient = () => {
+  const item = emptyIngredient()
+  formData.value.sections[0].items.push(item)
+  focusRow(item)
+}
+
+const addToGroup = (section) => {
+  const item = emptyIngredient()
+  section.items.push(item)
+  focusRow(item)
+}
+
+const addGroup = async () => {
   const s = addSection(formData.value.sections)
-  focusInRow('.ingredient-row', ingredientRows.value.findIndex((row) => row.group && row.s === s), '.ingredient-group-input')
+  await nextTick()
+  formRef.value?.querySelector(`[data-section="${formData.value.sections[s].key}"] .ingredient-group-input`)?.focus()
 }
 
 const ingredientTextMode = ref(false)
@@ -1251,21 +964,15 @@ const closeIngredientText = (apply) => {
   ingredientTextMode.value = false
 }
 
-const focusInRow = async (rowSelector, index, selector) => {
-  await nextTick()
-  formRef.value?.querySelectorAll(rowSelector)[index]?.querySelector(selector)?.focus()
-}
-
 // Multi-line text pasted into a row becomes one ingredient per line, split into Menge | Einheit | Zutat
 // Paste works on the flat row list (headings included): the rows go in at the pasted row, then everything turns
 // back into sections (ingredients without a group gather on top again, see ingredientsToSections).
 // A marker travels with the copies so the focus can follow the last pasted row.
 const PASTE_MARK = Symbol('paste')
 
-const onIngredientPaste = (event, index) => {
+const onIngredientPaste = (event, ingredient) => {
   const text = event.clipboardData?.getData('text/plain') ?? ''
-  const current = toRaw(itemAt(index))
-  if (!current) return
+  const current = toRaw(ingredient)
   const marked = formData.value.sections.map((section) => ({
     ...section,
     items: section.items.map((item) => (toRaw(item) === current ? { ...item, [PASTE_MARK]: true } : item))
@@ -1276,7 +983,6 @@ const onIngredientPaste = (event, index) => {
   const last = insertPastedIngredients(flat, at, text, knownUnits.value)
   if (last < 0) return
   event.preventDefault()
-  activeUnitIndex.value = null
   flat[last][PASTE_MARK] = true
   const sections = loadedSections(rowsToIngredients(flat))
   let target = null
@@ -1285,59 +991,69 @@ const onIngredientPaste = (event, index) => {
     delete item[PASTE_MARK]
   }))
   formData.value.sections = sections
-  if (target) focusInRow('.ingredient-row', rowIndexOf(target), '.ingredient-name')
+  if (target) focusRow(target, '.ingredient-name')
 }
 
-// The moved row keeps the focus: the same field for Alt+↑/↓, the same arrow button for a click
-const moveAndKeepFocus = async (move, rowSelector, event) => {
-  const target = event?.currentTarget
-  const focusable = (row) => (row ? [...row.querySelectorAll('input, textarea, button')] : [])
-  const position = focusable(target?.closest?.(rowSelector)).indexOf(target)
-  const to = move()
-  if (to < 0) return -1
-  activeUnitIndex.value = null
+// The moved row (ingredient, group card or step) keeps the focus on the same field or handle.
+// move() does the move and returns the selector of the moved row, or null when nothing moved.
+const moveKeepingFocus = async (event, move) => {
+  const field = event?.target
+  const focusable = (row) => (row ? [...row.querySelectorAll('input, textarea, button:not([tabindex="-1"])')] : [])
+  const position = focusable(field?.closest?.('[data-row], [data-section], [data-step]')).indexOf(field)
+  const selector = move()
+  if (!selector) return false
   await nextTick()
-  const row = formRef.value?.querySelectorAll(rowSelector)[to]
-  let el = focusable(row)[position]
-  if (!el || el.disabled) el = row?.querySelector('[data-move]:not(:disabled)')
-  el?.focus()
-  return to
+  const row = formRef.value?.querySelector(selector)
+  ;(focusable(row)[position] ?? row?.querySelector('.drag-handle'))?.focus()
+  return true
 }
 
-// An ingredient at the edge of its group moves on into the neighbouring one; a heading moves its whole card
-const moveIngredient = (index, delta, event) => moveAndKeepFocus(() => {
-  const row = ingredientRows.value[index]
-  const sections = formData.value.sections
-  if (row?.group) {
-    const to = moveSection(sections, row.s, delta)
-    return to < 0 ? -1 : ingredientRows.value.findIndex((r) => r.group && r.s === to)
-  }
-  const item = row?.item
-  if (!item || !moveIngredientAcross(sections, row.s, row.i, delta)) return -1
-  return rowIndexOf(item)
-}, '.ingredient-row', event)
+// Alt+↑/↓ in a field or ↑/↓ on the handle; at the edge of its group an ingredient moves on into the neighbouring one
+const moveIngredient = (item, delta, event) => moveKeepingFocus(event, () => {
+  const at = locate(item)
+  if (!at || !moveIngredientAcross(formData.value.sections, at[0], at[1], delta)) return null
+  return `[data-row="${keyOf(item)}"]`
+})
+
+const moveGroup = (section, delta, event) => moveKeepingFocus(event, () =>
+  moveSection(formData.value.sections, sectionIndexOf(section), delta) < 0 ? null : `[data-section="${section.key}"]`)
 
 const moveInstruction = async (index, delta, event) => {
-  if (await moveAndKeepFocus(() => moveRow(formData.value.instructions, index, delta), '.instruction-row', event) >= 0) {
-    resizeAllTextareas()
-  }
+  const moved = await moveKeepingFocus(event, () => {
+    const to = moveRow(formData.value.instructions, index, delta)
+    return to < 0 ? null : `[data-step="${to}"]`
+  })
+  if (moved) resizeAllTextareas()
+}
+
+// Steps are plain texts, so the drag list works on their positions and the new order is applied afterwards
+const instructionItems = computed(() => formData.value.instructions.map((_, index) => ({ index })))
+
+const reorderInstructions = (list) => {
+  const steps = formData.value.instructions
+  formData.value.instructions = list.map(({ index }) => steps[index])
+  resizeAllTextareas()
 }
 
 const blockImplicitSubmit = (event) => {
   if (preventsImplicitSubmit(event)) event.preventDefault()
 }
 
-const onIngredientEnter = async (event, index) => {
+// Enter opens a new row below (or takes the empty one already there)
+const onIngredientEnter = (event, item) => {
   if (event.isComposing) return
   event.preventDefault()
-  activeUnitIndex.value = null
-  const row = ingredientRows.value[index]
-  if (!row) return
-  // Enter in a group name opens a row at the top of that group
-  const items = formData.value.sections[row.s].items
-  const target = addIngredientBelow(items, row.group ? -1 : row.i)
-  await nextTick()
-  formRef.value?.querySelectorAll('.ingredient-row')[rowIndexOf(items[target])]?.querySelector('input')?.focus()
+  const at = locate(item)
+  if (!at) return
+  const items = formData.value.sections[at[0]].items
+  focusRow(items[addIngredientBelow(items, at[1])])
+}
+
+// Enter in a group name opens a row at the top of that group
+const onGroupEnter = (event, section) => {
+  if (event.isComposing) return
+  event.preventDefault()
+  focusRow(section.items[addIngredientBelow(section.items, -1)])
 }
 
 const imageLoading = ref(false)
@@ -1358,12 +1074,22 @@ const removeImage = () => {
   formData.value.imageUrl = ''
 }
 
-// A removed heading leaves its ingredients to the group above; the last ingredient row always stays
-const removeIngredient = (index) => {
-  const row = ingredientRows.value[index]
-  if (!row) return
-  if (row.group) dissolveSection(formData.value.sections, row.s)
-  else removeIngredientAt(formData.value.sections, row.s, row.i)
+// The last ingredient row always stays
+const removeIngredient = (item) => {
+  const at = locate(item)
+  if (at) removeIngredientAt(formData.value.sections, at[0], at[1])
+}
+
+// A removed card leaves its ingredients to the section above; a card with only empty rows goes without asking
+const removeGroup = async (section) => {
+  if (!isSectionEmpty(section) && !await askConfirm({
+    title: 'Gruppe auflösen?',
+    text: 'Die Zutaten bleiben erhalten.',
+    confirmLabel: 'Auflösen',
+    cancelLabel: 'Abbrechen'
+  })) return
+  const s = sectionIndexOf(section)
+  if (s > 0) dissolveSection(formData.value.sections, s)
 }
 
 const addInstruction = () => {
@@ -1675,32 +1401,24 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
   color: var(--color-error, #e53e3e);
 }
 
-.ingredient-row {
-  display: grid;
-  grid-template-columns: 80px 120px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-border-light, #edf2f7);
+.ingredient-list {
+  min-height: 44px;
 }
 
-.ingredient-row:last-of-type {
-  border-bottom: none;
+.group-items {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 3px solid var(--akzent-weich);
+  min-height: 44px;
 }
 
-.ingredient-row.ingredient-group-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: none;
-  margin-top: 8px;
-  border-bottom: 2px solid var(--color-border, #cbd5e0);
+.drag-ghost {
+  opacity: 0.4;
 }
 
-.ingredient-group-input {
-  font-weight: 600;
-}
-
-.ingredient-row > * {
-  min-width: 0;
+.sortable-chosen {
+  background: var(--akzent-weich);
+  border-radius: 8px;
 }
 
 .row-actions {
@@ -1710,52 +1428,44 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
   flex-shrink: 0;
 }
 
-.btn-remove-icon,
-.btn-move-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-error, #e53e3e);
-  width: 34px;
-  height: 34px;
+.drag-handle,
+.btn-remove-icon {
+  width: 44px;
+  height: 44px;
   padding: 0;
-  border-radius: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  transition: background-color 0.15s ease;
 }
 
-.btn-move-icon {
-  color: var(--color-text-secondary, #666);
+.drag-handle {
+  color: var(--text3);
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:hover {
+  color: var(--text2);
+  background: var(--flaeche2);
+}
+
+.btn-remove-icon {
+  color: var(--neg);
+  cursor: pointer;
 }
 
 .btn-remove-icon:hover {
   background: var(--neg-weich);
 }
 
-.btn-move-icon:hover:not(:disabled) {
-  background: var(--color-bg-secondary, #f0f0f0);
-}
-
-.btn-move-icon:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
-
-.btn-move-icon:focus-visible,
-.btn-remove-icon:focus-visible {
-  outline: 2px solid var(--color-primary, #4a5568);
+.drag-handle:focus-visible,
+.btn-remove-icon:focus-visible,
+.btn-add:focus-visible {
+  outline: 2px solid var(--akzent);
   outline-offset: 1px;
-}
-
-@media (pointer: coarse) {
-  .btn-remove-icon,
-  .btn-move-icon {
-    width: 40px;
-    height: 40px;
-  }
 }
 
 .ingredient-buttons {
@@ -1800,34 +1510,7 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
   background: var(--linie);
 }
 
-@media (max-width: 600px) {
-  .ingredient-row {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
-    grid-template-areas:
-      "amount unit unit"
-      "name name actions";
-  }
-
-  .ingredient-row .amount-input-wrapper {
-    grid-area: amount;
-  }
-
-  .ingredient-row .unit-input-wrapper {
-    grid-area: unit;
-  }
-
-  .ingredient-row .name-input-wrapper {
-    grid-area: name;
-  }
-
-  .ingredient-row .row-actions {
-    grid-area: actions;
-  }
-
-  .ingredient-row.ingredient-group-row .row-actions {
-    grid-area: auto;
-  }
-
+@media (max-width: 599px) {
   .instruction-row {
     flex-wrap: wrap;
   }
@@ -1891,175 +1574,6 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
   border: 1px solid var(--color-error, #e53e3e);
   color: var(--color-error, #e53e3e);
   font-size: 0.9rem;
-}
-
-.unit-input-wrapper,
-.amount-input-wrapper {
-  position: relative;
-  flex: 1;
-}
-
-.amount-input-wrapper input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.fraction-keys {
-  position: absolute;
-  bottom: calc(100% + 2px);
-  left: 0;
-  z-index: 100;
-  display: flex;
-  gap: 4px;
-  padding: 3px;
-  background: var(--flaeche);
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.fraction-key {
-  width: 30px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: var(--color-bg-secondary, #f0f0f0);
-  color: var(--color-text-primary, #333);
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.fraction-key:hover {
-  background: var(--color-border, #ddd);
-}
-
-@media (pointer: coarse) {
-  .fraction-key {
-    width: 38px;
-    height: 34px;
-    font-size: 1.05rem;
-  }
-}
-
-.unit-input-wrapper input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.unit-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: var(--flaeche);
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
-  margin-top: 2px;
-  padding: 4px 0;
-  list-style: none;
-  max-height: 200px;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.unit-dropdown li {
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  color: var(--color-text-primary, #333);
-}
-
-.unit-dropdown li:hover {
-  background: var(--color-bg-secondary, #f0f0f0);
-}
-
-.unit-dropdown li.highlighted {
-  background: var(--color-bg-secondary, #f0f0f0);
-}
-
-.unit-dropdown.drop-up {
-  top: auto;
-  bottom: 100%;
-  margin-top: 0;
-  margin-bottom: 2px;
-}
-
-.name-input-wrapper {
-  position: relative;
-}
-
-.name-input-wrapper.has-hint input {
-  padding-right: 34px;
-}
-
-.nutrition-hint {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  font-size: 0.8rem;
-  line-height: 22px;
-  cursor: help;
-}
-
-.nutrition-hint-ok {
-  color: var(--color-success, #38a169);
-}
-
-.nutrition-hint-unknown {
-  color: var(--color-text-muted, #999);
-}
-
-button.nutrition-hint-unknown {
-  border: 1px solid var(--color-border, #ddd);
-  line-height: 20px;
-}
-
-.nutrition-hint-bubble {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 4px);
-  z-index: 101;
-  max-width: 260px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: var(--color-text-primary, #333);
-  color: var(--akzent-kontrast);
-  font-size: 0.8rem;
-  line-height: 1.3;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.name-dropdown li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.suggestion-mark {
-  font-size: 0.75rem;
-  flex-shrink: 0;
-}
-
-.unit-add {
-  border-top: 1px solid var(--color-border, #ddd);
-  color: var(--color-primary, #4a5568);
-}
-
-.unit-add-label {
-  font-size: 0.8rem;
-  color: var(--color-text-muted, #999);
-  margin-left: 4px;
 }
 
 .source-input-wrapper {
