@@ -266,10 +266,10 @@
         </div>
       </div>
       <template v-else>
-        <template v-for="(ingredient, index) in formData.ingredients" :key="index">
-        <div v-if="isGroupRow(ingredient)" class="ingredient-row ingredient-group-row">
+        <template v-for="(row, index) in ingredientRows" :key="row.key">
+        <div v-if="row.group" class="ingredient-row ingredient-group-row">
           <input
-            v-model="ingredient.group"
+            v-model="formData.sections[row.s].name"
             type="text"
             class="ingredient-group-input"
             placeholder="Gruppe, z. B. Salsa (leer = ohne Gruppe)"
@@ -280,10 +280,10 @@
             @keydown.alt.down.prevent="moveIngredient(index, 1, $event)"
           />
           <div class="row-actions">
-            <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="index === 0" @click="moveIngredient(index, -1, $event)" title="Gruppe nach oben" aria-label="Gruppe nach oben">
+            <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="row.s === 1" @click="moveIngredient(index, -1, $event)" title="Gruppe nach oben" aria-label="Gruppe nach oben">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
             </button>
-            <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="index === formData.ingredients.length - 1" @click="moveIngredient(index, 1, $event)" title="Gruppe nach unten" aria-label="Gruppe nach unten">
+            <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="row.s === formData.sections.length - 1" @click="moveIngredient(index, 1, $event)" title="Gruppe nach unten" aria-label="Gruppe nach unten">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeIngredient(index)" title="Gruppe entfernen (Zutaten bleiben)" aria-label="Gruppe entfernen, Zutaten bleiben">
@@ -299,7 +299,7 @@
         <div v-else class="ingredient-row">
           <div class="amount-input-wrapper">
             <input
-              v-model="ingredient.amount"
+              v-model="row.item.amount"
               type="text"
               placeholder="Menge"
               class="ingredient-amount-input"
@@ -325,7 +325,7 @@
           </div>
           <div class="unit-input-wrapper">
             <input
-              v-model="ingredient.unit"
+              v-model="row.item.unit"
               type="text"
               placeholder="Einheit"
               autocomplete="off"
@@ -367,9 +367,9 @@
               </li>
             </ul>
           </div>
-          <div class="name-input-wrapper" :class="{ 'has-hint': nutritionHint(ingredient, index) }">
+          <div class="name-input-wrapper" :class="{ 'has-hint': nutritionHint(row.item, index) }">
             <input
-              v-model="ingredient.name"
+              v-model="row.item.name"
               type="text"
               placeholder="Zutat"
               class="ingredient-name"
@@ -379,7 +379,7 @@
               :aria-expanded="nameSuggestionsFor(index).length > 0"
               :aria-controls="`name-suggestions-${index}`"
               :aria-activedescendant="nameSuggestionsFor(index).length && highlightedSuggestion >= 0 ? `name-suggestion-${index}-${highlightedSuggestion}` : undefined"
-              :required="isIngredientNameRequired(formData.ingredients, index)"
+              :required="isIngredientNameRequired(formData.sections, row.s, row.i)"
               @input="onNameInput(index)"
               @blur="closeNameSuggestions"
               @keydown.enter="onNameEnter($event, index)"
@@ -391,17 +391,17 @@
               @paste="onIngredientPaste($event, index)"
             />
             <button
-              v-if="nutritionHint(ingredient, index)"
+              v-if="nutritionHint(row.item, index)"
               type="button"
               tabindex="-1"
               class="nutrition-hint"
-              :class="`nutrition-hint-${nutritionHint(ingredient, index).state}`"
-              :title="nutritionHint(ingredient, index).title"
-              :aria-label="nutritionHint(ingredient, index).title"
+              :class="`nutrition-hint-${nutritionHint(row.item, index).state}`"
+              :title="nutritionHint(row.item, index).title"
+              :aria-label="nutritionHint(row.item, index).title"
               @click="toggleHintBubble(index)"
-            >{{ nutritionHint(ingredient, index).symbol }}</button>
-            <span v-if="openHintIndex === index && nutritionHint(ingredient, index)" class="nutrition-hint-bubble" role="tooltip">
-              {{ nutritionHint(ingredient, index).title }}
+            >{{ nutritionHint(row.item, index).symbol }}</button>
+            <span v-if="openHintIndex === index && nutritionHint(row.item, index)" class="nutrition-hint-bubble" role="tooltip">
+              {{ nutritionHint(row.item, index).title }}
             </span>
             <ul
               v-if="nameSuggestionsFor(index).length > 0"
@@ -432,7 +432,7 @@
             <button type="button" class="btn-move-icon" data-move="up" tabindex="-1" :disabled="index === 0" @click="moveIngredient(index, -1, $event)" title="Zutat nach oben" aria-label="Zutat nach oben">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
             </button>
-            <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="index === formData.ingredients.length - 1" @click="moveIngredient(index, 1, $event)" title="Zutat nach unten" aria-label="Zutat nach unten">
+            <button type="button" class="btn-move-icon" data-move="down" tabindex="-1" :disabled="index === ingredientRows.length - 1" @click="moveIngredient(index, 1, $event)" title="Zutat nach unten" aria-label="Zutat nach unten">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <button type="button" class="btn-remove-icon" tabindex="-1" @click="removeIngredient(index)" title="Zutat entfernen" aria-label="Zutat entfernen">
@@ -511,7 +511,7 @@
 
 <script setup>
 import AppIcon from '@/components/shell/AppIcon.vue'
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, toRaw } from 'vue'
 import { recipeService } from '@/services/recipeService'
 import { ingredientCatalogService } from '@/services/ingredientCatalogService'
 import { useRecipeStore } from '@/stores/recipeStore'
@@ -528,7 +528,12 @@ import {
   isIngredientNameRequired,
   isInstructionRequired,
   addIngredientBelow,
-  addGroupRow,
+  addSection,
+  dissolveSection,
+  ensureIngredientRow,
+  removeIngredientAt,
+  moveIngredientAcross,
+  moveSection,
   moveRow,
   preventsImplicitSubmit,
   formSnapshot,
@@ -537,7 +542,14 @@ import {
   autoLanguageLabel
 } from '@/utils/recipeFormData'
 import { ingredientsFromText, ingredientsToText, insertPastedIngredients } from '@/utils/ingredientText'
-import { MAX_GROUP_NAME, ingredientsToRows, isGroupRow } from '@/utils/ingredientGroups'
+import {
+  MAX_GROUP_NAME,
+  ingredientSection,
+  ingredientsToRows,
+  ingredientsToSections,
+  rowsToIngredients,
+  sectionsToIngredients
+} from '@/utils/ingredientGroups'
 import {
   SUGGEST_LIMIT,
   SUGGEST_DELAY_MS,
@@ -606,9 +618,26 @@ const formData = ref({
   page: '',
   sourceUrl: '',
   tags: [],
-  ingredients: [emptyIngredient()],
+  sections: [ingredientSection(null, [emptyIngredient()])],
   instructions: ['']
 })
+
+// All ingredients in form order, and the rows as shown: a heading row per group card, then its ingredients.
+// The position in ingredientRows is the position among the .ingredient-row elements.
+const allIngredients = () => formData.value.sections.flatMap((section) => section.items)
+
+const ingredientRows = computed(() => {
+  const rows = []
+  formData.value.sections.forEach((section, s) => {
+    if (s > 0) rows.push({ key: section.key, group: true, s })
+    section.items.forEach((item, i) => rows.push({ key: `${section.key}:${i}`, s, i, item }))
+  })
+  return rows
+})
+
+const itemAt = (index) => ingredientRows.value[index]?.item
+
+const rowIndexOf = (item) => ingredientRows.value.findIndex((row) => row.item && toRaw(row.item) === toRaw(item))
 
 const formRef = ref(null)
 
@@ -647,20 +676,20 @@ async function resizeAllTextareas() {
 }
 
 const filteredKnownUnits = (index) => {
-  const query = formData.value.ingredients[index]?.unit?.trim().toLowerCase() ?? ''
+  const query = itemAt(index)?.unit?.trim().toLowerCase() ?? ''
   if (!query) return knownUnits.value
   return knownUnits.value.filter(u => u.toLowerCase().includes(query))
 }
 
 const showAddOption = (index) => {
-  const val = formData.value.ingredients[index]?.unit?.trim()
+  const val = itemAt(index)?.unit?.trim()
   if (!val) return false
   return !knownUnits.value.some(u => u.toLowerCase() === val.toLowerCase())
 }
 
 const unitOptions = (index) => {
   const options = filteredKnownUnits(index).map((value) => ({ value, custom: false }))
-  if (showAddOption(index)) options.push({ value: formData.value.ingredients[index].unit, custom: true })
+  if (showAddOption(index)) options.push({ value: itemAt(index).unit, custom: true })
   return options
 }
 
@@ -719,7 +748,7 @@ const onSourceUrlBlur = () => {
 watch([sourceUrlError, sourceUrlRef], ([message, el]) => el?.setCustomValidity(message), { immediate: true })
 
 const selectUnit = (index, value) => {
-  formData.value.ingredients[index].unit = value
+  itemAt(index).unit = value
   activeUnitIndex.value = null
   highlightedUnit.value = -1
 }
@@ -800,7 +829,8 @@ const activeAmountIndex = ref(null)
 
 const pickFraction = async (event, index, fraction) => {
   const field = event.currentTarget.closest('.amount-input-wrapper')?.querySelector('input')
-  formData.value.ingredients[index].amount = applyFraction(formData.value.ingredients[index].amount, fraction)
+  const item = itemAt(index)
+  item.amount = applyFraction(item.amount, fraction)
   await nextTick()
   if (!field) return
   field.focus()
@@ -816,7 +846,7 @@ let suggestRequest = 0
 
 const nameSuggestionsFor = (index) =>
   activeNameIndex.value === index
-    ? visibleSuggestions(formData.value.ingredients[index]?.name, nameSuggestions.value)
+    ? visibleSuggestions(itemAt(index)?.name, nameSuggestions.value)
     : []
 
 const resetNameSuggestions = () => {
@@ -830,7 +860,7 @@ const resetNameSuggestions = () => {
 const onNameInput = (index) => {
   clearTimeout(suggestTimer)
   highlightedSuggestion.value = -1
-  const query = suggestionQuery(formData.value.ingredients[index]?.name)
+  const query = suggestionQuery(itemAt(index)?.name)
   if (!query) {
     resetNameSuggestions()
     return
@@ -850,7 +880,7 @@ const onNameInput = (index) => {
 }
 
 const selectNameSuggestion = (index, suggestion) => {
-  formData.value.ingredients[index].name = suggestion.name
+  itemAt(index).name = suggestion.name
   resetNameSuggestions()
 }
 
@@ -900,7 +930,7 @@ const toggleHintBubble = (index) => {
 }
 
 const recognizeIngredients = async () => {
-  const pending = pendingRecognition(formData.value.ingredients, recognition.value)
+  const pending = pendingRecognition(allIngredients(), recognition.value)
   if (!pending.length) return
   try {
     const results = await ingredientCatalogService.recognize(pending.map((p) => p.line))
@@ -915,7 +945,7 @@ const recognizeIngredients = async () => {
 }
 
 watch(
-  () => formData.value.ingredients.map(recognitionKey).join('\n'),
+  () => allIngredients().map(recognitionKey).join('\n'),
   () => {
     clearTimeout(recognizeTimer)
     recognizeTimer = setTimeout(recognizeIngredients, RECOGNIZE_DELAY_MS)
@@ -945,6 +975,12 @@ watch(() => formData.value.title, (title) => {
   emit('titleChange', title)
 })
 
+const loadedSections = (ingredients) => {
+  const sections = ingredientsToSections(ingredients)
+  ensureIngredientRow(sections)
+  return sections
+}
+
 watch(
   () => props.recipe,
   (newRecipe) => {
@@ -964,9 +1000,7 @@ watch(
         page: newRecipe.page || '',
         sourceUrl: newRecipe.sourceUrl || '',
         tags: [...(newRecipe.tags ?? [])],
-        ingredients: newRecipe.ingredients?.length
-          ? ingredientsToRows(newRecipe.ingredients)
-          : [emptyIngredient()],
+        sections: loadedSections(newRecipe.ingredients),
         instructions: newRecipe.instructions?.length
           ? [...newRecipe.instructions]
           : ['']
@@ -1084,7 +1118,7 @@ const removeScanImage = (index) => {
 }
 
 const hasIngredientsOrSteps = () =>
-  formData.value.ingredients.some((i) => !isBlankIngredient(i)) ||
+  allIngredients().some((i) => !isBlankIngredient(i)) ||
   formData.value.instructions.some((i) => i.trim())
 
 const handleScan = async () => {
@@ -1108,7 +1142,7 @@ const handleScan = async () => {
     formData.value.page = result.page || formData.value.page
 
     if (result.ingredients?.length) {
-      formData.value.ingredients = ingredientsToRows(
+      formData.value.sections = loadedSections(
         result.ingredients.map(({ group, ...ingredient }) => ({ ...emptyIngredient(), ...ingredient, groupName: group }))
       )
     }
@@ -1153,13 +1187,16 @@ const copyUnrecognizedText = async () => {
   }
 }
 
-const addIngredient = () => {
-  formData.value.ingredients.push(emptyIngredient())
+// "+ Zutat hinzufügen" adds to the ingredients without a group (the cards have their own button)
+const addIngredient = async () => {
+  const item = emptyIngredient()
+  formData.value.sections[0].items.push(item)
+  focusInRow('.ingredient-row', rowIndexOf(item), 'input')
 }
 
 const addGroup = () => {
-  const index = addGroupRow(formData.value.ingredients)
-  focusInRow('.ingredient-row', index, '.ingredient-group-input')
+  const s = addSection(formData.value.sections)
+  focusInRow('.ingredient-row', ingredientRows.value.findIndex((row) => row.group && row.s === s), '.ingredient-group-input')
 }
 
 const ingredientTextMode = ref(false)
@@ -1167,7 +1204,7 @@ const ingredientText = ref('')
 const ingredientTextRef = ref(null)
 
 const openIngredientText = async () => {
-  ingredientText.value = ingredientsToText(formData.value.ingredients)
+  ingredientText.value = ingredientsToText(ingredientsToRows(sectionsToIngredients(formData.value.sections)))
   ingredientTextMode.value = true
   await nextTick()
   const el = ingredientTextRef.value
@@ -1178,7 +1215,9 @@ const openIngredientText = async () => {
 
 const closeIngredientText = (apply) => {
   if (apply) {
-    formData.value.ingredients = ingredientsFromText(ingredientText.value, formData.value.ingredients, knownUnits.value)
+    const previous = ingredientsToRows(sectionsToIngredients(formData.value.sections))
+    const rows = ingredientsFromText(ingredientText.value, previous, knownUnits.value)
+    formData.value.sections = loadedSections(rowsToIngredients(rows))
   }
   ingredientTextMode.value = false
 }
@@ -1189,21 +1228,43 @@ const focusInRow = async (rowSelector, index, selector) => {
 }
 
 // Multi-line text pasted into a row becomes one ingredient per line, split into Menge | Einheit | Zutat
+// Paste works on the flat row list (headings included): the rows go in at the pasted row, then everything turns
+// back into sections (ingredients without a group gather on top again, see ingredientsToSections).
+// A marker travels with the copies so the focus can follow the last pasted row.
+const PASTE_MARK = Symbol('paste')
+
 const onIngredientPaste = (event, index) => {
   const text = event.clipboardData?.getData('text/plain') ?? ''
-  const last = insertPastedIngredients(formData.value.ingredients, index, text, knownUnits.value)
+  const current = toRaw(itemAt(index))
+  if (!current) return
+  const marked = formData.value.sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => (toRaw(item) === current ? { ...item, [PASTE_MARK]: true } : item))
+  }))
+  const flat = ingredientsToRows(sectionsToIngredients(marked))
+  const at = flat.findIndex((row) => row[PASTE_MARK])
+  delete flat[at][PASTE_MARK]
+  const last = insertPastedIngredients(flat, at, text, knownUnits.value)
   if (last < 0) return
   event.preventDefault()
   activeUnitIndex.value = null
-  focusInRow('.ingredient-row', last, '.ingredient-name')
+  flat[last][PASTE_MARK] = true
+  const sections = loadedSections(rowsToIngredients(flat))
+  let target = null
+  sections.forEach((section) => section.items.forEach((item) => {
+    if (item[PASTE_MARK]) target = item
+    delete item[PASTE_MARK]
+  }))
+  formData.value.sections = sections
+  if (target) focusInRow('.ingredient-row', rowIndexOf(target), '.ingredient-name')
 }
 
 // The moved row keeps the focus: the same field for Alt+↑/↓, the same arrow button for a click
-const moveAndKeepFocus = async (rows, rowSelector, index, delta, event) => {
+const moveAndKeepFocus = async (move, rowSelector, event) => {
   const target = event?.currentTarget
   const focusable = (row) => (row ? [...row.querySelectorAll('input, textarea, button')] : [])
   const position = focusable(target?.closest?.(rowSelector)).indexOf(target)
-  const to = moveRow(rows, index, delta)
+  const to = move()
   if (to < 0) return -1
   activeUnitIndex.value = null
   await nextTick()
@@ -1214,11 +1275,21 @@ const moveAndKeepFocus = async (rows, rowSelector, index, delta, event) => {
   return to
 }
 
-const moveIngredient = (index, delta, event) =>
-  moveAndKeepFocus(formData.value.ingredients, '.ingredient-row', index, delta, event)
+// An ingredient at the edge of its group moves on into the neighbouring one; a heading moves its whole card
+const moveIngredient = (index, delta, event) => moveAndKeepFocus(() => {
+  const row = ingredientRows.value[index]
+  const sections = formData.value.sections
+  if (row?.group) {
+    const to = moveSection(sections, row.s, delta)
+    return to < 0 ? -1 : ingredientRows.value.findIndex((r) => r.group && r.s === to)
+  }
+  const item = row?.item
+  if (!item || !moveIngredientAcross(sections, row.s, row.i, delta)) return -1
+  return rowIndexOf(item)
+}, '.ingredient-row', event)
 
 const moveInstruction = async (index, delta, event) => {
-  if (await moveAndKeepFocus(formData.value.instructions, '.instruction-row', index, delta, event) >= 0) {
+  if (await moveAndKeepFocus(() => moveRow(formData.value.instructions, index, delta), '.instruction-row', event) >= 0) {
     resizeAllTextareas()
   }
 }
@@ -1231,9 +1302,13 @@ const onIngredientEnter = async (event, index) => {
   if (event.isComposing) return
   event.preventDefault()
   activeUnitIndex.value = null
-  const target = addIngredientBelow(formData.value.ingredients, index)
+  const row = ingredientRows.value[index]
+  if (!row) return
+  // Enter in a group name opens a row at the top of that group
+  const items = formData.value.sections[row.s].items
+  const target = addIngredientBelow(items, row.group ? -1 : row.i)
   await nextTick()
-  formRef.value?.querySelectorAll('.ingredient-row')[target]?.querySelector('input')?.focus()
+  formRef.value?.querySelectorAll('.ingredient-row')[rowIndexOf(items[target])]?.querySelector('input')?.focus()
 }
 
 const imageLoading = ref(false)
@@ -1256,10 +1331,10 @@ const removeImage = () => {
 
 // A removed heading leaves its ingredients to the group above; the last ingredient row always stays
 const removeIngredient = (index) => {
-  const rows = formData.value.ingredients
-  if (isGroupRow(rows[index]) || rows.filter((row) => !isGroupRow(row)).length > 1) {
-    rows.splice(index, 1)
-  }
+  const row = ingredientRows.value[index]
+  if (!row) return
+  if (row.group) dissolveSection(formData.value.sections, row.s)
+  else removeIngredientAt(formData.value.sections, row.s, row.i)
 }
 
 const addInstruction = () => {

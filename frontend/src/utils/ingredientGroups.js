@@ -39,6 +39,40 @@ export function rowsToIngredients(rows) {
   return ingredients
 }
 
+// The form keeps ingredients in sections: index 0 holds the ingredients without a group (always there, maybe empty),
+// every further section is one group card. key only identifies a section in the template and is never saved.
+let sectionCount = 0
+export const sectionKey = () => `s${++sectionCount}`
+
+export const ingredientSection = (name = null, items = []) => ({ key: sectionKey(), name, items })
+
+// API → form: all ingredients without a group move up into section 0, groups follow in their original order and
+// a group that ends up next to one with the same name is merged into it
+export function ingredientsToSections(ingredients) {
+  const sections = [ingredientSection()]
+  for (const ingredient of ingredients ?? []) {
+    const { groupName, ...item } = ingredient
+    const group = groupOf(groupName)
+    const last = sections[sections.length - 1]
+    if (!group) sections[0].items.push(item)
+    else if (sections.length > 1 && last.name === group) last.items.push(item)
+    else sections.push(ingredientSection(group, [item]))
+  }
+  return sections
+}
+
+// Form → API: one flat list in section order; a card with a blank name counts as "no group"
+export function sectionsToIngredients(sections) {
+  const ingredients = []
+  for (const section of sections ?? []) {
+    const group = groupOf(section.name)
+    for (const { groupName, ...item } of section.items ?? []) {
+      ingredients.push(group ? { ...item, groupName: group } : item)
+    }
+  }
+  return ingredients
+}
+
 // Group that applies at a row: the nearest heading above it ('' when there is none)
 export function groupAt(rows, index) {
   for (let i = Math.min(index, rows.length - 1); i >= 0; i--) {

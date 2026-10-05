@@ -11,6 +11,7 @@ import {
   formatDraftTime
 } from './recipeDraft.js'
 import { emptyIngredient } from './recipeFormData.js'
+import { ingredientSection, sectionsToIngredients } from './ingredientGroups.js'
 
 function memoryStorage({ quota = Infinity } = {}) {
   const items = new Map()
@@ -40,7 +41,7 @@ const emptyForm = () => ({
   source: '',
   page: '',
   sourceUrl: '',
-  ingredients: [emptyIngredient()],
+  sections: [ingredientSection(null, [emptyIngredient()])],
   instructions: ['']
 })
 
@@ -109,8 +110,68 @@ test('restoring fills missing fields and never leaves the lists empty', () => {
   )
   assert.equal(restored.title, 'Alt')
   assert.equal(restored.baseServings, 4)
-  assert.deepEqual(restored.ingredients, [{ name: 'Ei', amount: '', unit: '' }])
+  assert.deepEqual(restored.sections.map((s) => [s.name, s.items]), [[null, [{ name: 'Ei', amount: '', unit: '' }]]])
+  assert.equal('ingredients' in restored, false)
   assert.deepEqual(restored.instructions, [''])
+})
+
+// Wörtlich so lag ein Entwurf vor der Umstellung auf Gruppen-Karten im localStorage
+const OLD_FORMAT_DRAFT = {
+  savedAt: 1759300000000,
+  data: {
+    title: 'Quesadillas',
+    baseServings: 4,
+    ingredients: [
+      { amount: '1', unit: 'TL', name: 'Salz' },
+      { group: 'Teig' },
+      { id: 11, amount: '200', unit: 'g', name: 'Mehl' },
+      { amount: '', unit: '', name: '' },
+      { group: '' },
+      { amount: '', unit: '', name: 'Pfeffer' },
+      { group: 'Salsa' },
+      { amount: '2', unit: '', name: 'Tomaten' }
+    ],
+    instructions: ['Kneten']
+  }
+}
+
+test('an old draft with flat rows and headings comes back as sections, nothing is lost', () => {
+  const restored = restoreDraft(OLD_FORMAT_DRAFT, emptyForm())
+  assert.deepEqual(restored.sections.map((s) => [s.name, s.items.map((i) => i.name)]), [
+    [null, ['Salz', 'Pfeffer']],
+    ['Teig', ['Mehl', '']],
+    ['Salsa', ['Tomaten']]
+  ])
+  assert.equal(restored.sections[1].items[0].id, 11)
+  assert.equal('ingredients' in restored, false)
+  assert.equal(draftDiffers(OLD_FORMAT_DRAFT, emptyForm()), true)
+})
+
+test('a draft in the new format survives saving and restoring', () => {
+  const storage = memoryStorage()
+  const form = {
+    ...emptyForm(),
+    title: 'Dal',
+    sections: [
+      ingredientSection(null, [{ name: 'Linsen', amount: '200', unit: 'g' }]),
+      ingredientSection('Tadka', [{ name: 'Ghee', amount: '2', unit: 'EL' }, emptyIngredient()])
+    ]
+  }
+  saveDraft(storage, 'k', form, 1)
+  const restored = restoreDraft(loadDraft(storage, 'k'), emptyForm())
+  assert.deepEqual(restored.sections.map((s) => [s.name, s.items]), form.sections.map((s) => [s.name, s.items]))
+  assert.deepEqual(sectionsToIngredients(restored.sections).filter((i) => i.name), [
+    { name: 'Linsen', amount: '200', unit: 'g' },
+    { name: 'Ghee', amount: '2', unit: 'EL', groupName: 'Tadka' }
+  ])
+  assert.equal(draftDiffers(loadDraft(storage, 'k'), form), false)
+  assert.equal(draftDiffers(loadDraft(storage, 'k'), emptyForm()), true)
+})
+
+test('a draft differs when only a group name changed', () => {
+  const form = { ...emptyForm(), sections: [ingredientSection(null), ingredientSection('Teig', [{ name: 'Mehl', amount: '', unit: '' }])] }
+  const renamed = { ...emptyForm(), sections: [ingredientSection(null), ingredientSection('Boden', [{ name: 'Mehl', amount: '', unit: '' }])] }
+  assert.equal(draftDiffers({ savedAt: 1, data: renamed }, form), true)
 })
 
 test('the link to the original is part of the draft; older drafts without it keep the form value', () => {

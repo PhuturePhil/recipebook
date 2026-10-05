@@ -1,5 +1,5 @@
-import { emptyIngredient, formSnapshot } from './recipeFormData.js'
-import { groupRow, isGroupRow } from './ingredientGroups.js'
+import { emptyIngredient, ensureIngredientRow, formSnapshot } from './recipeFormData.js'
+import { ingredientSection, ingredientsToSections, isGroupRow, rowsToIngredients } from './ingredientGroups.js'
 
 export const DRAFT_DELAY_MS = 2000
 
@@ -59,13 +59,34 @@ export function clearDraft(storage, key) {
 // Only a draft that differs from what the form shows anyway is worth asking about
 export const draftDiffers = (draft, formData) => !!draft && formSnapshot(restoreDraft(draft, formData)) !== formSnapshot(formData)
 
+const restoredItem = (item) => ({ ...emptyIngredient(), ...item })
+
+// Drafts store the sections of the form. Drafts from before the group cards hold the old flat row list with
+// headings ({ group: 'Salsa' }); they are converted the same way a loaded recipe is.
+function restoredSections(data) {
+  let sections
+  if (Array.isArray(data.sections) && data.sections.length) {
+    sections = data.sections.map((section, index) => ingredientSection(
+      index === 0 ? null : String(section?.name ?? ''),
+      Array.isArray(section?.items) ? section.items.map(restoredItem) : []
+    ))
+  } else {
+    const rows = Array.isArray(data.ingredients)
+      ? data.ingredients.map((row) => (isGroupRow(row) ? row : restoredItem(row)))
+      : []
+    sections = ingredientsToSections(rowsToIngredients(rows))
+    sections.forEach((section) => { section.items = section.items.map(restoredItem) })
+  }
+  ensureIngredientRow(sections)
+  return sections
+}
+
 export function restoreDraft(draft, defaults) {
-  const data = { ...defaults, ...draft.data }
+  const { ingredients, ...data } = { ...defaults, ...draft.data }
+  const source = draft.data?.sections || draft.data?.ingredients ? draft.data : defaults
   return {
     ...data,
-    ingredients: Array.isArray(data.ingredients) && data.ingredients.length
-      ? data.ingredients.map((i) => (isGroupRow(i) ? groupRow(i.group) : { ...emptyIngredient(), ...i }))
-      : [emptyIngredient()],
+    sections: restoredSections(source ?? {}),
     instructions: Array.isArray(data.instructions) && data.instructions.length
       ? data.instructions.map((i) => String(i ?? ''))
       : ['']

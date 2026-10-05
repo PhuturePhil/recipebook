@@ -6,12 +6,14 @@ import {
   groupSections,
   hasGroups,
   ingredientsToRows,
+  ingredientsToSections,
   isGroupRow,
   parseGroupHeading,
-  rowsToIngredients
+  rowsToIngredients,
+  sectionsToIngredients
 } from './ingredientGroups.js'
 import { parseIngredientText, ingredientsToText, ingredientsFromText, insertPastedIngredients } from './ingredientText.js'
-import { addGroupRow, cleanRecipeData, emptyIngredient, isBlankIngredient, isIngredientNameRequired } from './recipeFormData.js'
+import { cleanRecipeData, emptyIngredient, isBlankIngredient, isIngredientNameRequired } from './recipeFormData.js'
 import { restoreDraft } from './recipeDraft.js'
 import { applyTranslation } from './recipeLanguage.js'
 import { scaleIngredients } from './scaleIngredients.js'
@@ -159,27 +161,74 @@ test('pasting into an empty last row needs no extra heading', () => {
   assert.deepEqual(rows.map((r) => (isGroupRow(r) ? `# ${r.group}` : r.name)), ['Salz', '# Salsa', 'Tomaten'])
 })
 
-test('"+ Gruppe" reuses an empty last row, otherwise adds one under the heading', () => {
-  const rows = [ing('Salz'), emptyIngredient()]
-  assert.equal(addGroupRow(rows), 1)
-  assert.deepEqual(rows[1], groupRow())
-  assert.equal(rows.length, 3)
-  const full = [ing('Salz')]
-  assert.equal(addGroupRow(full), 1)
-  assert.deepEqual(full.slice(1), [groupRow(), emptyIngredient()])
-})
-
-test('headings are not blank rows, never required, and survive submit and draft restore', () => {
+test('headings are not blank rows and survive submit and draft restore', () => {
   const rows = [groupRow('Salsa'), emptyIngredient()]
   assert.equal(isBlankIngredient(rows[0]), false)
-  assert.equal(isIngredientNameRequired(rows, 0), false)
-  assert.equal(isIngredientNameRequired(rows, 1), true)
 
-  const data = cleanRecipeData({ title: 'T', ingredients: [groupRow('Salsa'), ing('Tomaten'), emptyIngredient()], instructions: [] })
+  const sections = ingredientsToSections(rowsToIngredients([groupRow('Salsa'), ing('Tomaten'), emptyIngredient()]))
+  assert.equal(isIngredientNameRequired(sections, 1, 0), true)
+  const data = cleanRecipeData({ title: 'T', sections, instructions: [] })
   assert.deepEqual(data.ingredients, [ing('Tomaten', 'Salsa')])
 
   const restored = restoreDraft({ savedAt: 1, data: { ingredients: [groupRow('Salsa'), { name: 'Tomaten' }] } }, {})
-  assert.deepEqual(restored.ingredients, [groupRow('Salsa'), { name: 'Tomaten', amount: '', unit: '' }])
+  assert.deepEqual(restored.sections.map((s) => [s.name, s.items]), [
+    [null, []],
+    ['Salsa', [{ name: 'Tomaten', amount: '', unit: '' }]]
+  ])
+})
+
+const view = (sections) => sections.map((s) => [s.name, s.items.map((i) => i.name)])
+
+test('API ingredients become sections: ungrouped on top, groups in their order, and back', () => {
+  const sections = ingredientsToSections(quesadillas)
+  assert.deepEqual(view(sections), [
+    [null, []],
+    ['Quesadillas', ['Tortillas', 'Käse']],
+    ['Schwarze-Bohnen-Paste', ['Schwarze Bohnen']],
+    ['Salsa', ['Tomaten', 'Koriander']]
+  ])
+  assert.equal('groupName' in sections[1].items[0], false)
+  assert.equal(sections[1].items[0].id, 1)
+  assert.deepEqual(sectionsToIngredients(sections), quesadillas)
+})
+
+test('ingredients without a group gather in the top section, even between groups', () => {
+  const list = [ing('Salz'), ing('Mehl', 'Teig'), ing('Pfeffer'), ing('Tomaten', 'Salsa'), ing('Öl')]
+  const sections = ingredientsToSections(list)
+  assert.deepEqual(view(sections), [[null, ['Salz', 'Pfeffer', 'Öl']], ['Teig', ['Mehl']], ['Salsa', ['Tomaten']]])
+  assert.deepEqual(sectionsToIngredients(sections).map((i) => [i.name, i.groupName ?? null]), [
+    ['Salz', null], ['Pfeffer', null], ['Öl', null], ['Mehl', 'Teig'], ['Tomaten', 'Salsa']
+  ])
+})
+
+test('a group interrupted only by ungrouped rows becomes one card', () => {
+  const sections = ingredientsToSections([ing('Mehl', 'Teig'), ing('Salz'), ing('Ei', ' Teig '), ing('Tomaten', 'Salsa'), ing('Zucker', 'Teig')])
+  assert.deepEqual(view(sections), [[null, ['Salz']], ['Teig', ['Mehl', 'Ei']], ['Salsa', ['Tomaten']], ['Teig', ['Zucker']]])
+})
+
+test('a recipe without groups is one section, an empty one still has section 0', () => {
+  const plain = [ing('Linsen'), ing('Reis')]
+  assert.deepEqual(view(ingredientsToSections(plain)), [[null, ['Linsen', 'Reis']]])
+  assert.deepEqual(sectionsToIngredients(ingredientsToSections(plain)), plain)
+  assert.deepEqual(view(ingredientsToSections([])), [[null, []]])
+  assert.deepEqual(view(ingredientsToSections(undefined)), [[null, []]])
+})
+
+test('a card with a blank name means no group, an empty card disappears on save', () => {
+  const sections = [
+    { key: 'a', name: null, items: [ing('Salz')] },
+    { key: 'b', name: '   ', items: [ing('Pfeffer')] },
+    { key: 'c', name: 'Leer', items: [emptyIngredient()] },
+    { key: 'd', name: ' Salsa ', items: [ing('Tomaten')] }
+  ]
+  assert.deepEqual(sectionsToIngredients(sections).filter((i) => !isBlankIngredient(i)), [ing('Salz'), ing('Pfeffer'), ing('Tomaten', 'Salsa')])
+  assert.deepEqual(cleanRecipeData({ title: 'T', sections, instructions: [] }).ingredients, [ing('Salz'), ing('Pfeffer'), ing('Tomaten', 'Salsa')])
+})
+
+test('section keys are unique and never reach the API', () => {
+  const sections = ingredientsToSections(quesadillas)
+  assert.equal(new Set(sections.map((s) => s.key)).size, sections.length)
+  assert.equal(JSON.stringify(cleanRecipeData({ sections, instructions: [] })).includes(sections[1].key), false)
 })
 
 test('scaling and translation keep or replace group names', () => {
