@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026-10-05.1",
+    "datum": "05.10.2026",
+    "titel": "Neues Rezeptformular",
+    "punkte": [
+      "Unten eine feste Leiste mit Abbrechen und Speichern statt der Navigations-Tabs",
+      "Beim Anlegen zuerst die Wahl: Rezept aus Foto importieren oder von Hand eingeben",
+      "Zutaten und Schritte lassen sich am Griff per Ziehen sortieren, Gruppen sind jetzt Karten",
+      "Pflichtfelder sind markiert, Fehlermeldungen stehen direkt am Feld",
+      "Beim Verlassen mit ungespeicherten Änderungen fragt die App nach"
+    ]
+  },
+  {
     "version": "2026-10-04.2",
     "datum": "04.10.2026",
     "titel": "Neue Zutaten bleiben jetzt gespeichert",
