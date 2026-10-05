@@ -1,5 +1,5 @@
 <template>
-  <form ref="formRef" class="recipe-form" @submit.prevent="handleSubmit" @keydown.enter="blockImplicitSubmit" @focusin="openHintIndex = null">
+  <form ref="formRef" class="recipe-form" @submit.prevent="submit" @keydown.enter="blockImplicitSubmit" @focusin="openHintIndex = null">
 
     <div v-if="draftOffer" class="draft-offer" role="status">
       <span class="draft-offer-text">Entwurf {{ formatDraftTime(draftOffer.savedAt) }} wiederherstellen?</span>
@@ -495,17 +495,16 @@
       </button>
     </div>
 
-    <div class="form-actions">
-      <div v-if="saveError" class="save-error" role="alert">
-        Speichern fehlgeschlagen: {{ saveError }} Deine Eingaben sind noch da, du kannst es erneut versuchen.
-      </div>
-      <button type="button" class="btn-cancel" @click="emit('cancel')">
-        Abbrechen
-      </button>
-      <button type="submit" class="btn-submit" :disabled="saving">
-        {{ saving ? 'Wird gespeichert…' : (isEdit ? 'Rezept aktualisieren' : 'Rezept erstellen') }}
-      </button>
+    <div v-if="saveError" class="save-error" role="alert">
+      Speichern fehlgeschlagen: {{ saveError }} Deine Eingaben sind noch da, du kannst es erneut versuchen.
     </div>
+
+    <ConfirmDialog
+      v-if="confirmState"
+      v-bind="confirmState.props"
+      @confirm="confirmState.resolve(true)"
+      @cancel="confirmState.resolve(false)"
+    />
   </form>
 </template>
 
@@ -518,6 +517,7 @@ import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import TagInput from '@/components/TagInput.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { resizeImageFile } from '@/utils/resizeImage'
 import { FRACTION_KEYS, applyFraction } from '@/utils/fractionKeys'
 import { DROPDOWN_MAX_HEIGHT, dropdownPlacement } from '@/utils/dropdownPlacement'
@@ -591,7 +591,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['submit', 'cancel', 'titleChange'])
+const emit = defineEmits(['submit'])
 
 const store = useRecipeStore()
 const uiStore = useUiStore()
@@ -763,14 +763,14 @@ const closeUnitDropdown = () => {
   }, 150)
 }
 
-// Room below the field ends at the keyboard (visual viewport) or the sticky Abbrechen/Speichern bar, whichever is higher
+// Room below the field ends at the keyboard (visual viewport) or the Abbrechen/Speichern bar, whichever is higher
 const placeUnitDropdown = () => {
   const field = unitField
   if (!field?.isConnected) return
   const rect = field.getBoundingClientRect()
   const viewport = window.visualViewport
   const viewportBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight
-  const actionsTop = formRef.value?.querySelector('.form-actions')?.getBoundingClientRect().top ?? viewportBottom
+  const actionsTop = document.querySelector('.form-action-bar')?.getBoundingClientRect().top ?? viewportBottom
   const headerBottom = document.querySelector('.shell-header')?.getBoundingClientRect().bottom ?? 0
   unitPlacement.value = dropdownPlacement({
     fieldTop: rect.top,
@@ -971,10 +971,6 @@ onMounted(async () => {
   }
 })
 
-watch(() => formData.value.title, (title) => {
-  emit('titleChange', title)
-})
-
 const loadedSections = (ingredients) => {
   const sections = ingredientsToSections(ingredients)
   ensureIngredientRow(sections)
@@ -1092,7 +1088,6 @@ onBeforeUnmount(() => {
   window.visualViewport?.removeEventListener('scroll', onViewportChange)
 })
 
-defineExpose({ isDirty, saveDraftNow, discardDraft })
 
 const handleScanUpload = async (event) => {
   const files = Array.from(event.target.files)
@@ -1122,7 +1117,13 @@ const hasIngredientsOrSteps = () =>
   formData.value.instructions.some((i) => i.trim())
 
 const handleScan = async () => {
-  if (hasIngredientsOrSteps() && !confirm('Ersetzt vorhandene Zutaten und Schritte — fortfahren?')) return
+  if (hasIngredientsOrSteps() && !await askConfirm({
+    title: 'Zutaten und Schritte ersetzen?',
+    text: 'Das Foto-Ergebnis ersetzt die vorhandenen Zutaten und Arbeitsschritte.',
+    confirmLabel: 'Ersetzen',
+    cancelLabel: 'Behalten',
+    destructive: true
+  })) return
   scanning.value = true
   scanError.value = ''
   unrecognizedText.value = ''
@@ -1347,17 +1348,34 @@ const removeInstruction = (index) => {
   }
 }
 
-const handleSubmit = () => {
+// Own confirmation dialog (instead of confirm()), resolves with true/false
+const confirmState = ref(null)
+const askConfirm = (dialogProps) => new Promise((resolve) => {
+  confirmState.value = {
+    props: dialogProps,
+    resolve: (answer) => {
+      confirmState.value = null
+      resolve(answer)
+    }
+  }
+})
+
+// Saving is started by the action bar (RecipeEdit) or by submitting the form itself
+const submit = () => {
   if (props.saving) return
   if (ingredientTextMode.value) closeIngredientText(true)
+  if (!formRef.value?.reportValidity()) return
   emit('submit', cleanRecipeData(formData.value))
 }
+
+defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
 </script>
 
 <style scoped>
 .recipe-form {
   max-width: 600px;
   margin: 0 auto;
+  padding-bottom: 8px;
 }
 
 .draft-offer {
@@ -1970,54 +1988,8 @@ const handleSubmit = () => {
   background: var(--neg-weich);
 }
 
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 32px;
-  position: sticky;
-  bottom: var(--shell-bottom, 0px);
-  background: var(--color-bg, #f9fafb);
-  padding: 12px 0;
-  border-top: 1px solid var(--color-border, #e2e8f0);
-}
-
-.btn-cancel,
-.btn-submit {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.btn-cancel {
-  background: var(--color-bg-secondary, #f0f0f0);
-  color: var(--color-text-primary, #333);
-}
-
-.btn-cancel:hover {
-  background: var(--color-border, #ddd);
-}
-
-.btn-submit {
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
-}
-
-.btn-submit:hover:not(:disabled) {
-  background: var(--color-primary-dark, #2d3748);
-}
-
-.btn-submit:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
 .save-error {
-  flex-basis: 100%;
+  margin-top: 8px;
   padding: 10px 12px;
   border-radius: 6px;
   background: var(--neg-weich);

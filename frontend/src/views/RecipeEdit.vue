@@ -1,33 +1,47 @@
 <template>
   <div class="recipe-edit">
-    <header class="edit-header">
-      <h1 ref="titleRef">{{ isEdit ? (recipe?.title || 'Rezept bearbeiten') : (currentTitle || 'Neues Rezept erstellen') }}</h1>
-    </header>
-
     <div v-if="loadingRecipe" class="loading">Lädt...</div>
 
     <div v-else-if="loadError" class="error">{{ loadError }}</div>
 
-    <RecipeForm
-      v-else
-      ref="formRef"
-      :recipe="recipe"
-      :saving="saveState.saving"
-      :save-error="saveState.error"
-      @submit="handleSubmit"
-      @cancel="handleCancel"
-      @title-change="onTitleChange"
+    <template v-else>
+      <RecipeForm
+        ref="formRef"
+        :recipe="recipe"
+        :saving="saveState.saving"
+        :save-error="saveState.error"
+        @submit="handleSubmit"
+      />
+      <FormActionBar
+        :submit-label="isEdit ? 'Speichern' : 'Rezept erstellen'"
+        :saving="saveState.saving"
+        @cancel="handleCancel"
+        @submit="formRef?.submit()"
+      />
+    </template>
+
+    <ConfirmDialog
+      v-if="leaveDialog"
+      title="Änderungen verwerfen?"
+      text="Deine Eingaben in diesem Rezept gehen verloren."
+      confirm-label="Verwerfen"
+      cancel-label="Weiterbearbeiten"
+      destructive
+      @confirm="leaveDialog.resolve(true)"
+      @cancel="leaveDialog.resolve(false)"
     />
   </div>
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { runSave } from '@/utils/recipeFormData'
 import RecipeForm from '@/components/RecipeForm.vue'
+import FormActionBar from '@/components/shell/FormActionBar.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -50,53 +64,44 @@ let leaveConfirmed = false
 
 const hasUnsavedChanges = () => !leaveConfirmed && !!formRef.value?.isDirty()
 
-// Reloading or closing the tab needs no prompt: the form keeps a draft and offers it again.
-// Leaving inside the app is a deliberate step, so it still asks, and confirming throws the draft away.
-// An expired session is the exception: the draft stays so nothing is lost after logging in again.
-onBeforeRouteLeave((to) => {
+// Own dialog instead of confirm(): resolves with true for "Verwerfen", false for "Weiterbearbeiten"
+const leaveDialog = ref(null)
+const askToLeave = () => new Promise((resolve) => {
+  leaveDialog.value = {
+    resolve: (leave) => {
+      leaveDialog.value = null
+      resolve(leave)
+    }
+  }
+})
+
+// Every way out inside the app ends here: Abbrechen, the back gesture/button (vue-router restores the URL when
+// the answer is "Weiterbearbeiten") and every link, including the sidebar on large screens.
+// "Verwerfen" throws the draft away. An expired session is the exception: the draft stays so nothing is lost
+// after logging in again.
+onBeforeRouteLeave(async (to) => {
   if (!hasUnsavedChanges()) return true
   if (to.name === 'login') {
     formRef.value?.saveDraftNow()
     return true
   }
-  if (!confirm('Ungespeicherte Änderungen verwerfen?')) return false
+  if (leaveDialog.value) return false
+  if (!await askToLeave()) return false
   formRef.value?.discardDraft()
   return true
 })
 
-const titleRef = ref(null)
-const currentTitle = ref('')
-let titleObserver = null
-
-function getNavTitle() {
-  if (currentTitle.value) return currentTitle.value
-  return isEdit.value ? 'Rezept bearbeiten' : 'Neues Rezept'
-}
-
-function setupObserver() {
-  if (!titleRef.value) return
-  titleObserver?.disconnect()
-  titleObserver = new IntersectionObserver(
-    ([entry]) => {
-      if (!entry.isIntersecting) {
-        uiStore.setNavTitle(getNavTitle())
-      } else {
-        uiStore.clearNavTitle()
-      }
-    },
-    { threshold: 0 }
-  )
-  titleObserver.observe(titleRef.value)
-}
-
-function onTitleChange(title) {
-  currentTitle.value = title
-  if (uiStore.navTitle) {
-    uiStore.setNavTitle(getNavTitle())
-  }
+// Reload, closing the tab or leaving the app: the browser shows its own question (a custom text is not possible).
+// The form saves its draft on pagehide/visibilitychange anyway, so even "Verlassen" loses nothing — the next
+// visit offers the draft again.
+const onBeforeUnload = (event) => {
+  if (!hasUnsavedChanges()) return
+  event.preventDefault()
+  event.returnValue = ''
 }
 
 onMounted(async () => {
+  window.addEventListener('beforeunload', onBeforeUnload)
   if (isEdit.value) {
     try {
       await store.fetchRecipeById(route.params.id)
@@ -106,16 +111,10 @@ onMounted(async () => {
       loadingRecipe.value = false
     }
   }
-  setupObserver()
-})
-
-watch(recipe, (r) => {
-  if (r?.title) currentTitle.value = r.title
 })
 
 onUnmounted(() => {
-  titleObserver?.disconnect()
-  uiStore.clearNavTitle()
+  window.removeEventListener('beforeunload', onBeforeUnload)
 })
 
 const handleSubmit = async (recipeData) => {
@@ -142,14 +141,11 @@ const handleCancel = () => {
   padding: 24px;
 }
 
-.edit-header {
-  margin-bottom: 32px;
-}
-
-.edit-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  color: var(--color-text-primary, #333);
+@media (min-width: 1024px) {
+  .recipe-edit > .form-action-bar {
+    max-width: 600px;
+    margin: 0 auto;
+  }
 }
 
 .loading,

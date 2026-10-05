@@ -78,3 +78,8 @@ body.has-shell { --shell-bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)
   body.has-shell { padding: 0 !important; --shell-bottom: 0px; }
   .shell-nav, .shell-header, .shell-sheet-backdrop { display: none !important; }
 }
+
+/* Rezeptformular: mobil sitzt dort die Formular-Aktionsleiste an der Stelle der Tab-Leiste */
+@media (max-width: 1023px) {
+  .shell-nav.shell-nav--form { display: none; }
+}

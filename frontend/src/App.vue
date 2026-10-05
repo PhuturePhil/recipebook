@@ -23,10 +23,10 @@ const { popup: whatsNew, close: closeWhatsNew } = useUpdateCheck()
 // Seiten der App-Hülle: aktiver Tab, Seitenleisten-Punkt, Titel, Zurück-Pfeil
 const PAGES = {
   home: { tab: 'rezepte', title: 'Rezepte', search: true },
-  'recipe-new': { tab: 'neu', title: 'Neues Rezept', navTitle: true },
+  'recipe-new': { tab: 'neu', title: 'Neues Rezept' },
   ingredients: { tab: 'zutaten', title: 'Zutaten' },
   'recipe-detail': { tab: 'rezepte', title: 'Rezept', back: '/', navTitle: true },
-  'recipe-edit': { tab: 'rezepte', title: 'Rezept bearbeiten', back: true, navTitle: true },
+  'recipe-edit': { tab: 'rezepte', title: 'Rezept bearbeiten', back: true },
   'nutrition-info': { tab: 'mehr', side: 'naehrwerte', title: 'Nährwerte & Badges', back: true },
   changelog: { tab: 'mehr', side: 'neuerungen', title: 'Neuerungen', back: true },
   'admin-users': { tab: 'mehr', side: 'admin', title: 'Benutzerverwaltung', back: true },
@@ -40,6 +40,8 @@ const page = computed(() => PAGES[route.name] ?? { title: 'Rezepte' })
 const showHeader = computed(() => !!route.name && !AUTH_FLOW.includes(route.name))
 const showShell = computed(() => showHeader.value && authStore.isAuthenticated)
 const headerTitle = computed(() => (page.value.navTitle && uiStore.navTitle) || page.value.title)
+// Im Rezeptformular ersetzt dessen Aktionsleiste (RecipeEdit) mobil die Tab-Leiste; die Seitenleiste ab 1024 px bleibt
+const formMode = computed(() => ['recipe-new', 'recipe-edit'].includes(route.name))
 
 const mehr = computed(() => [
   { id: 'naehrwerte', label: 'Nährwerte & Badges', icon: 'balken', to: '/naehrwerte' },
@@ -78,6 +80,7 @@ onMounted(async () => {
   <RouterView />
   <TabBar
     v-if="showShell"
+    :class="{ 'shell-nav--form': formMode }"
     :active="page.tab ?? ''"
     :side-active="page.side ?? ''"
     :mehr="mehr"
