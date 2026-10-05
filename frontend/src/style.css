@@ -52,7 +52,8 @@ a { color: var(--akzent-text); }
   min-width: 0;
   font-family: inherit;
 }
-:where(input, select, textarea)::placeholder { color: var(--text3); }
+:where(input, select, textarea)::placeholder { color: var(--text2); }   /* ≥ 4,5:1 hell und dunkel */
+:where(input, select, textarea):focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
 input, select, textarea, button { accent-color: var(--akzent); }
 @supports (-webkit-touch-callout: none) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em); }

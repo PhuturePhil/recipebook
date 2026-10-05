@@ -1,6 +1,26 @@
 <template>
-  <form ref="formRef" class="recipe-form" @submit.prevent="submit" @keydown.enter="blockImplicitSubmit" @focusin="openHintIndex = null">
+  <form
+    ref="formRef"
+    class="recipe-form"
+    novalidate
+    @submit.prevent="submit"
+    @keydown.enter="blockImplicitSubmit"
+    @focusin="openHintIndex = null"
+  >
+    <StartChoice v-if="entry === 'choice'" @choose="chooseEntry" />
 
+    <ImportSection
+      v-else-if="entry === 'import'"
+      :images="selectedImages"
+      :scanning="scanning"
+      :error="scanError"
+      @files="addScanImages"
+      @remove="removeScanImage"
+      @analyze="handleScan"
+      @manual="entry = 'form'"
+    />
+
+    <template v-else>
     <div v-if="draftOffer" class="draft-offer" role="status">
       <span class="draft-offer-text">Entwurf {{ formatDraftTime(draftOffer.savedAt) }} wiederherstellen?</span>
       <div class="draft-offer-actions">
@@ -9,60 +29,23 @@
       </div>
     </div>
 
-    <div class="scan-section">
-      <p class="scan-hint">Rezept aus Foto laden</p>
-      <div v-if="!scanned" class="scan-upload">
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          @change="handleScanUpload"
-          id="scan-upload"
-        />
-        <label for="scan-upload" class="btn-scan">
-          {{ selectedImages.length > 0 ? 'Weitere Bilder hinzufügen' : 'Rezeptfotos auswählen' }}
-        </label>
-        <div v-if="selectedImages.length > 0" class="selected-images">
-          <div v-for="(img, index) in selectedImages" :key="index" class="selected-image-item">
-            <img :src="img.previewUrl" :alt="img.fileName" />
-            <span class="image-name">{{ img.fileName }}</span>
-            <button type="button" class="btn-remove-scan-image" aria-label="Bild entfernen" @click="removeScanImage(index)">
-              <AppIcon name="schliessen" :size="16" />
-            </button>
-          </div>
-        </div>
-        <button
-          v-if="selectedImages.length > 0"
-          type="button"
-          class="btn-analyze"
-          :class="{ loading: scanning }"
-          :disabled="scanning"
-          @click="handleScan"
-        >
-          {{ scanning ? 'Wird analysiert...' : `${selectedImages.length} ${selectedImages.length === 1 ? 'Bild' : 'Bilder'} analysieren` }}
-        </button>
-      </div>
-      <div v-if="scanError" class="scan-error">
-        {{ scanError }}
-      </div>
-      <div v-if="unrecognizedText" class="unrecognized-text">
-        <label>Vollständiger erkannter Text (zur Kontrolle):</label>
-        <textarea readonly :value="unrecognizedText" rows="4"></textarea>
-        <button type="button" class="btn-copy" @click="copyUnrecognizedText">
-          {{ copied ? 'Kopiert!' : 'Text kopieren' }}
-        </button>
-      </div>
-    </div>
+    <ImportBanner v-if="importedFromScan" :raw-text="unrecognizedText" @close="importedFromScan = false" />
+
+    <p class="required-legend">* Pflichtfeld</p>
 
     <div class="form-group">
-      <label for="title">Titel</label>
+      <label for="title">Titel<span class="req" aria-hidden="true">*</span></label>
       <input
         id="title"
         v-model="formData.title"
         type="text"
         required
+        aria-required="true"
+        :aria-invalid="errors.title ? 'true' : undefined"
+        :aria-describedby="errors.title ? 'title-error' : undefined"
         placeholder="Rezeptname eingeben"
       />
+      <p v-if="errors.title" id="title-error" class="field-error" role="alert">{{ errors.title }}</p>
     </div>
 
     <div class="form-group">
@@ -112,27 +95,36 @@
       <label>Personenanzahl</label>
       <div class="servings-fields">
         <div class="servings-field">
-          <label for="servings-from" class="field-sublabel">Von</label>
+          <label for="servings-from" class="field-sublabel">Von<span class="req" aria-hidden="true">*</span></label>
           <input
             id="servings-from"
             v-model.number="formData.baseServings"
             type="number"
+            inputmode="numeric"
             min="1"
             max="100"
             required
+            aria-required="true"
+            :aria-invalid="errors.baseServings ? 'true' : undefined"
+            :aria-describedby="errors.baseServings ? 'servings-from-error' : undefined"
           />
         </div>
         <div class="servings-field">
-          <label for="servings-to" class="field-sublabel">Bis (optional)</label>
+          <label for="servings-to" class="field-sublabel">Bis</label>
           <input
             id="servings-to"
             v-model.number="formData.servingsTo"
             type="number"
+            inputmode="numeric"
             min="1"
             max="100"
+            :aria-invalid="errors.servingsTo ? 'true' : undefined"
+            :aria-describedby="errors.servingsTo ? 'servings-to-error' : undefined"
           />
         </div>
       </div>
+      <p v-if="errors.baseServings" id="servings-from-error" class="field-error" role="alert">{{ errors.baseServings }}</p>
+      <p v-if="errors.servingsTo" id="servings-to-error" class="field-error" role="alert">{{ errors.servingsTo }}</p>
     </div>
 
     <div class="form-group">
@@ -141,10 +133,14 @@
         id="prep-time"
         v-model.number="formData.prepTimeMinutes"
         type="number"
+        inputmode="numeric"
         min="1"
         max="10080"
         placeholder="z.B. 30"
+        :aria-invalid="errors.prepTimeMinutes ? 'true' : undefined"
+        :aria-describedby="errors.prepTimeMinutes ? 'prep-time-error' : undefined"
       />
+      <p v-if="errors.prepTimeMinutes" id="prep-time-error" class="field-error" role="alert">{{ errors.prepTimeMinutes }}</p>
     </div>
 
     <div class="form-group">
@@ -236,20 +232,20 @@
             :aria-invalid="showSourceUrlError ? 'true' : 'false'"
             :aria-describedby="showSourceUrlError ? 'source-url-error' : null"
             @blur="onSourceUrlBlur"
-            @invalid="sourceUrlTouched = true"
           />
           <p v-if="showSourceUrlError" id="source-url-error" class="field-error" role="alert">{{ sourceUrlError }}</p>
         </div>
         <input
           v-model="formData.page"
           type="text"
+          inputmode="numeric"
           placeholder="Seite (bei Büchern)"
         />
       </div>
     </div>
 
     <div class="form-group">
-      <label>Zutaten</label>
+      <label id="ingredients-label">Zutaten<span class="req" aria-hidden="true">*</span></label>
       <div v-if="ingredientTextMode" class="ingredient-text-editor">
         <textarea
           ref="ingredientTextRef"
@@ -298,6 +294,7 @@
         </div>
         <div v-else class="ingredient-row">
           <div class="amount-input-wrapper">
+            <!-- bewusst ohne inputmode: Brüche „1/2“ und Bereiche „1–2“ brauchen die volle Tastatur, ½ ¼ ¾ kommen über die Bruch-Tasten -->
             <input
               v-model="row.item.amount"
               type="text"
@@ -380,6 +377,9 @@
               :aria-controls="`name-suggestions-${index}`"
               :aria-activedescendant="nameSuggestionsFor(index).length && highlightedSuggestion >= 0 ? `name-suggestion-${index}-${highlightedSuggestion}` : undefined"
               :required="isIngredientNameRequired(formData.sections, row.s, row.i)"
+              :aria-required="isIngredientNameRequired(formData.sections, row.s, row.i) ? 'true' : undefined"
+              :aria-invalid="invalidNameRows.has(row.key) ? 'true' : undefined"
+              :aria-describedby="invalidNameRows.has(row.key) ? 'ingredients-error' : undefined"
               @input="onNameInput(index)"
               @blur="closeNameSuggestions"
               @keydown.enter="onNameEnter($event, index)"
@@ -446,6 +446,7 @@
           </div>
         </div>
         </template>
+        <p v-if="errors.ingredients" id="ingredients-error" class="field-error" role="alert">{{ errors.ingredients }}</p>
         <div class="ingredient-buttons">
           <button type="button" class="btn-add" @click="addIngredient">
             + Zutat hinzufügen
@@ -461,7 +462,7 @@
     </div>
 
     <div class="form-group">
-      <label>Arbeitsanweisungen</label>
+      <label id="instructions-label">Arbeitsanweisungen<span class="req" aria-hidden="true">*</span></label>
       <div v-for="(instruction, index) in formData.instructions" :key="index" class="instruction-row">
         <span class="step-number">{{ index + 1 }}.</span>
         <textarea
@@ -469,6 +470,9 @@
           rows="1"
           placeholder="Arbeitsschritt eingeben"
           :required="isInstructionRequired(formData.instructions, index)"
+          :aria-required="isInstructionRequired(formData.instructions, index) ? 'true' : undefined"
+          :aria-invalid="errors.instructions && index === 0 ? 'true' : undefined"
+          :aria-describedby="errors.instructions && index === 0 ? 'instructions-error' : undefined"
           @input="autoResize"
           @keydown.alt.up.prevent="moveInstruction(index, -1, $event)"
           @keydown.alt.down.prevent="moveInstruction(index, 1, $event)"
@@ -490,10 +494,12 @@
           </button>
         </div>
       </div>
+      <p v-if="errors.instructions" id="instructions-error" class="field-error" role="alert">{{ errors.instructions }}</p>
       <button type="button" class="btn-add" @click="addInstruction">
         + Schritt hinzufügen
       </button>
     </div>
+    </template>
 
     <div v-if="saveError" class="save-error" role="alert">
       Speichern fehlgeschlagen: {{ saveError }} Deine Eingaben sind noch da, du kannst es erneut versuchen.
@@ -518,6 +524,9 @@ import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import TagInput from '@/components/TagInput.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import StartChoice from '@/components/form/StartChoice.vue'
+import ImportSection from '@/components/form/ImportSection.vue'
+import ImportBanner from '@/components/form/ImportBanner.vue'
 import { resizeImageFile } from '@/utils/resizeImage'
 import { FRACTION_KEYS, applyFraction } from '@/utils/fractionKeys'
 import { DROPDOWN_MAX_HEIGHT, dropdownPlacement } from '@/utils/dropdownPlacement'
@@ -537,6 +546,9 @@ import {
   moveRow,
   preventsImplicitSubmit,
   formSnapshot,
+  validateRecipeForm,
+  firstError,
+  ingredientsWithoutName,
   languageChoice,
   applyLanguageChoice,
   autoLanguageLabel
@@ -598,11 +610,10 @@ const uiStore = useUiStore()
 const authStore = useAuthStore()
 const isEdit = ref(!!props.recipe)
 const scanning = ref(false)
-const scanned = ref(false)
 const scanError = ref('')
 const unrecognizedText = ref('')
-const copied = ref(false)
 const selectedImages = ref([])
+const importedFromScan = ref(false)
 
 const formData = ref({
   title: '',
@@ -648,6 +659,27 @@ const languageSelection = computed({
 const savedSnapshot = ref(formSnapshot(formData.value))
 
 const isDirty = () => formSnapshot(formData.value) !== savedSnapshot.value
+
+// Errors appear on saving only; while typing, a fixed field loses its message (a still wrong one keeps it)
+const errors = ref({})
+
+watch(formData, () => {
+  const shown = Object.keys(errors.value)
+  if (!shown.length) return
+  const now = validateRecipeForm(formData.value)
+  errors.value = Object.fromEntries(shown.filter((field) => now[field]).map((field) => [field, now[field]]))
+}, { deep: true })
+
+// Rows marked red after a failed save: started rows without a name, or the first row when there is no ingredient
+const invalidNameRows = computed(() => {
+  if (!errors.value.ingredients) return new Set()
+  const missing = ingredientsWithoutName(formData.value.sections)
+  const rows = ingredientRows.value.filter((row) => row.item)
+  const marked = missing.length
+    ? rows.filter((row) => missing.some(([s, i]) => s === row.s && i === row.i))
+    : rows.slice(0, 1)
+  return new Set(marked.map((row) => row.key))
+})
 
 const activeUnitIndex = ref(null)
 const highlightedUnit = ref(-1)
@@ -737,15 +769,13 @@ const onSourceFieldKeydown = (event) => {
 // Link: https:// wird beim Verlassen ergänzt; die Meldung erscheint erst danach bzw. beim Speichern
 const sourceUrlRef = ref(null)
 const sourceUrlTouched = ref(false)
-const sourceUrlError = computed(() => sourceUrlProblem(formData.value.sourceUrl))
-const showSourceUrlError = computed(() => sourceUrlTouched.value && !!sourceUrlError.value)
+const sourceUrlError = computed(() => errors.value.sourceUrl || sourceUrlProblem(formData.value.sourceUrl))
+const showSourceUrlError = computed(() => !!errors.value.sourceUrl || (sourceUrlTouched.value && !!sourceUrlError.value))
 
 const onSourceUrlBlur = () => {
   formData.value.sourceUrl = completeSourceUrl(formData.value.sourceUrl)
   sourceUrlTouched.value = true
 }
-
-watch([sourceUrlError, sourceUrlRef], ([message, el]) => el?.setCustomValidity(message), { immediate: true })
 
 const selectUnit = (index, value) => {
   itemAt(index).unit = value
@@ -1048,6 +1078,16 @@ watch(formData, () => {
   draftTimer = setTimeout(saveDraftNow, DRAFT_DELAY_MS)
 }, { deep: true })
 
+// Neu: first the choice between photo and typing; an existing draft (or editing) goes straight to the form
+const entry = ref(isEdit.value || draftOffer.value ? 'form' : 'choice')
+
+const chooseEntry = async (choice) => {
+  entry.value = choice
+  if (choice !== 'form') return
+  await nextTick()
+  document.getElementById('title')?.focus()
+}
+
 const restoreDraftOffer = () => {
   formData.value = restoreDraft(draftOffer.value, formData.value)
   draftOffer.value = null
@@ -1055,8 +1095,10 @@ const restoreDraftOffer = () => {
   resizeAllTextareas()
 }
 
+// Without own input an empty form makes no sense: back to the choice
 const discardDraftOffer = () => {
   discardDraft()
+  if (!isEdit.value && !isDirty()) entry.value = 'choice'
 }
 
 const onViewportChange = () => {
@@ -1089,10 +1131,7 @@ onBeforeUnmount(() => {
 })
 
 
-const handleScanUpload = async (event) => {
-  const files = Array.from(event.target.files)
-  if (!files.length) return
-
+const addScanImages = async (files) => {
   for (const file of files) {
     const base64 = await readFileAsBase64(file)
     const previewUrl = URL.createObjectURL(file)
@@ -1103,8 +1142,6 @@ const handleScanUpload = async (event) => {
       previewUrl
     })
   }
-
-  event.target.value = ''
 }
 
 const removeScanImage = (index) => {
@@ -1155,7 +1192,9 @@ const handleScan = async () => {
     }
 
     selectedImages.value.forEach(img => URL.revokeObjectURL(img.previewUrl))
-    scanned.value = true
+    selectedImages.value = []
+    importedFromScan.value = true
+    entry.value = 'form'
     await resizeAllTextareas()
   } catch {
     scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
@@ -1178,17 +1217,6 @@ const readFileAsBase64 = (file) => {
   })
 }
 
-const copyUnrecognizedText = async () => {
-  try {
-    await navigator.clipboard.writeText(unrecognizedText.value)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
-  } catch {
-    scanError.value = 'Text konnte nicht kopiert werden.'
-  }
-}
-
-// "+ Zutat hinzufügen" adds to the ingredients without a group (the cards have their own button)
 const addIngredient = async () => {
   const item = emptyIngredient()
   formData.value.sections[0].items.push(item)
@@ -1361,10 +1389,34 @@ const askConfirm = (dialogProps) => new Promise((resolve) => {
 })
 
 // Saving is started by the action bar (RecipeEdit) or by submitting the form itself
-const submit = () => {
+const errorTarget = (field) => {
+  const form = formRef.value
+  switch (field) {
+    case 'title': return document.getElementById('title')
+    case 'baseServings': return document.getElementById('servings-from')
+    case 'servingsTo': return document.getElementById('servings-to')
+    case 'prepTimeMinutes': return document.getElementById('prep-time')
+    case 'sourceUrl': return sourceUrlRef.value
+    case 'ingredients': return form?.querySelector('.ingredient-name[aria-invalid="true"]') ?? form?.querySelector('.ingredient-name')
+    case 'instructions': return form?.querySelector('.instruction-row textarea')
+    default: return null
+  }
+}
+
+// Checks first (the form has novalidate): errors go next to the fields, the first one is scrolled to and focused
+const submit = async () => {
   if (props.saving) return
   if (ingredientTextMode.value) closeIngredientText(true)
-  if (!formRef.value?.reportValidity()) return
+  entry.value = 'form'
+  errors.value = validateRecipeForm(formData.value)
+  const field = firstError(errors.value)
+  if (field) {
+    await nextTick()
+    const el = errorTarget(field)
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el?.focus({ preventScroll: true })
+    return
+  }
   emit('submit', cleanRecipeData(formData.value))
 }
 
@@ -1408,13 +1460,14 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
 }
 
 .btn-draft-restore {
-  border: none;
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
+  border: 1px solid var(--linie);
+  background: var(--flaeche);
+  color: var(--text);
+  font-weight: 600;
 }
 
 .btn-draft-restore:hover {
-  background: var(--color-primary-dark, #2d3748);
+  background: var(--linie);
 }
 
 .btn-draft-discard {
@@ -1425,168 +1478,6 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
 
 .btn-draft-discard:hover {
   background: var(--color-border, #ddd);
-}
-
-.scan-section {
-  background: var(--color-bg-secondary, #f8f8f8);
-  border: 2px dashed var(--color-border, #ddd);
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 32px;
-  text-align: center;
-}
-
-.scan-hint {
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--color-text-primary, #333);
-  margin: 0 0 12px 0;
-}
-
-.scan-upload input[type='file'] {
-  display: none;
-}
-
-.btn-scan {
-  display: inline-block;
-  padding: 10px 20px;
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  transition: background-color 0.2s ease;
-}
-
-.btn-scan:hover {
-  background: var(--color-primary-dark, #2d3748);
-}
-
-.selected-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
-  justify-content: center;
-}
-
-.selected-image-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 100px;
-}
-
-.selected-image-item img {
-  width: 100px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid var(--color-border, #ddd);
-}
-
-.image-name {
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #999);
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.btn-remove-scan-image {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: none;
-  background: var(--color-error, #e53e3e);
-  color: var(--akzent-kontrast);
-  font-size: 0.7rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.btn-remove-scan-image:hover {
-  background: var(--neg);
-}
-
-.btn-analyze {
-  display: inline-block;
-  margin-top: 14px;
-  padding: 10px 24px;
-  background: var(--color-success, #38a169);
-  color: var(--akzent-kontrast);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  transition: background-color 0.2s ease;
-}
-
-.btn-analyze:hover:not(:disabled) {
-  background: var(--pos);
-}
-
-.btn-analyze.loading,
-.btn-analyze:disabled {
-  background: var(--color-text-muted, #999);
-  cursor: not-allowed;
-}
-
-.scan-error {
-  margin-top: 12px;
-  color: var(--color-error, #e53e3e);
-  font-size: 0.875rem;
-}
-
-.unrecognized-text {
-  margin-top: 16px;
-  text-align: left;
-}
-
-.unrecognized-text label {
-  display: block;
-  font-weight: 600;
-  font-size: 0.875rem;
-  margin-bottom: 6px;
-  color: var(--color-text-primary, #333);
-}
-
-.unrecognized-text textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-family: inherit;
-  box-sizing: border-box;
-  background: var(--flaeche);
-  resize: vertical;
-}
-
-.btn-copy {
-  margin-top: 8px;
-  padding: 6px 14px;
-  border: 1px solid var(--color-primary, #4a5568);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--color-primary, #4a5568);
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
-}
-
-.btn-copy:hover {
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
 }
 
 .form-group {
@@ -1685,31 +1576,28 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px;
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
+  min-height: 44px;
+  padding: 0 18px;
+  background: var(--flaeche2);
+  border: 1px solid var(--linie);
+  color: var(--text);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.95rem;
-  font-weight: 400;
+  font-weight: 600;
   transition: background-color 0.2s ease;
 }
 
 .btn-image-pick:hover {
-  background: var(--color-primary-dark, #2d3748);
+  background: var(--linie);
 }
 
-.image-upload.has-image .btn-image-pick {
-  background: var(--color-bg-secondary, #f0f0f0);
-  color: var(--color-text-primary, #333);
-}
-
-.image-upload.has-image .btn-image-pick:hover {
-  background: var(--color-border, #ddd);
+.btn-image-pick svg {
+  flex-shrink: 0;
 }
 
 .visually-hidden:focus-visible + .btn-image-pick {
-  outline: 2px solid var(--color-primary, #4a5568);
+  outline: 2px solid var(--akzent);
   outline-offset: 2px;
 }
 
@@ -1748,14 +1636,6 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
   background: var(--neg-weich);
 }
 
-.form-group input:focus,
-.form-group textarea:focus,
-.servings-field input:focus {
-  outline: none;
-  border-color: var(--color-primary, #4a5568);
-  box-shadow: 0 0 0 3px rgba(74, 85, 104, 0.1);
-}
-
 .source-fields {
   display: flex;
   flex-direction: column;
@@ -1771,8 +1651,22 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
   box-sizing: border-box;
 }
 
-.source-url-field input[aria-invalid='true'] {
-  border-color: var(--color-error, #e53e3e);
+.req {
+  margin-left: 2px;
+}
+
+.required-legend {
+  margin: 0 0 16px;
+  font-size: 0.85rem;
+  color: var(--text2);
+}
+
+.recipe-form [aria-invalid='true'] {
+  border-color: var(--neg);
+}
+
+.recipe-form [aria-invalid='true']:focus-visible {
+  outline-color: var(--neg);
 }
 
 .field-error {
@@ -1893,16 +1787,17 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
 
 .btn-apply-text {
   padding: 8px 16px;
-  border: none;
+  border: 1px solid var(--linie);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
+  font-weight: 600;
+  background: var(--flaeche);
+  color: var(--text);
 }
 
 .btn-apply-text:hover {
-  background: var(--color-primary-dark, #2d3748);
+  background: var(--linie);
 }
 
 @media (max-width: 600px) {

@@ -13,7 +13,7 @@
           v-model="query"
           type="text"
           autocomplete="off"
-          :placeholder="modelValue.length ? 'Weiteren Tag hinzufügen' : 'Leer lassen: Tags werden automatisch vergeben'"
+          :placeholder="modelValue.length ? 'Weiteren Tag hinzufügen' : 'Leer lassen für automatische Vergabe'"
           @focus="open = true"
           @blur="onBlur"
           @keydown="onKeydown"
@@ -99,6 +99,12 @@ const onKeydown = (event) => {
   border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
   background: var(--flaeche);
+}
+
+/* Das Eingabefeld selbst ist randlos, der Fokus-Ring sitzt deshalb am Rahmen */
+.tag-input__chips:has(input:focus-visible) {
+  outline: 2px solid var(--akzent);
+  outline-offset: 1px;
 }
 
 .tag-input__chip {
