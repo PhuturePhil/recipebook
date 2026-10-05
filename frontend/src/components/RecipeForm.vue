@@ -2,6 +2,7 @@
   <form
     ref="formRef"
     class="recipe-form"
+    :class="{ 'is-dragging': draggingIngredient }"
     novalidate
     @submit.prevent="submit"
     @keydown.enter="blockImplicitSubmit"
@@ -268,6 +269,9 @@
           group="zutaten"
           v-bind="DRAG_OPTIONS"
           class="ingredient-list"
+          :class="{ 'is-empty': !formData.sections[0].items.length }"
+          @start="draggingIngredient = true"
+          @end="draggingIngredient = false"
         >
           <template #item="{ element, index }">
             <IngredientRow
@@ -302,6 +306,8 @@
                 group="zutaten"
                 v-bind="DRAG_OPTIONS"
                 class="group-items"
+                @start="draggingIngredient = true"
+                @end="draggingIngredient = false"
               >
                 <template #item="{ element, index }">
                   <IngredientRow
@@ -544,6 +550,9 @@ const DRAG_OPTIONS = {
   delayOnTouchOnly: true,
   touchStartThreshold: 4
 }
+
+// Without ingredients outside groups the top list takes no room; while dragging it opens as drop zone
+const draggingIngredient = ref(false)
 
 // The group cards as one list for dragging; "ohne Gruppe" (index 0) always stays on top
 const groupSections = computed({
@@ -1403,6 +1412,16 @@ defineExpose({ isDirty, saveDraftNow, discardDraft, submit })
 
 .ingredient-list {
   min-height: 44px;
+}
+
+.ingredient-list.is-empty {
+  min-height: 0;
+}
+
+.is-dragging .ingredient-list.is-empty {
+  min-height: 44px;
+  border: 1px dashed var(--linie);
+  border-radius: 8px;
 }
 
 .group-items {

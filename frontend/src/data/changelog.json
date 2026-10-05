@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-10-05.2",
+    "datum": "05.10.2026",
+    "titel": "Keine Lücke über der ersten Gruppe",
+    "punkte": [
+      "Stehen alle Zutaten in Gruppen, zeigt das Formular über der ersten Gruppe keinen leeren Platz mehr – beim Ziehen erscheint dort ein Feld für Zutaten ohne Gruppe"
+    ]
+  },
+  {
     "version": "2026-10-05.1",
     "datum": "05.10.2026",
     "titel": "Neues Rezeptformular",
