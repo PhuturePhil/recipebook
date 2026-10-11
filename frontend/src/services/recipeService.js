@@ -60,6 +60,42 @@ class RecipeService {
     return await response.json()
   }
 
+  // Bewertungen (neueste zuerst); jeder eingeloggte Nutzer darf jedes Rezept bewerten
+  async getRatings(recipeId) {
+    const response = await fetch(`${API_BASE_URL}/recipes/${recipeId}/ratings`, {
+      headers: { ...getAuthHeaders() }
+    })
+    if (!response.ok) {
+      throw await httpError(response)
+    }
+    return await response.json()
+  }
+
+  async addRating(recipeId, { stars, comment }) {
+    const response = await fetch(`${API_BASE_URL}/recipes/${recipeId}/ratings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ stars, comment })
+    })
+    if (!response.ok) {
+      throw await httpError(response)
+    }
+    return await response.json()
+  }
+
+  async deleteRating(recipeId, ratingId) {
+    const response = await fetch(`${API_BASE_URL}/recipes/${recipeId}/ratings/${ratingId}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() }
+    })
+    if (!response.ok) {
+      throw await httpError(response)
+    }
+  }
+
   // Recipe images need the auth header, so they are fetched here instead of via <img src>.
   // The URL carries a content hash, which lets the browser cache answer repeat visits.
   async getImageObjectUrl(imageUrl) {

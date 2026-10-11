@@ -46,6 +46,8 @@ const toSummary = (recipe) => ({
   tags: recipe.tags ?? [],
   createdAt: recipe.createdAt ?? null,
   nutrition: recipe.nutrition ?? null,
+  ratingAvg: recipe.ratingAvg ?? null,
+  ratingCount: recipe.ratingCount ?? null,
 })
 
 export const useRecipeStore = defineStore('recipe', {
@@ -131,6 +133,16 @@ export const useRecipeStore = defineStore('recipe', {
       this._forceRefresh = true
     },
 
+    // Nach Bewerten/Löschen sofort in der Liste zeigen; der nächste Abruf holt die Werte ohnehin neu
+    setRatingSummary(id, avg, count) {
+      const entry = this.recipes.find((r) => r.id === Number(id))
+      if (entry) {
+        entry.ratingAvg = count ? avg : null
+        entry.ratingCount = count || null
+      }
+      this._forceRefresh = true
+    },
+
     async fetchRecipeById(id) {
       this.loading = true
       this.error = null
@@ -173,7 +185,9 @@ export const useRecipeStore = defineStore('recipe', {
         const data = await recipeService.update(id, recipe)
         const index = this.recipes.findIndex((r) => r.id === numericId)
         if (index !== -1) {
-          this.recipes[index] = toSummary(data)
+          // Die PUT-Antwort kennt keine Bewertungen – die bisherigen Werte bleiben bis zum nächsten Laden stehen
+          const { ratingAvg, ratingCount } = this.recipes[index]
+          this.recipes[index] = { ...toSummary(data), ratingAvg, ratingCount }
         }
         this._forceRefresh = true
         if (this.currentRecipe && this.currentRecipe.id === numericId) {

@@ -7,6 +7,7 @@ import {
   fuzzyIncludes,
   filterRecipes,
   sortRecipes,
+  SORT_OPTIONS,
 } from './recipeSearch.js'
 
 const recipes = [
@@ -121,4 +122,26 @@ test('Neueste zuerst: gestaffelter Bestand ergibt absteigende IDs, Rezepte ohne 
   const backfilled = [5, 17, 9, 40, 23].sort((a, b) => a - b).map((id, i) => ({ id, createdAt: minute(i) }))
   const list = [...backfilled, { id: 99 }, { id: 98, createdAt: 'kaputt' }, { id: 41, createdAt: minute(30) }]
   assert.deepEqual(sortRecipes(list, 'newest').map((r) => r.id), [41, 40, 23, 17, 9, 5, 99, 98])
+})
+
+test('sortRecipes „Beste Bewertung“: Durchschnitt, dann Anzahl, dann ID; unbewertete ans Ende', () => {
+  const list = [
+    { id: 1, ratingAvg: 4.5, ratingCount: 2 },
+    { id: 2 },
+    { id: 3, ratingAvg: 5, ratingCount: 1 },
+    { id: 4, ratingAvg: 4.5, ratingCount: 4 },
+    { id: 5, ratingAvg: null, ratingCount: null },
+    { id: 6, ratingAvg: 4.5, ratingCount: 2 },
+    { id: 7, ratingAvg: 2, ratingCount: 3 },
+  ]
+  assert.deepEqual(sortRecipes(list, 'rating').map((r) => r.id), [3, 4, 6, 1, 7, 5, 2])
+  assert.deepEqual(list.map((r) => r.id), [1, 2, 3, 4, 5, 6, 7], 'Eingabe bleibt unverändert')
+})
+
+test('sortRecipes „Beste Bewertung“ ohne jede Bewertung sortiert nach ID absteigend', () => {
+  assert.deepEqual(sortRecipes([{ id: 2 }, { id: 9 }, { id: 5 }], 'rating').map((r) => r.id), [9, 5, 2])
+})
+
+test('SORT_OPTIONS enthält „Beste Bewertung“', () => {
+  assert.ok(SORT_OPTIONS.some((o) => o.value === 'rating' && o.label === 'Beste Bewertung'))
 })

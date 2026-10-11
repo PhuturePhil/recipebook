@@ -20,6 +20,14 @@
         >
           {{ recipe.nutrition.complete ? '' : 'mind. ' }}{{ kcalPerServing }} kcal
         </span>
+        <span
+          v-if="recipe.ratingCount"
+          class="recipe-card__count recipe-card__rating"
+          :title="`Durchschnitt aus ${ratingCountLabel(recipe.ratingCount)}`"
+        >
+          <RatingStars :model-value="1" :count="1" :size="13" readonly aria-hidden="true" />
+          {{ ratingLabel(recipe.ratingAvg, recipe.ratingCount) }}
+        </span>
       </div>
       <div v-if="recipe.tags?.length" class="recipe-card__tags">
         <button
@@ -36,6 +44,7 @@
           {{ badge }}
         </span>
       </div>
+      <p v-if="createdText" class="recipe-card__created">{{ createdText }}</p>
     </div>
   </div>
 </template>
@@ -46,6 +55,8 @@ import { useRouter } from 'vue-router'
 import { useRecipeImage } from '@/composables/useRecipeImage'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { tagSearchTerm } from '@/utils/recipeTags'
+import { ratingLabel, ratingCountLabel, createdLine } from '@/utils/ratings'
+import RatingStars from '@/components/RatingStars.vue'
 
 const props = defineProps({
   recipe: {
@@ -65,6 +76,8 @@ const kcalPerServing = computed(() => {
   const kcal = props.recipe.nutrition?.perServing?.kcal
   return kcal == null ? null : Math.round(kcal).toLocaleString('de-DE')
 })
+
+const createdText = computed(() => createdLine(props.recipe.createdBy, props.recipe.createdAt))
 
 const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/\s+/g, '-')
 
@@ -145,9 +158,23 @@ const navigateToDetail = () => {
 
 .recipe-card__meta {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   font-size: 0.875rem;
   color: var(--color-text-muted, #999);
+}
+
+.recipe-card__rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-secondary, #666);
+}
+
+.recipe-card__created {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  color: var(--text3);
 }
 
 .recipe-card__tags {

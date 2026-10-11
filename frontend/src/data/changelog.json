@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026-10-11.1",
+    "datum": "11.10.2026",
+    "titel": "Rezepte bewerten",
+    "punkte": [
+      "Unten auf jeder Rezeptseite lassen sich 1 bis 5 Sterne vergeben, auf Wunsch mit Kommentar",
+      "Man kann ein Rezept auch später noch einmal bewerten – frühere Bewertungen bleiben als Verlauf sichtbar, eigene lassen sich löschen",
+      "In der Rezeptliste stehen Durchschnitt und Anzahl der Bewertungen, neue Sortierung „Beste Bewertung“",
+      "Auf Karte und Rezeptseite steht dezent, wer das Rezept wann angelegt hat",
+      "Geteilte Links und PDFs zeigen keine Bewertungen"
+    ]
+  },
+  {
     "version": "2026-10-05.2",
     "datum": "05.10.2026",
     "titel": "Keine Lücke über der ersten Gruppe",

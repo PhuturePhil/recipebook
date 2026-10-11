@@ -68,7 +68,19 @@
         >
           {{ nutrition.coverage.complete ? '' : 'mind. ' }}{{ formatKcal(nutrition.perServing.kcal) }} kcal pro Portion
         </button>
+        <button
+          v-if="ratingStats.count"
+          type="button"
+          class="meta-item meta-item--rating"
+          :title="`Durchschnitt aus ${ratingCountLabel(ratingStats.count)}`"
+          @click="scrollToRatings"
+        >
+          <RatingStars :model-value="1" :count="1" :size="15" readonly aria-hidden="true" />
+          {{ ratingLabel(ratingStats.avg, ratingStats.count) }}
+        </button>
       </div>
+
+      <p v-if="createdText" class="recipe-createdby">{{ createdText }}</p>
 
       <div v-if="recipe.tags?.length" class="recipe-tags">
         <button
@@ -135,6 +147,67 @@
         </ol>
       </section>
 
+      <section ref="ratingsSection" class="recipe-section recipe-ratings" aria-labelledby="ratings-title">
+        <h2 id="ratings-title">Bewertungen</h2>
+
+        <p v-if="ratingsError" class="ratings-state ratings-state--error">{{ ratingsError }}</p>
+        <p v-else-if="ratingsLoading && !ratings.length" class="ratings-state">Bewertungen werden geladen…</p>
+
+        <div v-if="ratingStats.count" class="ratings-summary">
+          <RatingStars :model-value="Math.round(ratingStats.avg)" :size="20" readonly />
+          <span class="ratings-summary__value">{{ formatRating(ratingStats.avg) }}</span>
+          <span class="ratings-summary__count">bei {{ ratingCountLabel(ratingStats.count) }}</span>
+        </div>
+        <p v-else-if="!ratingsLoading && !ratingsError" class="ratings-state">Noch keine Bewertungen – sei die/der Erste!</p>
+
+        <form class="rating-form" novalidate @submit.prevent="submitRating">
+          <h3 class="rating-form__title">Rezept bewerten</h3>
+          <RatingStars v-model="newStars" :size="28" label="Sterne für dieses Rezept" :disabled="ratingSubmitting" />
+          <label class="rating-form__label" for="rating-comment">Kommentar (optional)</label>
+          <textarea
+            id="rating-comment"
+            v-model="newComment"
+            class="rating-form__comment"
+            rows="3"
+            maxlength="2000"
+            placeholder="Wie hat es geschmeckt? Was würdest du anders machen?"
+            :disabled="ratingSubmitting"
+          ></textarea>
+          <p v-if="ratingSubmitError" class="ratings-state ratings-state--error" role="alert">{{ ratingSubmitError }}</p>
+          <button type="submit" class="btn-rate" :disabled="!newStars || ratingSubmitting">
+            {{ ratingSubmitting ? 'Wird gespeichert…' : 'Bewertung abschicken' }}
+          </button>
+        </form>
+
+        <ul v-if="ratings.length" class="rating-list">
+          <li v-for="r in visibleRatings" :key="r.id" class="rating-entry">
+            <div class="rating-entry__head">
+              <RatingStars :model-value="r.stars" :size="15" readonly />
+              <span class="rating-entry__name">{{ raterName(r) }}</span>
+              <span v-if="r.own" class="rating-entry__badge">Du</span>
+            </div>
+            <div class="rating-entry__meta">
+              <span class="rating-entry__date">{{ formatRatingDate(r.createdAt) }}</span>
+              <span v-if="r.updated" class="rating-entry__updated">aktualisiert</span>
+              <button
+                v-if="r.own || authStore.isAdmin"
+                type="button"
+                class="rating-entry__delete"
+                @click="ratingToDelete = r"
+              >Löschen</button>
+            </div>
+            <p v-if="r.comment" class="rating-entry__comment">{{ r.comment }}</p>
+          </li>
+        </ul>
+        <button
+          v-if="ratings.length > RATINGS_PREVIEW"
+          type="button"
+          class="rating-list__toggle"
+          :aria-expanded="showAllRatings"
+          @click="showAllRatings = !showAllRatings"
+        >{{ showAllRatings ? 'Weniger anzeigen' : `Alle ${ratings.length} Bewertungen anzeigen` }}</button>
+      </section>
+
       <footer class="print-footer">
         <p>Aus dem Familienkochbuch — pastoors.cloud</p>
         <p class="print-footer__small">Für den privaten Gebrauch</p>
@@ -155,6 +228,16 @@
       <p>Rezept nicht gefunden</p>
       <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
     </div>
+
+    <ConfirmDialog
+      v-if="ratingToDelete"
+      title="Bewertung löschen?"
+      :text="ratingToDelete.own ? 'Deine Bewertung wird entfernt.' : `Die Bewertung von ${raterName(ratingToDelete)} wird entfernt.`"
+      confirm-label="Löschen"
+      destructive
+      @confirm="confirmDeleteRating"
+      @cancel="ratingToDelete = null"
+    />
 
     <ShareModal
       v-if="showShareModal && recipe"
@@ -180,6 +263,18 @@ import ImageCredit from '@/components/ImageCredit.vue'
 import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 import TranslationBanner from '@/components/TranslationBanner.vue'
 import SourceLink from '@/components/SourceLink.vue'
+import RatingStars from '@/components/RatingStars.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import {
+  formatRating,
+  ratingLabel,
+  ratingCountLabel,
+  ratingSummary,
+  markUpdated,
+  formatRatingDate,
+  createdLine,
+  raterName,
+} from '@/utils/ratings'
 import { sourceDomain } from '@/utils/sourceUrl'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 import { recipeService } from '@/services/recipeService'
@@ -221,6 +316,71 @@ const nutritionInfo = ref(null)
 const nutritionLoading = ref(false)
 const nutritionError = ref(null)
 let titleObserver = null
+
+// Bewertungen hängen am Rezept, nicht an der Sprache – sie bleiben beim Umschalten Deutsch/Original gleich
+const RATINGS_PREVIEW = 3
+const ratings = ref([])
+const ratingsLoading = ref(false)
+const ratingsError = ref(null)
+const ratingsSection = ref(null)
+const showAllRatings = ref(false)
+const newStars = ref(0)
+const newComment = ref('')
+const ratingSubmitting = ref(false)
+const ratingSubmitError = ref(null)
+const ratingToDelete = ref(null)
+
+const ratingStats = computed(() => ratingSummary(ratings.value))
+const visibleRatings = computed(() =>
+  showAllRatings.value ? ratings.value : ratings.value.slice(0, RATINGS_PREVIEW)
+)
+const createdText = computed(() => createdLine(recipe.value?.createdBy, recipe.value?.createdAt))
+
+const loadRatings = async (id) => {
+  ratingsLoading.value = true
+  ratingsError.value = null
+  try {
+    ratings.value = markUpdated(await recipeService.getRatings(id))
+    store.setRatingSummary(id, ratingStats.value.avg, ratingStats.value.count)
+  } catch {
+    ratingsError.value = 'Bewertungen konnten nicht geladen werden.'
+  } finally {
+    ratingsLoading.value = false
+  }
+}
+
+const submitRating = async () => {
+  if (!newStars.value || ratingSubmitting.value) return
+  ratingSubmitting.value = true
+  ratingSubmitError.value = null
+  try {
+    await recipeService.addRating(recipe.value.id, { stars: newStars.value, comment: newComment.value.trim() || null })
+    newStars.value = 0
+    newComment.value = ''
+    await loadRatings(recipe.value.id)
+  } catch (error) {
+    ratingSubmitError.value = error.message || 'Die Bewertung konnte nicht gespeichert werden.'
+  } finally {
+    ratingSubmitting.value = false
+  }
+}
+
+const confirmDeleteRating = async () => {
+  const target = ratingToDelete.value
+  ratingToDelete.value = null
+  if (!target) return
+  try {
+    await recipeService.deleteRating(recipe.value.id, target.id)
+  } catch (error) {
+    ratingsError.value = error.message || 'Die Bewertung konnte nicht gelöscht werden.'
+    return
+  }
+  await loadRatings(recipe.value.id)
+}
+
+const scrollToRatings = () => {
+  ratingsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 const languagePref = ref(readLanguagePreference())
 const translation = ref(null)
@@ -309,6 +469,7 @@ onMounted(async () => {
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings
     loadNutrition(recipe.value.id)
+    loadRatings(recipe.value.id)
     await loadTranslation()
     await nextTick()
   }
@@ -566,6 +727,27 @@ const handleDelete = async () => {
 
 .meta-item--kcal:hover {
   border-color: var(--pos-linie);
+}
+
+.meta-item--rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-text-primary, #333);
+  cursor: pointer;
+}
+
+.meta-item--rating:hover {
+  border-color: var(--linie);
+}
+
+.recipe-createdby {
+  margin: -6px 0 16px;
+  font-size: 0.85rem;
+  color: var(--text3);
 }
 
 .meta-item--incomplete {
@@ -839,6 +1021,187 @@ const handleDelete = async () => {
   display: none;
 }
 
+.ratings-state {
+  margin: 0 0 12px;
+  color: var(--color-text-secondary, #666);
+}
+
+.ratings-state--error {
+  color: var(--color-error, #e53e3e);
+}
+
+.ratings-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ratings-summary__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #333);
+}
+
+.ratings-summary__count {
+  color: var(--color-text-secondary, #666);
+}
+
+.rating-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  margin-bottom: 20px;
+  background: var(--color-bg-card, #fff);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 12px;
+}
+
+.rating-form__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--color-text-primary, #333);
+}
+
+.rating-form .rating-stars--input {
+  margin-left: -8px;
+}
+
+.rating-form__label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #666);
+}
+
+.rating-form__comment {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  background: var(--color-bg, #fff);
+  color: var(--color-text-primary, #333);
+  font: inherit;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.rating-form__comment:focus {
+  outline: 2px solid var(--akzent);
+  outline-offset: 1px;
+}
+
+.btn-rate {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary, #4a5568);
+  color: var(--akzent-kontrast);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-rate:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rating-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rating-entry {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-light, #eee);
+}
+
+.rating-entry:last-child {
+  border-bottom: none;
+}
+
+.rating-entry__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 0.95rem;
+}
+
+.rating-entry__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  margin-top: 2px;
+}
+
+.rating-entry__name {
+  font-weight: 600;
+  color: var(--color-text-primary, #333);
+}
+
+.rating-entry__badge {
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--akzent-weich, var(--color-bg-secondary, #f0f0f0));
+  color: var(--akzent-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.rating-entry__date,
+.rating-entry__updated {
+  color: var(--text3);
+  font-size: 0.82rem;
+}
+
+.rating-entry__updated::before {
+  content: '· ';
+}
+
+.rating-entry__delete {
+  margin: -10px -6px -10px auto;
+  min-height: 44px;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--text3);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.rating-entry__delete:hover {
+  color: var(--color-error, #e53e3e);
+  text-decoration: underline;
+}
+
+.rating-entry__comment {
+  margin: 6px 0 0;
+  line-height: 1.5;
+  color: var(--color-text-primary, #333);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.rating-list__toggle {
+  min-height: 44px;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  color: var(--akzent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 @media print {
   @page {
     margin: 18mm 16mm;
@@ -854,6 +1217,9 @@ const handleDelete = async () => {
     padding: 0;
   }
 
+  .recipe-ratings,
+  .recipe-createdby,
+  .meta-item--rating,
   .recipe-tools,
   .recipe-tags,
   .translation-note,

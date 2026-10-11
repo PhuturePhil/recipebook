@@ -8,6 +8,7 @@ export const SORT_OPTIONS = [
   { value: 'newest', label: 'Neueste zuerst', short: 'Neu' },
   { value: 'prepTime', label: 'Zubereitungszeit', short: 'Zeit' },
   { value: 'kcal', label: 'kcal pro Portion', short: 'kcal' },
+  { value: 'rating', label: 'Beste Bewertung', short: 'Top' },
 ]
 
 export const normalizeText = (text) =>
@@ -128,7 +129,21 @@ const newestFirst = (a, b) => {
   return b.id - a.id
 }
 
+// Höchster Durchschnitt zuerst, bei Gleichstand mehr Bewertungen, dann höhere ID; unbewertete ans Ende
+const bestRatedFirst = (a, b) => {
+  const ra = a.ratingCount ? a.ratingAvg : null
+  const rb = b.ratingCount ? b.ratingAvg : null
+  if (ra != null && rb != null && ra !== rb) return rb - ra
+  if (ra != null && rb == null) return -1
+  if (ra == null && rb != null) return 1
+  const ca = a.ratingCount ?? 0
+  const cb = b.ratingCount ?? 0
+  if (ca !== cb) return cb - ca
+  return b.id - a.id
+}
+
 export const sortRecipes = (recipes, mode) => {
+  if (mode === 'rating') return [...recipes].sort(bestRatedFirst)
   if (mode === 'newest') return [...recipes].sort(newestFirst)
   if (mode === 'prepTime') return [...recipes].sort(ascendingNullsLast((r) => r.prepTimeMinutes))
   if (mode === 'kcal') return [...recipes].sort(ascendingNullsLast((r) => r.nutrition?.perServing?.kcal))
