@@ -82,7 +82,7 @@ class RecipeServiceTest {
 
     @Test
     void findById_shouldReturnRecipeWhenExists() {
-        when(recipeRepository.findById(1L)).thenReturn(Optional.of(testRecipe));
+        when(recipeRepository.findByIdWithUser(1L)).thenReturn(Optional.of(testRecipe));
 
         Optional<Recipe> result = recipeService.findById(1L);
 
@@ -92,7 +92,7 @@ class RecipeServiceTest {
 
     @Test
     void findById_shouldReturnEmptyWhenNotExists() {
-        when(recipeRepository.findById(999L)).thenReturn(Optional.empty());
+        when(recipeRepository.findByIdWithUser(999L)).thenReturn(Optional.empty());
 
         Optional<Recipe> result = recipeService.findById(999L);
 

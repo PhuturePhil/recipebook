@@ -23,6 +23,8 @@ public class RecipeSummaryDto {
   private String translatedSearchText;
   private List<String> tags = List.of();
   private LocalDateTime createdAt;
+  private Double ratingAvg;
+  private Long ratingCount;
 
   public RecipeSummaryDto(Long id, String title, String description, String imageUrl,
       Integer prepTimeMinutes, Integer baseServings, Integer servingsTo, Long ingredientCount) {
@@ -68,4 +70,8 @@ public class RecipeSummaryDto {
   public void setTags(List<String> tags) { this.tags = tags; }
   public LocalDateTime getCreatedAt() { return createdAt; }
   public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+  public Double getRatingAvg() { return ratingAvg; }
+  public void setRatingAvg(Double ratingAvg) { this.ratingAvg = ratingAvg; }
+  public Long getRatingCount() { return ratingCount; }
+  public void setRatingCount(Long ratingCount) { this.ratingCount = ratingCount; }
 }

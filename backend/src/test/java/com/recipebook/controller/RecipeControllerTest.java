@@ -185,6 +185,49 @@ class RecipeControllerTest {
     }
 
     @Test
+    void getRecipe_shouldExposeCreatorNameButNeverEmail() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(3L);
+        recipe.setTitle("Dal");
+        User owner = new User();
+        owner.setId(46L);
+        owner.setVorname("Anna");
+        owner.setNachname("Pastoors");
+        owner.setEmail("owner@test.de");
+        recipe.setUser(owner);
+        when(recipeService.findById(3L)).thenReturn(Optional.of(recipe));
+
+        mockMvc.perform(get("/api/recipes/3").with(user(principal(5, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdBy").value("Anna Pastoors"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("owner@test.de"))));
+    }
+
+    @Test
+    void getRecipe_withoutOwner_hasNoCreator() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(4L);
+        recipe.setTitle("Waise");
+        when(recipeService.findById(4L)).thenReturn(Optional.of(recipe));
+
+        mockMvc.perform(get("/api/recipes/4").with(user(principal(5, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdBy").doesNotExist());
+    }
+
+    @Test
+    void createRecipe_shouldIgnoreClientSuppliedCreatedBy() throws Exception {
+        when(recipeService.saveForUser(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/api/recipes")
+                        .with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Neu\",\"createdBy\":\"Fremd\",\"ingredients\":[]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdBy").doesNotExist());
+    }
+
+    @Test
     void createRecipe_shouldIgnoreClientSuppliedOwnerId() throws Exception {
         when(recipeService.saveForUser(any(), any())).thenAnswer(inv -> inv.getArgument(0));
 

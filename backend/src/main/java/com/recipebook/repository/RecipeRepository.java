@@ -26,6 +26,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
   @Query("SELECT i.id AS id, i.amount AS amount, i.unit AS unit, i.name AS name FROM Ingredient i WHERE i.recipe.id = :recipeId")
   List<StoredIngredient> findIngredientRows(@Param("recipeId") Long recipeId);
 
+  @Query("SELECT r FROM Recipe r LEFT JOIN FETCH r.user WHERE r.id = :id")
+  Optional<Recipe> findByIdWithUser(@Param("id") Long id);
+
   @Query("SELECT r.user FROM Recipe r WHERE r.id = :recipeId")
   Optional<User> findOwner(@Param("recipeId") Long recipeId);
 
@@ -43,6 +46,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     String getCreatedBy();
     String getIngredientNames();
     LocalDateTime getCreatedAt();
+    Double getRatingAvg();
+    Long getRatingCount();
   }
 
   @Query(value =
@@ -54,11 +59,15 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       "r.author, r.source, " +
       "COALESCE(CONCAT_WS(' ', NULLIF(u.vorname, ''), NULLIF(u.nachname, '')), '') AS createdBy, " +
       "STRING_AGG(i.name, ', ') AS ingredientNames, " +
-      "r.created_at AS createdAt " +
+      "r.created_at AS createdAt, " +
+      "rr.rating_avg AS ratingAvg, rr.rating_count AS ratingCount " +
       "FROM recipes r " +
       "LEFT JOIN ingredients i ON i.recipe_id = r.id " +
       "LEFT JOIN users u ON u.id = r.user_id " +
-      "GROUP BY r.id, u.vorname, u.nachname " +
+      // Bewertungen als vorab gruppierte Subquery – ein direkter Join würde die Zutatenzeilen vervielfachen
+      "LEFT JOIN (SELECT recipe_id, CAST(AVG(stars) AS double precision) AS rating_avg, COUNT(*) AS rating_count " +
+      "FROM recipe_ratings GROUP BY recipe_id) rr ON rr.recipe_id = r.id " +
+      "GROUP BY r.id, u.vorname, u.nachname, rr.rating_avg, rr.rating_count " +
       "ORDER BY r.id DESC",
       nativeQuery = true)
   List<RecipeSummaryProjection> findAllSummaries();

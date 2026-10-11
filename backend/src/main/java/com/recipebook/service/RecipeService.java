@@ -73,6 +73,8 @@ public class RecipeService {
             dto.setTranslatedSearchText(translatedSearch.get(p.getId()));
             dto.setTags(tags.getOrDefault(p.getId(), List.of()));
             dto.setCreatedAt(p.getCreatedAt());
+            dto.setRatingAvg(p.getRatingAvg());
+            dto.setRatingCount(p.getRatingCount());
             RecipeNutrition n = nutrition.get(p.getId());
             if (n != null) dto.setNutrition(NutritionSummaryDto.of(n));
             return dto;
@@ -99,8 +101,9 @@ public class RecipeService {
         return recipeRepository.findAll();
     }
     
+    // Mit Ersteller geladen, damit "createdBy" ohne Nachladen serialisiert wird
     public Optional<Recipe> findById(Long id) {
-        return recipeRepository.findById(id);
+        return recipeRepository.findByIdWithUser(id);
     }
     
     public Optional<String> findImageUrl(Long id) {

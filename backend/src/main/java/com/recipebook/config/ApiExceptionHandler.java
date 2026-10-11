@@ -5,11 +5,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -17,6 +19,7 @@ public class ApiExceptionHandler {
 
     static final String GENERIC_SERVER_ERROR = "Es ist ein interner Fehler aufgetreten. Bitte versuche es spaeter erneut.";
     static final String UNREADABLE_REQUEST = "Die Anfrage enthält ungültige Angaben, zum Beispiel Text in einem Zahlenfeld.";
+    static final String INVALID_FIELDS = "Bitte prüfe deine Eingaben.";
 
     @ExceptionHandler(RecipeValidationException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(RecipeValidationException ex) {
@@ -24,6 +27,20 @@ public class ApiExceptionHandler {
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("message", ex.getMessage());
         body.put("errors", ex.getErrors());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    // Bean Validation (@Valid), z. B. Bewertung ohne Sterne oder zu langer Kommentar
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidFields(MethodArgumentNotValidException ex) {
+        List<String> fields = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField())
+                .distinct()
+                .toList();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("message", INVALID_FIELDS);
+        body.put("errors", fields);
         return ResponseEntity.badRequest().body(body);
     }
 

@@ -232,6 +232,13 @@ public class Recipe {
         this.user = user;
     }
 
+    // Voller Name des Erstellers (nie die E-Mail); null, wenn das Rezept keinem Nutzer mehr gehört
+    @Transient
+    @JsonProperty(value = "createdBy", access = JsonProperty.Access.READ_ONLY)
+    public String getCreatedBy() {
+        return UserNames.fullName(user);
+    }
+
     @JsonProperty(value = "ownerId", access = JsonProperty.Access.READ_ONLY)
     public Long getOwnerId() {
         return user != null ? user.getId() : null;
