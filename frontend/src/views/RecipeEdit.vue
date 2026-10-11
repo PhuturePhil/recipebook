@@ -13,7 +13,7 @@
         @submit="handleSubmit"
       />
       <FormActionBar
-        :submit-label="isEdit ? 'Speichern' : 'Rezept erstellen'"
+        :is-edit="isEdit"
         :saving="saveState.saving"
         @cancel="handleCancel"
         @submit="formRef?.submit()"

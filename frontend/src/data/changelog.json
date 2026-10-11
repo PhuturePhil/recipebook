@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026-10-12.2",
+    "datum": "12.10.2026",
+    "titel": "Einheitliche Leiste im Rezeptformular",
+    "punkte": [
+      "Beim Anlegen und Bearbeiten eines Rezepts sieht die untere Leiste auf dem Handy jetzt aus wie die Navigation: „Abbrechen“ mit X und „Speichern“ bzw. „Rezept erstellen“ mit Haken",
+      "Kein oranger Knopf mehr – Orange zeigt nur noch, wo man gerade ist",
+      "Abbrechen fragt wie bisher nach, bevor Eingaben verloren gehen; beim Speichern springt die App weiter zum ersten fehlenden Feld",
+      "Am Computer bleibt alles wie bisher"
+    ]
+  },
+  {
     "version": "2026-10-12.1",
     "datum": "12.10.2026",
     "titel": "Aktionsleiste auf der Rezeptseite",

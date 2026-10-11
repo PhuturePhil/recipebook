@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { detailActions, replacesTabBar, cycleFocus } from './detailActions.js'
+import { detailActions, replacesTabBar, cycleFocus, formActions } from './detailActions.js'
 
 test('detailActions: mit Bearbeitungsrecht Löschen, Bearbeiten, Bewerten in dieser Reihenfolge', () => {
   assert.deepEqual(detailActions(true).map((a) => a.id), ['delete', 'edit', 'rate'])
@@ -41,4 +41,24 @@ test('cycleFocus: Fokus außerhalb springt an den Anfang bzw. ans Ende, leere Li
   assert.equal(cycleFocus(3, -1, true), 2)
   assert.equal(cycleFocus(0, -1), -1)
   assert.equal(cycleFocus(1, 0), 0)
+})
+
+test('formActions: Abbrechen links, rechts Speichern beim Bearbeiten bzw. Rezept erstellen bei Neuanlage', () => {
+  assert.deepEqual(formActions(true).map((a) => a.id), ['cancel', 'submit'])
+  assert.deepEqual(formActions(true).map((a) => a.label), ['Abbrechen', 'Speichern'])
+  assert.deepEqual(formActions(false).map((a) => a.label), ['Abbrechen', 'Rezept erstellen'])
+})
+
+test('formActions: Linien-Icons X und Haken, beim Speichern Sanduhr mit Hinweistext', () => {
+  assert.deepEqual(formActions(false).map((a) => a.icon), ['schliessen', 'haken'])
+  const saving = formActions(true, true)
+  assert.equal(saving[0].label, 'Abbrechen')
+  assert.equal(saving[1].label, 'Wird gespeichert…')
+  assert.equal(saving[1].icon, 'sanduhr')
+})
+
+test('formActions: keine Gefahr-Markierung und kein Aktiv-Zustand', () => {
+  for (const a of [...formActions(true), ...formActions(false, true)]) {
+    assert.ok(!a.danger && !a.active, a.id)
+  }
 })

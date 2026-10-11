@@ -24,3 +24,14 @@ export function cycleFocus(count, current, backwards = false) {
   if (current < 0) return backwards ? count - 1 : 0
   return (current + (backwards ? -1 : 1) + count) % count
 }
+
+// Rezeptformular: dieselbe Leisten-Optik für Abbrechen und Speichern bzw. Rezept erstellen (beim Speichern Sanduhr)
+export function formActions(isEdit, saving = false) {
+  const submitLabel = isEdit ? 'Speichern' : 'Rezept erstellen'
+  return [
+    { id: 'cancel', label: 'Abbrechen', icon: 'schliessen' },
+    saving
+      ? { id: 'submit', label: 'Wird gespeichert…', icon: 'sanduhr' }
+      : { id: 'submit', label: submitLabel, icon: 'haken' },
+  ]
+}
