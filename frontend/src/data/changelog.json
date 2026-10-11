@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026-10-12.3",
+    "datum": "12.10.2026",
+    "titel": "Bewertungen aufgeräumt",
+    "punkte": [
+      "Auf dem Handy ist das Bewertungsformular unten auf der Rezeptseite weg – bewertet wird über „Bewerten“ in der unteren Leiste",
+      "Durchschnitt, Anzahl und alle bisherigen Bewertungen stehen weiter im Abschnitt „Bewertungen“",
+      "Tippst du in der Rezeptliste auf die Sterne einer Karte, öffnet sich das Rezept direkt bei den Bewertungen",
+      "Am Computer bleibt alles wie bisher"
+    ]
+  },
+  {
     "version": "2026-10-12.2",
     "datum": "12.10.2026",
     "titel": "Einheitliche Leiste im Rezeptformular",

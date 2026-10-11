@@ -20,14 +20,17 @@
         >
           {{ recipe.nutrition.complete ? '' : 'mind. ' }}{{ kcalPerServing }} kcal
         </span>
-        <span
+        <button
           v-if="recipe.ratingCount"
+          type="button"
           class="recipe-card__count recipe-card__rating"
-          :title="`Durchschnitt aus ${ratingCountLabel(recipe.ratingCount)}`"
+          :title="`Durchschnitt aus ${ratingCountLabel(recipe.ratingCount)} – zu den Bewertungen`"
+          :aria-label="`${ratingLabel(recipe.ratingAvg, recipe.ratingCount)}, zu den Bewertungen`"
+          @click.stop="navigateToRatings"
         >
           <RatingStars :model-value="1" :count="1" :size="13" readonly aria-hidden="true" />
           {{ ratingLabel(recipe.ratingAvg, recipe.ratingCount) }}
-        </span>
+        </button>
       </div>
       <div v-if="recipe.tags?.length" class="recipe-card__tags">
         <button
@@ -55,7 +58,7 @@ import { useRouter } from 'vue-router'
 import { useRecipeImage } from '@/composables/useRecipeImage'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { tagSearchTerm } from '@/utils/recipeTags'
-import { ratingLabel, ratingCountLabel, createdLine } from '@/utils/ratings'
+import { ratingLabel, ratingCountLabel, createdLine, ratingsRoute } from '@/utils/ratings'
 import RatingStars from '@/components/RatingStars.vue'
 
 const props = defineProps({
@@ -99,6 +102,11 @@ const formatPrepTime = (minutes) => {
 
 const navigateToDetail = () => {
   router.push(`/recipe/${props.recipe.id}`)
+}
+
+// Tipp auf die Bewertung: Rezept öffnen und direkt zum Abschnitt „Bewertungen“
+const navigateToRatings = () => {
+  router.push(ratingsRoute(props.recipe.id))
 }
 </script>
 
@@ -168,7 +176,17 @@ const navigateToDetail = () => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
   color: var(--color-text-secondary, #666);
+  cursor: pointer;
+}
+
+.recipe-card__rating:hover {
+  color: var(--color-text-primary, #333);
+  text-decoration: underline;
 }
 
 .recipe-card__created {

@@ -43,7 +43,7 @@
 
       <figure v-if="recipe.imageUrl" class="recipe-figure">
         <div class="recipe-image">
-          <img :src="recipe.imageUrl" :alt="shown.title" />
+          <img ref="heroImage" :src="recipe.imageUrl" :alt="shown.title" />
         </div>
         <ImageCredit :credit="recipe.imageCredit" />
       </figure>
@@ -73,7 +73,7 @@
           type="button"
           class="meta-item meta-item--rating"
           :title="`Durchschnitt aus ${ratingCountLabel(ratingStats.count)}`"
-          @click="scrollToRatings"
+          @click="scrollToRatings()"
         >
           <RatingStars :model-value="1" :count="1" :size="15" readonly aria-hidden="true" />
           {{ ratingLabel(ratingStats.avg, ratingStats.count) }}
@@ -147,7 +147,7 @@
         </ol>
       </section>
 
-      <section ref="ratingsSection" class="recipe-section recipe-ratings" aria-labelledby="ratings-title">
+      <section id="bewertungen" ref="ratingsSection" class="recipe-section recipe-ratings" aria-labelledby="ratings-title">
         <h2 id="ratings-title">Bewertungen</h2>
 
         <p v-if="ratingsError" class="ratings-state ratings-state--error">{{ ratingsError }}</p>
@@ -160,7 +160,8 @@
         </div>
         <p v-else-if="!ratingsLoading && !ratingsError" class="ratings-state">Noch keine Bewertungen – sei die/der Erste!</p>
 
-        <RatingForm :recipe-id="recipe.id" @submitted="loadRatings(recipe.id)" />
+        <!-- Mobil wird über „Bewerten“ in der Aktionsleiste bewertet (Popup); das Inline-Formular gibt es nur ab 1024 px -->
+        <RatingForm class="rating-form--inline" :recipe-id="recipe.id" @submitted="loadRatings(recipe.id)" />
 
         <ul v-if="ratings.length" class="rating-list">
           <li v-for="r in visibleRatings" :key="r.id" class="rating-entry">
@@ -285,6 +286,7 @@ import {
   formatRatingDate,
   createdLine,
   raterName,
+  wantsRatings,
 } from '@/utils/ratings'
 import { sourceDomain } from '@/utils/sourceUrl'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
@@ -384,8 +386,28 @@ const confirmDeleteRating = async () => {
   await loadRatings(recipe.value.id)
 }
 
-const scrollToRatings = () => {
-  ratingsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+const scrollToRatings = (behavior = 'smooth') => {
+  ratingsSection.value?.scrollIntoView({ behavior, block: 'start' })
+}
+
+const heroImage = ref(null)
+const imageSettled = () => {
+  const img = heroImage.value
+  if (!img || img.complete) return Promise.resolve()
+  return new Promise((resolve) => {
+    img.addEventListener('load', resolve, { once: true })
+    img.addEventListener('error', resolve, { once: true })
+    setTimeout(resolve, 3000)
+  })
+}
+
+// Bild, Nährwerte und Bewertungen verschieben den Abschnitt beim Laden (iOS hält die Position nicht fest):
+// sofort hinspringen und nach dem Laden noch einmal
+const jumpToRatings = async (loads) => {
+  scrollToRatings('auto')
+  await Promise.allSettled([...loads, imageSettled()])
+  await nextTick()
+  scrollToRatings('auto')
 }
 
 const languagePref = ref(readLanguagePreference())
@@ -474,10 +496,11 @@ onMounted(async () => {
   }
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings
-    loadNutrition(recipe.value.id)
-    loadRatings(recipe.value.id)
+    const loads = [loadNutrition(recipe.value.id), loadRatings(recipe.value.id)]
     await loadTranslation()
     await nextTick()
+    // Von der Bewertung auf der Rezeptkarte: direkt zum Abschnitt „Bewertungen“
+    if (wantsRatings(route.hash)) jumpToRatings(loads)
   }
 
   if (titleRef.value) {
@@ -648,9 +671,11 @@ const confirmDeleteRecipe = async () => {
   margin-top: 32px;
 }
 
-/* Mobil übernimmt die Aktionsleiste (DetailActionBar), zurück geht es über den Pfeil in der Kopfzeile */
+/* Mobil übernimmt die Aktionsleiste (DetailActionBar), zurück geht es über den Pfeil in der Kopfzeile;
+   bewertet wird dort über „Bewerten“ (Popup) statt über das Inline-Formular */
 @media (max-width: 1023px) {
-  .detail-actions {
+  .detail-actions,
+  .recipe-ratings .rating-form--inline {
     display: none;
   }
 }

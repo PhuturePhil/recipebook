@@ -48,3 +48,10 @@ export const createdLine = (createdBy, createdAt) => {
 }
 
 export const raterName = (rating) => rating?.userName?.trim() || 'Ehemaliges Mitglied'
+
+// Sprung zum Abschnitt „Bewertungen“ auf der Rezeptseite (Bewertung auf der Rezeptkarte → Detail + Abschnitt)
+export const RATINGS_ANCHOR = 'bewertungen'
+
+export const ratingsRoute = (recipeId) => ({ path: `/recipe/${recipeId}`, hash: `#${RATINGS_ANCHOR}` })
+
+export const wantsRatings = (hash) => hash === `#${RATINGS_ANCHOR}`

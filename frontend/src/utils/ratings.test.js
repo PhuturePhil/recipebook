@@ -9,6 +9,9 @@ import {
   formatRatingDate,
   createdLine,
   raterName,
+  RATINGS_ANCHOR,
+  ratingsRoute,
+  wantsRatings,
 } from './ratings.js'
 
 test('formatRating rundet auf eine Nachkommastelle mit Komma', () => {
@@ -94,4 +97,17 @@ test('raterName zeigt für gelöschte Nutzer „Ehemaliges Mitglied“', () => {
   assert.equal(raterName({ userName: 'Paco' }), 'Paco')
   assert.equal(raterName({ userName: null }), 'Ehemaliges Mitglied')
   assert.equal(raterName({ userName: '  ' }), 'Ehemaliges Mitglied')
+})
+
+test('ratingsRoute führt zur Rezeptseite mit Anker auf den Abschnitt Bewertungen', () => {
+  assert.deepEqual(ratingsRoute(42), { path: '/recipe/42', hash: '#bewertungen' })
+  assert.equal(RATINGS_ANCHOR, 'bewertungen')
+})
+
+test('wantsRatings erkennt nur den Bewertungs-Anker', () => {
+  assert.equal(wantsRatings('#bewertungen'), true)
+  assert.equal(wantsRatings(ratingsRoute(7).hash), true)
+  assert.equal(wantsRatings(''), false)
+  assert.equal(wantsRatings(undefined), false)
+  assert.equal(wantsRatings('#zutaten'), false)
 })
