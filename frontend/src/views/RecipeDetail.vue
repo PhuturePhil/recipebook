@@ -160,24 +160,7 @@
         </div>
         <p v-else-if="!ratingsLoading && !ratingsError" class="ratings-state">Noch keine Bewertungen – sei die/der Erste!</p>
 
-        <form class="rating-form" novalidate @submit.prevent="submitRating">
-          <h3 class="rating-form__title">Rezept bewerten</h3>
-          <RatingStars v-model="newStars" :size="28" label="Sterne für dieses Rezept" :disabled="ratingSubmitting" />
-          <label class="rating-form__label" for="rating-comment">Kommentar (optional)</label>
-          <textarea
-            id="rating-comment"
-            v-model="newComment"
-            class="rating-form__comment"
-            rows="3"
-            maxlength="2000"
-            placeholder="Wie hat es geschmeckt? Was würdest du anders machen?"
-            :disabled="ratingSubmitting"
-          ></textarea>
-          <p v-if="ratingSubmitError" class="ratings-state ratings-state--error" role="alert">{{ ratingSubmitError }}</p>
-          <button type="submit" class="btn-rate" :disabled="!newStars || ratingSubmitting">
-            {{ ratingSubmitting ? 'Wird gespeichert…' : 'Bewertung abschicken' }}
-          </button>
-        </form>
+        <RatingForm :recipe-id="recipe.id" @submitted="loadRatings(recipe.id)" />
 
         <ul v-if="ratings.length" class="rating-list">
           <li v-for="r in visibleRatings" :key="r.id" class="rating-entry">
@@ -222,6 +205,14 @@
           </router-link>
         </template>
       </div>
+
+      <DetailActionBar
+        ref="actionBar"
+        :can-edit="canEdit"
+        @delete="showDeleteRecipe = true"
+        @edit="router.push(`/recipe/${recipe.id}/edit`)"
+        @rate="showRatingDialog = true"
+      />
     </div>
 
     <div v-else class="not-found">
@@ -237,6 +228,23 @@
       destructive
       @confirm="confirmDeleteRating"
       @cancel="ratingToDelete = null"
+    />
+
+    <ConfirmDialog
+      v-if="showDeleteRecipe"
+      title="Rezept löschen?"
+      :text="`„${shown?.title ?? ''}“ wird endgültig gelöscht.`"
+      confirm-label="Löschen"
+      destructive
+      @confirm="confirmDeleteRecipe"
+      @cancel="showDeleteRecipe = false"
+    />
+
+    <RatingDialog
+      v-if="showRatingDialog && recipe"
+      :recipe-id="recipe.id"
+      @close="closeRatingDialog"
+      @submitted="onDialogRated"
     />
 
     <ShareModal
@@ -265,6 +273,9 @@ import TranslationBanner from '@/components/TranslationBanner.vue'
 import SourceLink from '@/components/SourceLink.vue'
 import RatingStars from '@/components/RatingStars.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import RatingForm from '@/components/RatingForm.vue'
+import RatingDialog from '@/components/RatingDialog.vue'
+import DetailActionBar from '@/components/shell/DetailActionBar.vue'
 import {
   formatRating,
   ratingLabel,
@@ -324,11 +335,11 @@ const ratingsLoading = ref(false)
 const ratingsError = ref(null)
 const ratingsSection = ref(null)
 const showAllRatings = ref(false)
-const newStars = ref(0)
-const newComment = ref('')
-const ratingSubmitting = ref(false)
-const ratingSubmitError = ref(null)
 const ratingToDelete = ref(null)
+// Mobile Aktionsleiste: Bewerten als Dialog, Löschen mit Rückfrage
+const actionBar = ref(null)
+const showRatingDialog = ref(false)
+const showDeleteRecipe = ref(false)
 
 const ratingStats = computed(() => ratingSummary(ratings.value))
 const visibleRatings = computed(() =>
@@ -349,20 +360,15 @@ const loadRatings = async (id) => {
   }
 }
 
-const submitRating = async () => {
-  if (!newStars.value || ratingSubmitting.value) return
-  ratingSubmitting.value = true
-  ratingSubmitError.value = null
-  try {
-    await recipeService.addRating(recipe.value.id, { stars: newStars.value, comment: newComment.value.trim() || null })
-    newStars.value = 0
-    newComment.value = ''
-    await loadRatings(recipe.value.id)
-  } catch (error) {
-    ratingSubmitError.value = error.message || 'Die Bewertung konnte nicht gespeichert werden.'
-  } finally {
-    ratingSubmitting.value = false
-  }
+const closeRatingDialog = async () => {
+  showRatingDialog.value = false
+  await nextTick()
+  actionBar.value?.focus('rate')
+}
+
+const onDialogRated = async () => {
+  await closeRatingDialog()
+  await loadRatings(recipe.value.id)
 }
 
 const confirmDeleteRating = async () => {
@@ -538,15 +544,24 @@ const formatPrepTime = (minutes) => {
   return m > 0 ? `${h} Std. ${m} Min.` : `${h} Std.`
 }
 
-const handleDelete = async () => {
-  if (confirm('Möchtest du dieses Rezept wirklich löschen?')) {
-    try {
-      await store.deleteRecipe(route.params.id)
-      router.push('/')
-    } catch (error) {
-      alert('Fehler beim Löschen des Rezepts: ' + error.message)
-    }
+const deleteRecipe = async () => {
+  try {
+    await store.deleteRecipe(route.params.id)
+    router.push('/')
+  } catch (error) {
+    alert('Fehler beim Löschen des Rezepts: ' + error.message)
   }
+}
+
+// Desktop (Knopfreihe am Seitenende) wie bisher mit Browser-Rückfrage
+const handleDelete = async () => {
+  if (confirm('Möchtest du dieses Rezept wirklich löschen?')) await deleteRecipe()
+}
+
+// Mobil (Aktionsleiste) mit dem App-Dialog
+const confirmDeleteRecipe = async () => {
+  showDeleteRecipe.value = false
+  await deleteRecipe()
 }
 </script>
 
@@ -631,6 +646,13 @@ const handleDelete = async () => {
   padding: 12px 0;
   border-top: 1px solid var(--color-border, #e2e8f0);
   margin-top: 32px;
+}
+
+/* Mobil übernimmt die Aktionsleiste (DetailActionBar), zurück geht es über den Pfeil in der Kopfzeile */
+@media (max-width: 1023px) {
+  .detail-actions {
+    display: none;
+  }
 }
 
 .detail-actions .btn-cancel {
@@ -1046,69 +1068,6 @@ const handleDelete = async () => {
 
 .ratings-summary__count {
   color: var(--color-text-secondary, #666);
-}
-
-.rating-form {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 14px 16px 16px;
-  margin-bottom: 20px;
-  background: var(--color-bg-card, #fff);
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 12px;
-}
-
-.rating-form__title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 650;
-  color: var(--color-text-primary, #333);
-}
-
-.rating-form .rating-stars--input {
-  margin-left: -8px;
-}
-
-.rating-form__label {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary, #666);
-}
-
-.rating-form__comment {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 8px;
-  background: var(--color-bg, #fff);
-  color: var(--color-text-primary, #333);
-  font: inherit;
-  font-size: 16px;
-  resize: vertical;
-}
-
-.rating-form__comment:focus {
-  outline: 2px solid var(--akzent);
-  outline-offset: 1px;
-}
-
-.btn-rate {
-  min-height: 44px;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 8px;
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-rate:disabled {
-  opacity: 0.45;
-  cursor: default;
 }
 
 .rating-list {

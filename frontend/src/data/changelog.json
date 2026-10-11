@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026-10-12.1",
+    "datum": "12.10.2026",
+    "titel": "Aktionsleiste auf der Rezeptseite",
+    "punkte": [
+      "Auf dem Handy steht unten auf der Rezeptseite statt der Navigation eine Leiste mit Löschen, Bearbeiten und Bewerten",
+      "„Bewerten“ öffnet ein kleines Fenster: Sterne wählen, optional einen Kommentar schreiben, abschicken",
+      "Löschen fragt vorher in einem eigenen Dialog nach",
+      "Zurück zur Liste geht es über den Pfeil oben links; das Bewertungsformular unten auf der Seite bleibt",
+      "Am Computer bleibt alles wie bisher"
+    ]
+  },
+  {
     "version": "2026-10-11.1",
     "datum": "11.10.2026",
     "titel": "Rezepte bewerten",

@@ -10,6 +10,7 @@ import ProfileModal from '@/components/ProfileModal.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import WhatsNewModal from '@/components/WhatsNewModal.vue'
 import { useUpdateCheck } from '@/composables/useUpdateCheck'
+import { replacesTabBar } from '@/utils/detailActions'
 import '@/composables/useTheme'
 
 const route = useRoute()
@@ -40,8 +41,9 @@ const page = computed(() => PAGES[route.name] ?? { title: 'Rezepte' })
 const showHeader = computed(() => !!route.name && !AUTH_FLOW.includes(route.name))
 const showShell = computed(() => showHeader.value && authStore.isAuthenticated)
 const headerTitle = computed(() => (page.value.navTitle && uiStore.navTitle) || page.value.title)
-// Im Rezeptformular ersetzt dessen Aktionsleiste (RecipeEdit) mobil die Tab-Leiste; die Seitenleiste ab 1024 px bleibt
-const formMode = computed(() => ['recipe-new', 'recipe-edit'].includes(route.name))
+// Im Rezeptformular (FormActionBar) und auf der Rezeptseite (DetailActionBar) ersetzt eine eigene Leiste
+// mobil die Tab-Leiste; die Seitenleiste ab 1024 px bleibt
+const tabBarReplaced = computed(() => replacesTabBar(route.name))
 
 const mehr = computed(() => [
   { id: 'naehrwerte', label: 'Nährwerte & Badges', icon: 'balken', to: '/naehrwerte' },
@@ -80,7 +82,7 @@ onMounted(async () => {
   <RouterView />
   <TabBar
     v-if="showShell"
-    :class="{ 'shell-nav--form': formMode }"
+    :class="{ 'shell-nav--ersetzt': tabBarReplaced }"
     :active="page.tab ?? ''"
     :side-active="page.side ?? ''"
     :mehr="mehr"
