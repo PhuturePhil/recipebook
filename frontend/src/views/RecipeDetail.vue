@@ -289,6 +289,7 @@ import {
   wantsRatings,
 } from '@/utils/ratings'
 import { sourceDomain } from '@/utils/sourceUrl'
+import { navigateBackTo, LIST_PATH } from '@/utils/backNavigation'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 import { recipeService } from '@/services/recipeService'
 import {
@@ -526,13 +527,8 @@ onUnmounted(() => {
   uiStore.clearNavTitle()
 })
 
-const goBack = () => {
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    router.push('/')
-  }
-}
+// Wie der Zurück-Pfeil der Kopfzeile: immer zur Liste, aus der Liste kommend per router.back()
+const goBack = () => navigateBackTo(router, LIST_PATH)
 
 const increaseServings = () => {
   currentServings.value++
@@ -570,7 +566,8 @@ const formatPrepTime = (minutes) => {
 const deleteRecipe = async () => {
   try {
     await store.deleteRecipe(route.params.id)
-    router.push('/')
+    // Gelöschtes Rezept nicht im Verlauf lassen
+    navigateBackTo(router, LIST_PATH)
   } catch (error) {
     alert('Fehler beim Löschen des Rezepts: ' + error.message)
   }

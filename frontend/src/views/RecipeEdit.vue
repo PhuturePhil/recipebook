@@ -39,6 +39,7 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { runSave } from '@/utils/recipeFormData'
+import { navigateBackTo, formExitTarget } from '@/utils/backNavigation'
 import RecipeForm from '@/components/RecipeForm.vue'
 import FormActionBar from '@/components/shell/FormActionBar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -126,11 +127,14 @@ const handleSubmit = async (recipeData) => {
   if (!ok) return
   formRef.value?.discardDraft()
   leaveConfirmed = true
-  router.push(`/recipe/${isEdit.value ? route.params.id : result.id}`)
+  // Formular verschwindet aus dem Verlauf: „Zurück“ auf der Rezeptseite führt danach nicht wieder hierher
+  const savedId = isEdit.value ? route.params.id : result.id
+  navigateBackTo(router, formExitTarget({ isEdit: isEdit.value, recipeId: route.params.id, savedId }))
 }
 
 const handleCancel = () => {
-  router.push(isEdit.value ? `/recipe/${route.params.id}` : '/')
+  // Die Verwerfen-Nachfrage läuft im onBeforeRouteLeave-Wächter, auch bei router.back()
+  navigateBackTo(router, formExitTarget({ isEdit: isEdit.value, recipeId: route.params.id }))
 }
 </script>
 

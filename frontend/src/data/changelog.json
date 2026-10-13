@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026-10-13.2",
+    "datum": "13.10.2026",
+    "titel": "Zurück führt zur Rezeptliste",
+    "punkte": [
+      "Der Zurück-Pfeil auf einer Rezeptseite bringt dich immer zur Rezeptliste – nicht mehr ins Bearbeiten-Formular",
+      "Nach Speichern oder Abbrechen im Formular landest du auf dem Rezept, und „Zurück“ führt von dort direkt zur Liste",
+      "Kommst du aus der Liste, bleiben Suche, Filter und Scrollposition erhalten"
+    ]
+  },
+  {
     "version": "2026-10-13.1",
     "datum": "13.10.2026",
     "titel": "Schöne Vorschau für geteilte Rezepte",

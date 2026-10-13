@@ -21,6 +21,7 @@
 import { useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
 import SearchBar from '@/components/SearchBar.vue'
+import { headerBack } from '@/utils/backNavigation'
 
 const props = defineProps({
   title: { type: String, default: '' },
@@ -31,9 +32,9 @@ const props = defineProps({
 const router = useRouter()
 
 function goBack() {
-  // Innerhalb der App zurück, sonst (Direktaufruf/geteilter Link) zur Übersicht
-  if (window.history.state?.back) router.back()
-  else router.push(typeof props.back === 'string' ? props.back : '/')
+  // back als Pfad (Rezeptseite): immer dorthin, per router.back() nur wenn der vorige Eintrag schon das Ziel ist.
+  // back = true: innerhalb der App zurück, sonst (Direktaufruf/geteilter Link) zur Übersicht
+  headerBack(router, props.back)
 }
 </script>
 
