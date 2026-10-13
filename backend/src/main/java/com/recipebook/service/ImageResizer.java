@@ -25,30 +25,61 @@ public final class ImageResizer {
 
     public static final int MAX_IMAGE_EDGE = 1600;
     public static final float JPEG_QUALITY = 0.8f;
+    private static final float[] COVER_QUALITIES = {0.85f, 0.75f, 0.65f, 0.5f, 0.35f};
 
     private ImageResizer() {
     }
 
     public static String toJpegDataUrl(byte[] original) throws IOException {
-        String format;
-        BufferedImage source;
+        Decoded decoded = decode(original);
+        String format = decoded.format();
+        BufferedImage source = decoded.image();
+        int longest = Math.max(source.getWidth(), source.getHeight());
+        double scale = Math.min(1.0, (double) MAX_IMAGE_EDGE / longest);
+        int width = (int) Math.round(source.getWidth() * scale);
+        int height = (int) Math.round(source.getHeight() * scale);
+
+        BufferedImage target = draw(source, width, height, 0, 0, source.getWidth(), source.getHeight());
+        byte[] resized = writeJpeg(target, JPEG_QUALITY);
+        boolean keepOriginal = scale == 1.0 && "jpeg".equalsIgnoreCase(format) && original.length < resized.length;
+        return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(keepOriginal ? original : resized);
+    }
+
+    /**
+     * Füllt genau width × height (mittig zugeschnitten, wie CSS object-fit: cover) und senkt die JPEG-Qualität
+     * stufenweise, bis das Ergebnis höchstens maxBytes groß ist.
+     */
+    public static byte[] toCoverJpeg(byte[] original, int width, int height, int maxBytes) throws IOException {
+        BufferedImage source = decode(original).image();
+        double scale = Math.max((double) width / source.getWidth(), (double) height / source.getHeight());
+        int cropWidth = Math.min(source.getWidth(), (int) Math.round(width / scale));
+        int cropHeight = Math.min(source.getHeight(), (int) Math.round(height / scale));
+        int x = (source.getWidth() - cropWidth) / 2;
+        int y = (source.getHeight() - cropHeight) / 2;
+        BufferedImage target = draw(source, width, height, x, y, x + cropWidth, y + cropHeight);
+        byte[] jpeg = null;
+        for (float quality : COVER_QUALITIES) {
+            jpeg = writeJpeg(target, quality);
+            if (jpeg.length <= maxBytes) break;
+        }
+        return jpeg;
+    }
+
+    private static Decoded decode(byte[] original) throws IOException {
         try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(original))) {
             Iterator<ImageReader> readers = in == null ? null : ImageIO.getImageReaders(in);
             if (readers == null || !readers.hasNext()) throw new IOException("Unbekanntes Bildformat");
             ImageReader reader = readers.next();
             try {
                 reader.setInput(in);
-                format = reader.getFormatName();
-                source = reader.read(0);
+                return new Decoded(reader.read(0), reader.getFormatName());
             } finally {
                 reader.dispose();
             }
         }
-        int longest = Math.max(source.getWidth(), source.getHeight());
-        double scale = Math.min(1.0, (double) MAX_IMAGE_EDGE / longest);
-        int width = (int) Math.round(source.getWidth() * scale);
-        int height = (int) Math.round(source.getHeight() * scale);
+    }
 
+    private static BufferedImage draw(BufferedImage source, int width, int height, int sx1, int sy1, int sx2, int sy2) {
         BufferedImage target = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = target.createGraphics();
         try {
@@ -56,27 +87,28 @@ public final class ImageResizer {
             g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             g.setColor(Color.WHITE);
             g.fillRect(0, 0, width, height);
-            g.drawImage(source, 0, 0, width, height, null);
+            g.drawImage(source, 0, 0, width, height, sx1, sy1, sx2, sy2, null);
         } finally {
             g.dispose();
         }
-        byte[] resized = writeJpeg(target);
-        boolean keepOriginal = scale == 1.0 && "jpeg".equalsIgnoreCase(format) && original.length < resized.length;
-        return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(keepOriginal ? original : resized);
+        return target;
     }
 
-    private static byte[] writeJpeg(BufferedImage image) throws IOException {
+    private static byte[] writeJpeg(BufferedImage image, float quality) throws IOException {
         ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ImageOutputStream out = ImageIO.createImageOutputStream(bytes)) {
             writer.setOutput(out);
             ImageWriteParam param = writer.getDefaultWriteParam();
             param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-            param.setCompressionQuality(JPEG_QUALITY);
+            param.setCompressionQuality(quality);
             writer.write(null, new IIOImage(image, null, null), param);
         } finally {
             writer.dispose();
         }
         return bytes.toByteArray();
+    }
+
+    private record Decoded(BufferedImage image, String format) {
     }
 }

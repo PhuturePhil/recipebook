@@ -60,4 +60,23 @@ class ImageResizerTest {
     void rejectsNonImages() {
         assertThrows(IOException.class, () -> ImageResizer.toJpegDataUrl("<html>nope</html>".getBytes()));
     }
+
+    @Test
+    void coverJpegFillsTheTargetAndCropsPortraitPhotosFromTheCenter() throws IOException {
+        BufferedImage portrait = new BufferedImage(600, 1200, BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = portrait.createGraphics();
+        g.setColor(Color.RED);
+        g.fillRect(0, 0, 600, 1200);
+        g.setColor(Color.GREEN);
+        g.fillRect(0, 450, 600, 300);
+        g.dispose();
+
+        byte[] jpeg = ImageResizer.toCoverJpeg(encode(portrait, "png"), 1200, 630, 300_000);
+        BufferedImage result = ImageIO.read(new ByteArrayInputStream(jpeg));
+
+        assertEquals(1200, result.getWidth());
+        assertEquals(630, result.getHeight());
+        Color top = new Color(result.getRGB(600, 40));
+        assertTrue(top.getGreen() > 200 && top.getRed() < 60, top.toString());
+    }
 }

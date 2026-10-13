@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026-10-13.1",
+    "datum": "13.10.2026",
+    "titel": "Schöne Vorschau für geteilte Rezepte",
+    "punkte": [
+      "Geteilte Rezept-Links zeigen jetzt Name und Foto in der Vorschau – etwa in WhatsApp, Signal, iMessage oder Telegram",
+      "Unter dem Namen stehen kurz Stichworte, Portionen und Zubereitungszeit",
+      "Rezepte ohne Foto zeigen stattdessen das Logo der App",
+      "Bewertungen und wer das Rezept angelegt hat, erscheinen in der Vorschau nicht"
+    ]
+  },
+  {
     "version": "2026-10-12.3",
     "datum": "12.10.2026",
     "titel": "Bewertungen aufgeräumt",

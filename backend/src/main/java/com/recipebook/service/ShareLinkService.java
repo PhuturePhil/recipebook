@@ -105,6 +105,10 @@ public class ShareLinkService {
         return validShareLink(token).getRecipe().getImageUrl();
     }
 
+    public Recipe getSharedRecipeEntity(String token) {
+        return validShareLink(token).getRecipe();
+    }
+
     private ShareLink validShareLink(String token) {
         ShareLink shareLink = shareLinkRepository.findByToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Link ist ungueltig."));

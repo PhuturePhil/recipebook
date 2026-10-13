@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 import { readFileSync } from 'node:fs'
+import { SHARE_SHELL_FILE, shareShellHtml } from './src/utils/shareShell.js'
 
 // changelog.json ist die einzige Versionsquelle: ins Bundle importiert (eingebaute Version) UND
 // als /changelog.json ausgeliefert (Server-Version für den Update-Check). Vite kann nicht aus
@@ -21,8 +22,20 @@ const changelogJson = () => ({
   }
 })
 
+// Teilen-Links bekommen eine Kopie der gebauten index.html, in die nginx per SSI die
+// Open-Graph-Tags des Rezepts einsetzt (Link-Vorschau in Messengern), siehe utils/shareShell.js.
+const shareShell = () => ({
+  name: 'share-shell',
+  enforce: 'post',
+  generateBundle(_, bundle) {
+    const index = bundle['index.html']
+    if (!index) return
+    this.emitFile({ type: 'asset', fileName: SHARE_SHELL_FILE, source: shareShellHtml(String(index.source)) })
+  }
+})
+
 export default defineConfig({
-  plugins: [vue(), changelogJson()],
+  plugins: [vue(), changelogJson(), shareShell()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

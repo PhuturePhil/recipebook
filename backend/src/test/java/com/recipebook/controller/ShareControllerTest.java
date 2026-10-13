@@ -8,6 +8,8 @@ import com.recipebook.model.ImageCredit;
 import com.recipebook.service.CustomUserDetailsService;
 import com.recipebook.service.JwtService;
 import com.recipebook.service.ShareLinkService;
+import com.recipebook.service.SharePreview;
+import com.recipebook.service.SharePreviewService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -32,6 +34,9 @@ class ShareControllerTest {
 
     @MockitoBean
     private ShareLinkService shareLinkService;
+
+    @MockitoBean
+    private SharePreviewService sharePreviewService;
 
     @MockitoBean
     private JwtService jwtService;
@@ -135,5 +140,52 @@ class ShareControllerTest {
                 .andExpect(jsonPath("$.translationStatus").value("translated"));
         mockMvc.perform(get("/api/share/tok").param("lang", "xx"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getSharedHead_shouldBePublicHtmlWithEscapedOpenGraphTags() throws Exception {
+        when(sharePreviewService.preview("tok")).thenReturn(new SharePreview("Mac & <Cheese>", "Pasta · 4 Portionen",
+                "https://pastoors.cloud/share/tok", "https://pastoors.cloud/api/share/tok/og-image?v=1"));
+
+        mockMvc.perform(get("/api/share/tok/head"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/html"))
+                .andExpect(header().string("X-Robots-Tag", "noindex, nofollow"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "<title>Mac &amp; &lt;Cheese&gt; – Pastoors Familienrezepte</title>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "<meta property=\"og:image\" content=\"https://pastoors.cloud/api/share/tok/og-image?v=1\" />")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "<meta name=\"robots\" content=\"noindex, nofollow\" />")));
+    }
+
+    @Test
+    void getSharedPreviewImage_shouldBePublicCacheableJpeg() throws Exception {
+        when(sharePreviewService.previewImage("tok")).thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get("/api/share/tok/og-image").param("v", "abc"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/jpeg"))
+                .andExpect(header().string("Cache-Control", "max-age=3600, public"))
+                .andExpect(content().bytes(new byte[] {1, 2, 3}));
+    }
+
+    @Test
+    void getSharedPreviewImage_shouldReturnNotFoundForInvalidLink() throws Exception {
+        when(sharePreviewService.previewImage("nope")).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        mockMvc.perform(get("/api/share/nope/og-image"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getFallbackPreviewImage_shouldServeTheAppLogo() throws Exception {
+        when(sharePreviewService.fallbackImage()).thenReturn(new byte[] {9});
+
+        mockMvc.perform(get("/api/share/og-image"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/jpeg"))
+                .andExpect(content().bytes(new byte[] {9}));
+        verify(shareLinkService, never()).getSharedRecipe(any());
     }
 }

@@ -4,22 +4,31 @@ import com.recipebook.dto.ShareLinkDto;
 import com.recipebook.dto.SharedRecipeDto;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.service.ShareLinkService;
+import com.recipebook.service.SharePreviewHtml;
+import com.recipebook.service.SharePreviewService;
 import com.recipebook.translation.RecipeLanguage;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
+
 @RestController
 @RequestMapping("/api")
 public class ShareController {
 
-    private final ShareLinkService shareLinkService;
+    private static final CacheControl PREVIEW_IMAGE_CACHE = CacheControl.maxAge(Duration.ofHours(1)).cachePublic();
 
-    public ShareController(ShareLinkService shareLinkService) {
+    private final ShareLinkService shareLinkService;
+    private final SharePreviewService sharePreviewService;
+
+    public ShareController(ShareLinkService shareLinkService, SharePreviewService sharePreviewService) {
         this.shareLinkService = shareLinkService;
+        this.sharePreviewService = sharePreviewService;
     }
 
     @GetMapping("/recipes/{id}/share")
@@ -55,5 +64,32 @@ public class ShareController {
     @GetMapping("/share/{token}/image")
     public ResponseEntity<byte[]> getSharedImage(@PathVariable String token) {
         return ImageResponses.of(shareLinkService.getSharedImageUrl(token), CacheControl.noCache().cachePublic());
+    }
+
+    /** Kopfbereich mit Open-Graph-Tags; nginx bettet ihn per SSI in die Teilen-Seite ein. */
+    @GetMapping(value = "/share/{token}/head", produces = "text/html;charset=UTF-8")
+    public ResponseEntity<String> getSharedHead(@PathVariable String token) {
+        return ResponseEntity.ok()
+                .header("X-Robots-Tag", "noindex, nofollow")
+                .cacheControl(CacheControl.noStore())
+                .body(SharePreviewHtml.head(sharePreviewService.preview(token)));
+    }
+
+    @GetMapping("/share/{token}/og-image")
+    public ResponseEntity<byte[]> getSharedPreviewImage(@PathVariable String token) {
+        return previewImage(sharePreviewService.previewImage(token));
+    }
+
+    @GetMapping("/share/og-image")
+    public ResponseEntity<byte[]> getFallbackPreviewImage() {
+        return previewImage(sharePreviewService.fallbackImage());
+    }
+
+    private static ResponseEntity<byte[]> previewImage(byte[] jpeg) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(PREVIEW_IMAGE_CACHE)
+                .header("X-Robots-Tag", "noindex, nofollow")
+                .body(jpeg);
     }
 }
