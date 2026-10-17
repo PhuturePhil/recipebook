@@ -288,6 +288,61 @@ class FamilyVisibilityPersistenceTest {
     }
 
     @Test
+    void foundingWithShareOwnRecipes_addsTheNewFamilyToEveryOwnRecipeOnly() {
+        Long kochclub = familyOf(anna, paco);
+        Recipe privat = recipe(anna, "PRIVATE", null);
+        Recipe oeffentlich = recipe(anna, "PUBLIC", null);
+        Recipe imKochclub = recipe(anna, "FAMILY", List.of(kochclub));
+        Recipe vonPaco = recipe(paco, "FAMILY", List.of(kochclub));
+        Recipe vonFremd = recipe(fremd, "PRIVATE", null);
+
+        FamilyService.FamilyView neu = families.create(anna.getId(), "Familie Neu", true);
+        flush();
+
+        assertEquals(3, neu.recipeCount(), "genau Annas drei Rezepte");
+        assertEquals(Set.of(neu.id()), access.stored(privat.getId()).familyIds(), "privat → jetzt für die neue Familie");
+        assertFalse(access.stored(privat.getId()).isPublic());
+        assertTrue(access.stored(oeffentlich.getId()).isPublic(), "öffentlich bleibt öffentlich");
+        assertEquals(Set.of(neu.id()), access.stored(oeffentlich.getId()).familyIds());
+        assertEquals(Set.of(kochclub, neu.id()), access.stored(imKochclub.getId()).familyIds(), "alte Familie bleibt");
+        assertEquals(Set.of(kochclub), access.stored(vonPaco.getId()).familyIds(), "fremde Rezepte unberührt");
+        assertTrue(access.stored(vonFremd.getId()).familyIds().isEmpty());
+
+        // Wer der neuen Familie beitritt, sieht Annas Rezepte – seine eigenen kommen dabei nicht automatisch dazu
+        families.join(neu.invite().code(), fremd.getId());
+        flush();
+        assertTrue(access.canView(privat.getId(), fremd.getId()));
+        assertTrue(access.stored(vonFremd.getId()).familyIds().isEmpty());
+        assertEquals(3, families.get(neu.id(), fremd.getId()).recipeCount());
+    }
+
+    @Test
+    void foundingWithoutShareOwnRecipes_startsEmptyAndLeavesSharesAlone() {
+        Long kochclub = familyOf(anna, paco);
+        Recipe privat = recipe(anna, "PRIVATE", null);
+        Recipe imKochclub = recipe(anna, "FAMILY", List.of(kochclub));
+
+        FamilyService.FamilyView neu = families.create(anna.getId(), "Familie Leer", false);
+        flush();
+
+        assertEquals(0, neu.recipeCount());
+        assertEquals(0, recipeFamilyRepository.countByFamilyId(neu.id()));
+        assertTrue(access.stored(privat.getId()).familyIds().isEmpty());
+        assertEquals(Set.of(kochclub), access.stored(imKochclub.getId()).familyIds());
+        assertEquals(0, families.create(anna.getId(), "Ohne Flag").recipeCount(), "Standard der API: ohne Rezepte");
+    }
+
+    @Test
+    void foundingWithShareOwnRecipes_withoutOwnRecipes_isEmpty() {
+        recipe(anna, "PRIVATE", null);
+
+        FamilyService.FamilyView neu = families.create(fremd.getId(), "Leer", true);
+        flush();
+
+        assertEquals(0, neu.recipeCount());
+    }
+
+    @Test
     void renewedInvite_invalidatesTheOldOne() {
         FamilyService.FamilyView created = families.create(anna.getId(), "Familie");
         String old = created.invite().code();

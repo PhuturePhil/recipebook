@@ -67,7 +67,7 @@ class FamilyControllerTest {
 
     @Test
     void create_returns201WithTheFamily() throws Exception {
-        when(familyService.create(5L, "Kochclub")).thenReturn(view(3));
+        when(familyService.create(5L, "Kochclub", false)).thenReturn(view(3));
 
         mockMvc.perform(post("/api/families").with(user(principal(5)))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Kochclub\"}"))
@@ -75,6 +75,25 @@ class FamilyControllerTest {
                 .andExpect(jsonPath("$.name").value("Kochclub"))
                 .andExpect(jsonPath("$.maxMembers").value(10))
                 .andExpect(jsonPath("$.members[0].self").value(true));
+    }
+
+    @Test
+    void create_passesTheShareFlag_missingMeansNo() throws Exception {
+        when(familyService.create(5L, "Kochclub", true)).thenReturn(view(3));
+        when(familyService.create(5L, "Kochclub", false)).thenReturn(view(4));
+
+        mockMvc.perform(post("/api/families").with(user(principal(5))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Kochclub\",\"shareOwnRecipes\":true}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(3));
+        mockMvc.perform(post("/api/families").with(user(principal(5))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Kochclub\",\"shareOwnRecipes\":false}"))
+                .andExpect(jsonPath("$.id").value(4));
+        mockMvc.perform(post("/api/families").with(user(principal(5))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Kochclub\"}"))
+                .andExpect(jsonPath("$.id").value(4));
+        verify(familyService, times(1)).create(5L, "Kochclub", true);
+        verify(familyService, times(2)).create(5L, "Kochclub", false);
     }
 
     @Test

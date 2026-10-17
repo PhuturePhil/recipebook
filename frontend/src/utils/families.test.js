@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { scopeRecipes, normalizeScope, shortFamilyName, avatarTone, SCOPE_ALL, SCOPE_MINE } from './families.js'
+import { scopeRecipes, normalizeScope, shortFamilyName, avatarTone, ownRecipeCount, shareOwnLabel, SCOPE_ALL, SCOPE_MINE } from './families.js'
 import { welcomeText } from './familyTexts.js'
 
 const recipes = [
@@ -44,4 +44,17 @@ test('Kurzname und Avatarfarbe', () => {
 test('Willkommensgruß nach dem Beitritt', () => {
   assert.equal(welcomeText('Familie Pastoors'), 'Willkommen in der Familie Pastoors')
   assert.equal(welcomeText('Kochclub Köln'), 'Willkommen bei „Kochclub Köln“')
+})
+
+test('Familie gründen: Zahl der eigenen Rezepte fürs Häkchen', () => {
+  assert.equal(ownRecipeCount(recipes, 7), 2)
+  assert.equal(ownRecipeCount(recipes, 8), 1)
+  assert.equal(ownRecipeCount(recipes, 42), 0)
+  assert.equal(ownRecipeCount(recipes, null), 0, 'ohne Konto nichts')
+  assert.equal(ownRecipeCount(undefined, 7), 0)
+})
+
+test('Familie gründen: Beschriftung mit Einzahl/Mehrzahl', () => {
+  assert.equal(shareOwnLabel(50), 'Alle meine Rezepte für diese Familie freigeben (50 Rezepte)')
+  assert.equal(shareOwnLabel(1), 'Alle meine Rezepte für diese Familie freigeben (1 Rezept)')
 })

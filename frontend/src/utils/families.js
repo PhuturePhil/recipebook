@@ -18,5 +18,12 @@ export function scopeRecipes(recipes, scope, viewerId) {
   return recipes.filter((r) => (r.families ?? []).some((f) => f.id === familyId))
 }
 
+// Familie gründen: so viele eigene Rezepte kämen mit (Häkchen „Alle meine Rezepte … freigeben“)
+export const ownRecipeCount = (recipes, viewerId) =>
+  viewerId == null ? 0 : scopeRecipes(recipes ?? [], SCOPE_MINE, viewerId).length
+
+export const shareOwnLabel = (n) =>
+  `Alle meine Rezepte für diese Familie freigeben (${n} ${n === 1 ? 'Rezept' : 'Rezepte'})`
+
 export const normalizeScope = (scope) =>
   scope === SCOPE_MINE || scope === SCOPE_ALL ? scope : (Number(scope) || SCOPE_ALL)

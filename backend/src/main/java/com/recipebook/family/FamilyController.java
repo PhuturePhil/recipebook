@@ -25,10 +25,14 @@ public class FamilyController {
         return familyService.myFamilies(user.getId());
     }
 
+    // shareOwnRecipes fehlt (ältere App-Stände) → Familie startet wie bisher ohne Rezepte
+    public record CreateRequest(String name, Boolean shareOwnRecipes) {}
+
     @PostMapping
-    public ResponseEntity<FamilyService.FamilyView> create(@RequestBody Map<String, String> body,
+    public ResponseEntity<FamilyService.FamilyView> create(@RequestBody CreateRequest body,
             @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(familyService.create(user.getId(), body.get("name")));
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            familyService.create(user.getId(), body.name(), Boolean.TRUE.equals(body.shareOwnRecipes())));
     }
 
     @GetMapping("/{id}")

@@ -23,6 +23,13 @@ public interface RecipeFamilyRepository extends JpaRepository<RecipeFamily, Reci
             + "AND rf.recipeId IN (SELECT r.id FROM Recipe r WHERE r.user.id = :userId)")
     int deleteOwnedBy(@Param("familyId") Long familyId, @Param("userId") Long userId);
 
+    // Beim Gründen: alle eigenen Rezepte zusätzlich für die neue Familie freigeben (bestehende Freigaben bleiben)
+    @Modifying
+    @Query(value = "INSERT INTO recipe_families (recipe_id, family_id) SELECT r.id, CAST(:familyId AS BIGINT) FROM recipes r "
+            + "WHERE r.user_id = :userId AND NOT EXISTS (SELECT 1 FROM recipe_families x "
+            + "WHERE x.recipe_id = r.id AND x.family_id = :familyId)", nativeQuery = true)
+    int shareAllOwnedWith(@Param("familyId") Long familyId, @Param("userId") Long userId);
+
     // Freigaben der Rezepte, soweit der Betrachter Mitglied der jeweiligen Familie ist
     @Query("SELECT rf FROM RecipeFamily rf WHERE rf.familyId IN "
             + "(SELECT m.familyId FROM FamilyMember m WHERE m.userId = :userId)")

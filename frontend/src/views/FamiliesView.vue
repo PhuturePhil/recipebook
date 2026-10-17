@@ -30,6 +30,7 @@
       confirm-label="Gründen"
       :error="createError"
       :busy="busy"
+      :share-count="shareCount"
       @submit="create"
       @cancel="creating = false"
     />
@@ -37,12 +38,14 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/shell/AppIcon.vue'
 import FamilyNameDialog from '@/components/FamilyNameDialog.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useFamilyStore, avatarTone, shortFamilyName } from '@/stores/familyStore'
+import { useRecipeStore } from '@/stores/recipeStore'
+import { ownRecipeCount } from '@/utils/families'
 import { familyService } from '@/services/familyService'
 import { usePageVisit } from '@/composables/usePageVisit'
 import { track } from '@/utils/analytics'
@@ -52,9 +55,13 @@ usePageVisit('familien')
 const router = useRouter()
 const authStore = useAuthStore()
 const familyStore = useFamilyStore()
+const recipeStore = useRecipeStore()
 const creating = ref(false)
 const createError = ref('')
 const busy = ref(false)
+
+// Für das Häkchen „Alle meine Rezepte freigeben (N)“; der Server gibt frei, was dem Gründer gehört
+const shareCount = computed(() => ownRecipeCount(recipeStore.recipes, authStore.user?.id))
 
 const initialOf = (name) => shortFamilyName(name).charAt(0).toLocaleUpperCase('de-DE')
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
@@ -65,13 +72,15 @@ function openCreate() {
   creating.value = true
 }
 
-async function create(name) {
+async function create(name, { shareOwnRecipes = false } = {}) {
   busy.value = true
   createError.value = ''
   try {
-    const family = await familyService.create(name)
+    const family = await familyService.create(name, { shareOwnRecipes })
     familyStore.upsert(family)
-    track('familie_angelegt')
+    // Rezeptliste zeigt die neue Familie sonst erst nach dem nächsten Laden in den Chips
+    if (shareOwnRecipes) recipeStore.invalidateRecipes()
+    track('familie_angelegt', { rezepte_freigegeben: shareOwnRecipes ? family.recipeCount : 0 })
     creating.value = false
     router.push(`/familien/${family.id}`)
   } catch (error) {
@@ -82,7 +91,11 @@ async function create(name) {
 }
 
 // Frisch laden, damit Zähler (Mitglieder/Rezepte) stimmen
-onMounted(() => familyStore.ensureLoaded(authStore.user?.id, { force: true }))
+onMounted(() => {
+  familyStore.ensureLoaded(authStore.user?.id, { force: true })
+  // Eigene Rezepte zählen (meist schon geladen, dann passiert nichts)
+  recipeStore.fetchRecipes({ background: true })
+})
 </script>
 
 <style scoped>

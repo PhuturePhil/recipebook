@@ -32,7 +32,9 @@ async function request(path, { method = 'GET', body } = {}) {
 export const familyService = {
   list: () => request('/families'),
   get: (id) => request(`/families/${id}`),
-  create: (name) => request('/families', { method: 'POST', body: { name } }),
+  // shareOwnRecipes: alle eigenen Rezepte gleich mit freigeben (serverseitig, in einem Rutsch)
+  create: (name, { shareOwnRecipes = false } = {}) =>
+    request('/families', { method: 'POST', body: { name, shareOwnRecipes } }),
   rename: (id, name) => request(`/families/${id}`, { method: 'PUT', body: { name } }),
   renewInvite: (id) => request(`/families/${id}/invite`, { method: 'POST' }),
   // Eigene ID = austreten; { deleted: true }, wenn man das letzte Mitglied war

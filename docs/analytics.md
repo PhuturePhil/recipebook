@@ -66,7 +66,7 @@ bzw. bei Display aus); `gesamt_ms` = Spanne vom Öffnen bis zum Verlassen inkl. 
 | pdf_gespeichert | `recipeId` – Klick auf „Als PDF speichern“ (ob danach wirklich gespeichert oder gedruckt wird, sieht die App nicht) |
 | teilen_link_aufgerufen | `recipeId`, `shareLinkId` (beide nur bei bekanntem Link), `linkRef`, `link` (`gueltig`, `abgelaufen`, `zurueckgezogen`, `ungueltig` = unbekannter Token), `status` (`eingeloggt` = mit Pseudonym, `anonym` = Gast ohne Pseudonym) – einmal pro Sitzung und Link (Neuladen zählt nicht doppelt) |
 | teilen_login | `recipeId`, `shareLinkId`, `linkRef`, `link` wie oben = der zuletzt als Gast geöffnete Teilen-Link, `seit_ms` = Zeit vom Teilen-Aufruf bis zum Login – wenn sich ein Gast im selben Tab danach anmeldet (Herkunft in sessionStorage `an:share-guest`, einmalig) |
-| familie_angelegt | – (ohne Familienname/-id) |
+| familie_angelegt | `rezepte_freigegeben` (Anzahl beim Gründen mitgenommener eigener Rezepte, 0 = Häkchen aus; ohne Familienname/-id) |
 | einladung_angenommen | – Beitritt über einen Familien-Einladungslink (ohne Code, ohne Familie) |
 | popup_neuerungen | `aktion`: `angezeigt` (mit `version`, `eintraege`) beim Öffnen; beim Schließen `weggeklickt` (`wie`: `knopf`, `daneben`, `esc`) oder `alle_neuerungen`, jeweils mit `version` und `sichtbar_ms` (gekappt bei 30 Min.) |
 

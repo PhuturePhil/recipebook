@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026-10-17.7",
+    "datum": "17.10.2026",
+    "titel": "Neue Familie gleich mit deinen Rezepten",
+    "punkte": [
+      "Beim Gründen einer Familie ist „Alle meine Rezepte für diese Familie freigeben“ schon angehakt – die neue Familie sieht dann sofort alle Rezepte, die du angelegt hast",
+      "Was schon öffentlich oder für andere Familien freigegeben ist, bleibt so; nur die neue Familie kommt dazu. Auch private Rezepte werden für sie sichtbar – je Rezept kannst du das später ändern",
+      "Häkchen weg: Die Familie startet wie bisher ohne Rezepte"
+    ]
+  },
+  {
     "version": "2026-10-17.6",
     "datum": "17.10.2026",
     "titel": "Server-Protokoll ohne vollständige IP-Adressen",

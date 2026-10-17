@@ -160,6 +160,11 @@ a.recipe-visibility:hover { color: var(--akzent-text); }
 
 /* Eingabe-Dialog (Familie gründen / umbenennen) */
 .name-dialog__input { width: 100%; margin-top: 4px; }
+.name-dialog__share { align-items: flex-start; margin-top: 14px; font-size: 14px; font-weight: 600; line-height: 1.35; }
+.name-dialog__share { position: relative; }
+.name-dialog__share .vis-check { margin-top: 1px; }
+.name-dialog__check { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; pointer-events: none; }
+.name-dialog__hint { display: block; font-size: 12.5px; font-weight: 400; color: var(--text2); margin-top: 2px; }
 .name-dialog__error { color: var(--neg); font-size: 13.5px; margin: 8px 2px 0; }
 
 /* Tastatur-Fokus der versteckten Radio-/Checkbox-Felder sichtbar machen */

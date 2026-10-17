@@ -96,6 +96,15 @@ public class FamilyService {
 
     @Transactional
     public FamilyView create(Long userId, String rawName) {
+        return create(userId, rawName, false);
+    }
+
+    /**
+     * Familie gründen; mit shareOwnRecipes bekommen alle Rezepte des Gründers diese Familie zusätzlich in ihre
+     * Freigaben (privat → für die Familie sichtbar, öffentlich bleibt öffentlich, andere Familien bleiben).
+     */
+    @Transactional
+    public FamilyView create(Long userId, String rawName, boolean shareOwnRecipes) {
         String name = cleanName(rawName);
         requireUser(userId);
         if (memberRepository.countByUserId(userId) >= MAX_FAMILIES_PER_USER) {
@@ -109,6 +118,10 @@ public class FamilyService {
         family.setInviteCreatedBy(userId);
         family = familyRepository.save(family);
         memberRepository.save(new FamilyMember(family.getId(), userId));
+        if (shareOwnRecipes) {
+            memberRepository.flush();
+            recipeFamilyRepository.shareAllOwnedWith(family.getId(), userId);
+        }
         return detail(family, userId);
     }
 
