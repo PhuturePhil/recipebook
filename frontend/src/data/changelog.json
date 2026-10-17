@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026-10-17.6",
+    "datum": "17.10.2026",
+    "titel": "Server-Protokoll ohne vollständige IP-Adressen",
+    "punkte": [
+      "Der Server speichert IP-Adressen im Protokoll nur noch gekürzt – der letzte Teil wird entfernt",
+      "Die Datenschutzerklärung beschreibt das jetzt entsprechend"
+    ]
+  },
+  {
     "version": "2026-10-17.5",
     "datum": "17.10.2026",
     "titel": "Eigenes Konto erstellen, Impressum und Datenschutz",

@@ -28,8 +28,9 @@
         IP-Adressen speichert die Statistik nicht. Aufrufe von Teilen-Links durch Gäste zählen wir ganz ohne Pseudonym.
       </li>
       <li>
-        <strong>Server-Protokoll:</strong> Der Webserver notiert bei jedem Aufruf technisch IP-Adresse, Zeitpunkt,
-        aufgerufene Adresse und Browser-Kennung. Das Protokoll dient nur der Fehlersuche und der Abwehr von Angriffen,
+        <strong>Server-Protokoll:</strong> Der Webserver notiert bei jedem Aufruf technisch Zeitpunkt, aufgerufene Adresse,
+        Browser-Kennung und die gekürzte IP-Adresse (der letzte Teil wird entfernt). Vollständige IP-Adressen speichert
+        das Protokoll nicht. Es dient nur der Fehlersuche und der Abwehr von Angriffen,
         wird nicht ausgewertet und fortlaufend überschrieben. Gegen das Durchprobieren von Passwörtern merkt sich der
         Server IP-Adressen zusätzlich für eine Minute im Arbeitsspeicher.
       </li>
