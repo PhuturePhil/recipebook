@@ -301,6 +301,17 @@ import {
   translationBanner,
   shareUrl,
 } from '@/utils/recipeLanguage'
+import {
+  track,
+  startVisit,
+  previousRouteName,
+  recipeOrigin,
+  languageDirection,
+  createChangeAggregator,
+  randomId,
+  RECIPE_TOTAL_CAP_MS,
+  SERVINGS_DELAY_MS,
+} from '@/utils/analytics'
 
 const route = useRoute()
 const router = useRouter()
@@ -313,6 +324,7 @@ const authStore = useAuthStore()
 const recipe = computed(() => store.currentRecipe)
 
 const searchTag = (tag) => {
+  track('filter_gesetzt', { filter: 'tag', wert: tag, quelle: 'rezept' })
   store.setSearchTerms([tagSearchTerm(tag)])
   store.setPendingSearchTerm('')
   router.push('/')
@@ -330,6 +342,13 @@ const nutritionInfo = ref(null)
 const nutritionLoading = ref(false)
 const nutritionError = ref(null)
 let titleObserver = null
+
+// Nutzungsstatistik: Öffnen mit Herkunft, beim Verlassen sichtbare Zeit + Gesamtspanne (gekappt bei 6 h)
+let recipeVisit = null
+let unmounted = false
+const servingsChanges = createChangeAggregator(SERVINGS_DELAY_MS, (von, auf) => {
+  track('portionen_geaendert', { recipeId: recipe.value?.id, von, auf })
+})
 
 // Bewertungen hängen am Rezept, nicht an der Sprache – sie bleiben beim Umschalten Deutsch/Original gleich
 const RATINGS_PREVIEW = 3
@@ -449,6 +468,9 @@ const loadTranslation = async () => {
 }
 
 const setLanguage = async (value) => {
+  if (value !== languagePref.value) {
+    track('sprache_gewechselt', { recipeId: recipe.value?.id, richtung: languageDirection(value) })
+  }
   languagePref.value = value
   writeLanguagePreference(value)
   await loadTranslation()
@@ -489,11 +511,17 @@ const kcalChipTitle = computed(() => {
 
 onMounted(async () => {
   activeTab.value = 'ingredients'
+  const herkunft = recipeOrigin(previousRouteName(), store.activeSearchTerms.some((t) => !t.startsWith('#')))
   try {
     await store.fetchRecipeById(route.params.id)
   } catch (error) {
     notFound.value = error.status === 404
     return
+  }
+  if (recipe.value && !unmounted) {
+    const besuch = randomId()
+    track('rezept_geoeffnet', { recipeId: recipe.value.id, herkunft, besuch })
+    recipeVisit = startVisit('rezept_verlassen', { recipeId: recipe.value.id, besuch }, { capTotalMs: RECIPE_TOTAL_CAP_MS })
   }
   if (recipe.value) {
     currentServings.value = recipe.value.baseServings
@@ -520,6 +548,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  unmounted = true
+  servingsChanges.flush()
+  recipeVisit?.end()
   window.__appBusy?.delete(translationBusy)
   // The list is served from cache, so a leftover error would otherwise show up there
   store.clearError()
@@ -531,11 +562,13 @@ onUnmounted(() => {
 const goBack = () => navigateBackTo(router, LIST_PATH)
 
 const increaseServings = () => {
+  servingsChanges.change(currentServings.value, currentServings.value + 1)
   currentServings.value++
 }
 
 const decreaseServings = () => {
   if (currentServings.value > 1) {
+    servingsChanges.change(currentServings.value, currentServings.value - 1)
     currentServings.value--
   }
 }

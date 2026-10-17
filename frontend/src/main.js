@@ -10,6 +10,7 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/authStore'
 import { installSessionGuard } from './services/sessionGuard'
+import { installAnalytics } from './utils/analytics'
 
 const app = createApp(App)
 
@@ -17,5 +18,6 @@ app.use(createPinia())
 app.use(router)
 
 installSessionGuard({ authStore: useAuthStore(), router })
+installAnalytics({ authStore: useAuthStore(), router })
 
 app.mount('#app')

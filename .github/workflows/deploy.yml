@@ -151,6 +151,7 @@ jobs:
                   OIDC_CLIENT_ID: recipebook
                   OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
                   PASSWORD_LOGIN_FOR_SSO_USERS: ${PASSWORD_LOGIN_FOR_SSO_USERS:-false}
+                  ANALYTICS_SALT: ${ANALYTICS_SALT:-}
                 depends_on:
                   postgres:
                     condition: service_healthy

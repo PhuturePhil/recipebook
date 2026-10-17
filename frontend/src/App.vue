@@ -11,6 +11,7 @@ import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import WhatsNewModal from '@/components/WhatsNewModal.vue'
 import { useUpdateCheck } from '@/composables/useUpdateCheck'
 import { replacesTabBar } from '@/utils/detailActions'
+import { flushNow } from '@/utils/analytics'
 import '@/composables/useTheme'
 
 const route = useRoute()
@@ -53,7 +54,13 @@ const mehr = computed(() => [
   { id: 'abmelden', label: 'Abmelden', icon: 'abmelden', onClick: logout },
 ])
 
+function openAllNews() {
+  closeWhatsNew()
+  router.push('/changelog')
+}
+
 function logout() {
+  flushNow()
   authStore.logout()
   router.push('/login')
 }
@@ -92,5 +99,5 @@ onMounted(async () => {
   <MoreSheet v-if="moreOpen" :mehr="mehr" @close="moreOpen = false" />
   <ProfileModal v-if="showProfile" @close="showProfile = false" />
   <LoadingOverlay />
-  <WhatsNewModal v-if="whatsNew" :title="whatsNew.title" :entries="whatsNew.entries" @close="closeWhatsNew" />
+  <WhatsNewModal v-if="whatsNew" :title="whatsNew.title" :entries="whatsNew.entries" @close="closeWhatsNew" @all="openAllNews" />
 </template>

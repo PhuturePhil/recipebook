@@ -20,7 +20,7 @@
       </div>
       <label class="search-sort" :class="{ 'search-sort--active': store.sortMode !== 'default' }" title="Sortierung">
         <span class="search-sort__label" aria-hidden="true"><AppIcon name="sortieren" :size="18" /><span v-if="sortShort">{{ sortShort }}</span></span>
-        <select :value="store.sortMode" aria-label="Sortierung" @change="store.setSortMode($event.target.value)">
+        <select :value="store.sortMode" aria-label="Sortierung" @change="changeSort($event.target.value)">
           <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
@@ -76,10 +76,11 @@
 
 <script setup>
 import AppIcon from '@/components/shell/AppIcon.vue'
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { SORT_OPTIONS } from '@/utils/recipeSearch'
 import { tagBarEntries, tagCounts, tagSearchTerm } from '@/utils/recipeTags'
+import { track, createSearchReporter, SEARCH_DELAY_MS } from '@/utils/analytics'
 
 const store = useRecipeStore()
 const badges = ref([])
@@ -104,7 +105,17 @@ onMounted(() => {
   inputValue.value = store.pendingSearchTerm
 })
 
-onUnmounted(() => clearTimeout(liveSearchTimer))
+// Nutzungsstatistik: Suchtext (ohne Tag-Filter) erst nach Tipppause bzw. bei Enter, mit Trefferzahl
+const searchText = computed(() => store.activeSearchTerms.filter((t) => !t.startsWith('#')).join(', '))
+const searchReporter = createSearchReporter(SEARCH_DELAY_MS, (query) => {
+  track('suche', { query, treffer: store.filteredRecipes.length })
+})
+watch(searchText, (query) => searchReporter.push(query))
+
+onUnmounted(() => {
+  clearTimeout(liveSearchTimer)
+  searchReporter.flush()
+})
 
 watch(() => store.searchTerms, (terms) => {
   if (terms.join('\n') !== badges.value.join('\n')) badges.value = [...terms]
@@ -146,6 +157,7 @@ const commitInput = () => {
     addBadge(inputValue.value)
     inputValue.value = ''
     updateLiveSearch(true)
+    nextTick(() => searchReporter.flush())
   }
 }
 
@@ -158,6 +170,7 @@ const handleBackspace = (e) => {
 }
 
 const pickTag = (tag) => {
+  track('filter_gesetzt', { filter: 'tag', wert: tag })
   addBadge(tagSearchTerm(tag))
   inputEl.value?.blur()
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -170,11 +183,18 @@ const removeTerm = (term) => {
 
 const clearTags = () => {
   if (!activeTags.value.length) return
+  track('filter_gesetzt', { filter: 'tag', wert: 'alle' })
   badges.value = [...textBadges.value]
   store.setSearchTerms([...badges.value])
 }
 
+const changeSort = (mode) => {
+  store.setSortMode(mode)
+  track('filter_gesetzt', { filter: 'sortierung', wert: store.sortMode })
+}
+
 const clearAll = () => {
+  searchReporter.flush()   // wer die Treffer schon gesehen hat und dann leert, hat trotzdem gesucht
   badges.value = []
   inputValue.value = ''
   updateLiveSearch(true)

@@ -24,7 +24,7 @@
       </template>
 
       <div v-else class="share-actions">
-        <button @click="handleCreate" :disabled="busy" class="btn-primary">
+        <button @click="handleCreate()" :disabled="busy" class="btn-primary">
           {{ busy ? 'Erstelle...' : 'Link erstellen' }}
         </button>
       </div>
@@ -39,6 +39,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { shareService } from '@/services/shareService'
+import { track } from '@/utils/analytics'
 
 const props = defineProps({
   recipeId: {
@@ -71,11 +72,12 @@ onMounted(async () => {
   loading.value = false
 })
 
-async function handleCreate() {
+async function handleCreate(erneuert = false) {
   busy.value = true
   error.value = null
   try {
     shareLink.value = await shareService.createShareLink(props.recipeId)
+    track('teilen_link_erstellt', { recipeId: Number(props.recipeId), erneuert })
     copied.value = false
   } catch {
     error.value = 'Der Link konnte nicht erstellt werden.'
@@ -85,7 +87,7 @@ async function handleCreate() {
 
 async function handleRegenerate() {
   if (!confirm('Neuen Link erzeugen? Der bisherige Link funktioniert dann nicht mehr.')) return
-  await handleCreate()
+  await handleCreate(true)
 }
 
 async function handleRevoke() {

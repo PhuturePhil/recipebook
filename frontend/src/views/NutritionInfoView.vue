@@ -85,6 +85,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { nutritionService } from '@/services/nutritionService'
 import { QUICK_MAX_MINUTES } from '@/stores/recipeStore'
+import { usePageVisit } from '@/composables/usePageVisit'
+
+usePageVisit('naehrwerte_badges')
 
 const info = ref(null)
 const loading = ref(true)

@@ -43,6 +43,7 @@ import { navigateBackTo, formExitTarget } from '@/utils/backNavigation'
 import RecipeForm from '@/components/RecipeForm.vue'
 import FormActionBar from '@/components/shell/FormActionBar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { track } from '@/utils/analytics'
 
 const route = useRoute()
 const router = useRouter()
@@ -129,6 +130,7 @@ const handleSubmit = async (recipeData) => {
   leaveConfirmed = true
   // Formular verschwindet aus dem Verlauf: „Zurück“ auf der Rezeptseite führt danach nicht wieder hierher
   const savedId = isEdit.value ? route.params.id : result.id
+  track(isEdit.value ? 'rezept_bearbeitet' : 'rezept_angelegt', { recipeId: Number(savedId) })
   navigateBackTo(router, formExitTarget({ isEdit: isEdit.value, recipeId: route.params.id, savedId }))
 }
 

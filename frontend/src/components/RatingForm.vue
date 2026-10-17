@@ -27,6 +27,7 @@
 import { computed, ref } from 'vue'
 import RatingStars from '@/components/RatingStars.vue'
 import { recipeService } from '@/services/recipeService'
+import { track } from '@/utils/analytics'
 
 const props = defineProps({
   recipeId: { type: [Number, String], required: true },
@@ -48,6 +49,7 @@ const submit = async () => {
   error.value = null
   try {
     await recipeService.addRating(props.recipeId, { stars: stars.value, comment: comment.value.trim() || null })
+    track('bewertung_abgegeben', { recipeId: Number(props.recipeId), sterne: stars.value, mitKommentar: !!comment.value.trim() })
     stars.value = 0
     comment.value = ''
     emit('submitted')

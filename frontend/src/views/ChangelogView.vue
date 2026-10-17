@@ -18,6 +18,9 @@
 <script setup>
 import { onMounted } from 'vue'
 import changelog from '@/data/changelog.json'
+import { usePageVisit } from '@/composables/usePageVisit'
+
+usePageVisit('changelog')
 
 // Wer alle Neuerungen gelesen hat, bekommt das „Was ist neu“-Fenster dafür nicht nochmal (und der NEU-Badge geht weg)
 onMounted(() => {

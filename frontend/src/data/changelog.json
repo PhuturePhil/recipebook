@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026-10-17.1",
+    "datum": "17.10.2026",
+    "titel": "Anonyme Nutzungsstatistik",
+    "punkte": [
+      "Die App zählt jetzt intern, welche Rezepte und Funktionen genutzt werden – etwa Öffnen, Suchen, Portionen und wie lange ein Rezept offen ist",
+      "Die Daten bleiben auf unserem eigenen Server, ohne Namen und ohne IP-Adresse; geteilte Rezept-Links werden nicht erfasst",
+      "Im Fenster „Was ist neu“ führt „Alle Neuerungen“ jetzt direkt zur kompletten Liste"
+    ]
+  },
+  {
     "version": "2026-10-13.2",
     "datum": "13.10.2026",
     "titel": "Zurück führt zur Rezeptliste",

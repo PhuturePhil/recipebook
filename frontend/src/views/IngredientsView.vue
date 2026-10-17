@@ -260,6 +260,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { ingredientCatalogService, INGREDIENT_CLASSES, classLabel } from '@/services/ingredientCatalogService'
 import { SOURCE_LABELS } from '@/services/nutritionService'
 import IngredientForm from '@/components/IngredientForm.vue'
+import { usePageVisit } from '@/composables/usePageVisit'
+
+usePageVisit('zutaten')
 
 const route = useRoute()
 const authStore = useAuthStore()

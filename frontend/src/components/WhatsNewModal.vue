@@ -1,5 +1,5 @@
 <template>
-  <div class="whatsnew-overlay" @click.self="emit('close')">
+  <div class="whatsnew-overlay" @click.self="close('daneben')">
     <div class="whatsnew" role="dialog" aria-modal="true" aria-labelledby="whatsnew-title">
       <h2 id="whatsnew-title" class="whatsnew__title">{{ title }}</h2>
       <div class="whatsnew__body">
@@ -13,29 +13,50 @@
           </ul>
         </div>
       </div>
-      <button ref="btn" type="button" class="whatsnew__ok" @click="emit('close')">Alles klar</button>
+      <button ref="btn" type="button" class="whatsnew__ok" @click="close('knopf')">Alles klar</button>
+      <button ref="allBtn" type="button" class="whatsnew__all" @click="openAll">Alle Neuerungen</button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { track, startVisit, PAGE_VISIBLE_CAP_MS } from '@/utils/analytics'
 
-defineProps({
+const props = defineProps({
   title: { type: String, required: true },
   entries: { type: Array, required: true },
 })
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'all'])
 const btn = ref(null)
+const allBtn = ref(null)
+// Nutzungsstatistik: angezeigt sofort, beim Schließen Aktion + sichtbare Anzeigedauer (gekappt bei 30 Min.)
+let visit = null
+
+const close = (wie) => {
+  visit?.end({ aktion: 'weggeklickt', wie })
+  emit('close')
+}
+
+const openAll = () => {
+  visit?.end({ aktion: 'alle_neuerungen' })
+  emit('all')
+}
 let prevFocus = null
 let prevOverflow = ''
 
 const onKey = (e) => {
-  if (e.key === 'Escape') { e.preventDefault(); emit('close') }
-  else if (e.key === 'Tab') { e.preventDefault(); btn.value?.focus() }   // einziges Bedienelement
+  if (e.key === 'Escape') { e.preventDefault(); close('esc') }
+  else if (e.key === 'Tab') {   // Fokus bleibt im Fenster: zwischen den beiden Knöpfen wechseln
+    e.preventDefault()
+    ;(document.activeElement === btn.value ? allBtn.value : btn.value)?.focus()
+  }
 }
 
 onMounted(() => {
+  const version = props.entries[0]?.version ?? null
+  track('popup_neuerungen', { aktion: 'angezeigt', version, eintraege: props.entries.length })
+  visit = startVisit('popup_neuerungen', { aktion: 'abgebrochen', version }, { capVisibleMs: PAGE_VISIBLE_CAP_MS, fields: ['sichtbar_ms'] })
   prevFocus = document.activeElement
   prevOverflow = document.body.style.overflow
   document.body.style.overflow = 'hidden'
@@ -43,6 +64,7 @@ onMounted(() => {
   btn.value?.focus()
 })
 onUnmounted(() => {
+  visit?.end()
   document.removeEventListener('keydown', onKey, true)
   document.body.style.overflow = prevOverflow
   if (prevFocus?.focus && document.contains(prevFocus)) prevFocus.focus()
@@ -138,7 +160,7 @@ onUnmounted(() => {
 }
 
 .whatsnew__ok {
-  margin: 16px 20px 20px;
+  margin: 16px 20px 4px;
   padding: 13px;
   border: none;
   border-radius: var(--radius);
@@ -148,5 +170,20 @@ onUnmounted(() => {
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+}
+.whatsnew__all {
+  margin: 0 20px 14px;
+  min-height: 44px;
+  padding: 8px;
+  border: none;
+  background: none;
+  color: var(--akzent-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.whatsnew__all:hover {
+  text-decoration: underline;
 }
 </style>
