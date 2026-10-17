@@ -580,6 +580,7 @@ const scaledIngredients = computed(() =>
 const ingredientSections = computed(() => groupSections(scaledIngredients.value))
 
 const printRecipe = async () => {
+  track('pdf_gespeichert', { recipeId: recipe.value?.id })
   activeTab.value = 'ingredients'
   await nextTick()
   const originalTitle = document.title

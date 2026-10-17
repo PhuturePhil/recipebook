@@ -105,6 +105,18 @@ public class ShareLinkService {
         return validShareLink(token).getRecipe().getImageUrl();
     }
 
+    /** Zustand eines Links für die Nutzungsstatistik (Teilen-Aufrufe); unbekannter Token = ungueltig. */
+    public record LinkState(Long shareLinkId, Long recipeId, String status) {}
+
+    @Transactional(readOnly = true)
+    public LinkState linkState(String token) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        return shareLinkRepository.findByToken(token)
+                .map(link -> new LinkState(link.getId(), link.getRecipe().getId(),
+                        link.isRevoked() ? "zurueckgezogen" : link.isValidAt(now) ? "gueltig" : "abgelaufen"))
+                .orElse(new LinkState(null, null, "ungueltig"));
+    }
+
     public Recipe getSharedRecipeEntity(String token) {
         return validShareLink(token).getRecipe();
     }

@@ -1,8 +1,12 @@
 // Nutzungsstatistik (Doku: docs/analytics.md). Generisch gehalten, damit das Modul 1:1 in die anderen Apps passt.
 // Events landen in einer Warteschlange (localStorage) und gehen gebündelt per fetch keepalive an POST /api/events.
+// Ausnahme: Gäste auf einer Teilen-Seite melden nur den Aufruf, sofort und ohne Login an POST /api/events/public.
 // Tracking darf die App nie stören: jeder Fehler wird still geschluckt.
 
 export const ENDPOINT = '/api/events'
+export const PUBLIC_ENDPOINT = '/api/events/public'
+// Diese Events dürfen auch auf der Teilen-Seite erfasst werden (sonst wird sie nicht getrackt)
+export const SHARE_EVENTS = ['teilen_link_aufgerufen', 'teilen_login']
 export const BATCH_SIZE = 50
 export const MAX_QUEUE = 200
 export const FLUSH_INTERVAL_MS = 30 * 1000
@@ -18,6 +22,8 @@ export const DESKTOP_MIN_WIDTH = 1024
 const QUEUE_KEY = 'an:queue'
 const VISITS_KEY = 'an:visits'
 const SESSION_KEY = 'an:session'
+const SHARE_SEEN_KEY = 'an:share-seen'
+const SHARE_GUEST_KEY = 'an:share-guest'
 
 export function deviceType({ ua = '', width = 0, touchPoints = 0 } = {}) {
   if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) return 'mobile'
@@ -171,8 +177,10 @@ export function jsonStore(storage) {
 
 // Kern ohne Browser-Abhängigkeiten (Tests injizieren Uhr, Speicher und Versand).
 // local: geteilt zwischen Tabs (Warteschlange, offene Besuche); session: pro Tab (Sitzungs-ID).
+// isEnabled(event): darf dieses Event erfasst werden; ohne Event: darf die Warteschlange abgeschickt werden.
 export function createAnalytics({
   send,
+  sendAnonymous = async () => 0,
   local,
   session,
   now = Date.now,
@@ -216,7 +224,7 @@ export function createAnalytics({
 
   function track(event, props = {}, override = {}) {
     try {
-      if (!isEnabled()) return
+      if (!isEnabled(event)) return
       const ctx = context()
       const queue = readQueue()
       queue.push({
@@ -232,6 +240,17 @@ export function createAnalytics({
       if (queue.length >= FLUSH_AT) flush()
     } catch {
       // Tracking stört nie
+    }
+  }
+
+  // Gast ohne Login: ein Event sofort abschicken, ohne Warteschlange und ohne Konto (geht es schief, fehlt es eben)
+  function trackAnonymous(event, props = {}) {
+    try {
+      const ctx = context()
+      const e = { event, ts: now(), sessionId: sessionId(), device: ctx.device, display: ctx.display, props }
+      return Promise.resolve(sendAnonymous([e])).catch(() => {})
+    } catch {
+      return Promise.resolve()
     }
   }
 
@@ -362,12 +381,55 @@ export function createAnalytics({
     }
   }
 
-  return { track, flush, startVisit, onVisibility, onPageHide, recoverVisits, pageId, get activeVisits() { return visits.size } }
+  return {
+    track, trackAnonymous, flush, startVisit, onVisibility, onPageHide, recoverVisits, pageId,
+    currentSessionId: sessionId,
+    get activeVisits() { return visits.size },
+  }
+}
+
+// Teilen-Seite: Aufruf einmal pro Sitzung und Link melden – eingeloggt über die Warteschlange (mit Pseudonym),
+// als Gast sofort ohne Login (ohne Pseudonym). Der Token geht nur an den Server, der ihn durch recipeId und einen
+// kurzen Hash ersetzt. Gäste merken sich die Herkunft im Tab: meldet man sich danach an, folgt teilen_login.
+export function createShareTracking({ analytics, session, now = Date.now }) {
+  return {
+    viewed(token, loggedIn) {
+      try {
+        if (typeof token !== 'string' || !token) return
+        if (!loggedIn) {
+          const origin = session.get(SHARE_GUEST_KEY)
+          if (origin?.token !== token) session.set(SHARE_GUEST_KEY, { token, ts: now() })
+        }
+        const sid = analytics.currentSessionId()
+        const seen = session.get(SHARE_SEEN_KEY)
+        const tokens = seen?.sessionId === sid && Array.isArray(seen.tokens) ? seen.tokens : []
+        if (tokens.includes(token)) return
+        session.set(SHARE_SEEN_KEY, { sessionId: sid, tokens: [...tokens, token].slice(-20) })
+        if (loggedIn) analytics.track('teilen_link_aufgerufen', { token })
+        else analytics.trackAnonymous('teilen_link_aufgerufen', { token })
+      } catch {
+        // still
+      }
+    },
+    loggedIn() {
+      try {
+        const origin = session.get(SHARE_GUEST_KEY)
+        if (!origin) return
+        session.remove(SHARE_GUEST_KEY)
+        if (typeof origin.token !== 'string') return
+        analytics.track('teilen_login', { token: origin.token, seit_ms: Math.max(0, now() - (origin.ts ?? now())) })
+      } catch {
+        // still
+      }
+    },
+  }
 }
 
 // ---------- Browser ----------
 
 let instance = null
+let share = null
+let shareLoggedIn = () => false
 let lastFrom = ''
 // Bis die Anmeldung geladen ist (z. B. „Was ist neu“ direkt nach dem Start), werden Events zurückgehalten
 let authReady = null
@@ -378,11 +440,13 @@ export function installAnalytics({ router, authStore }) {
   try {
     const nav = window.navigator
     const media = (q) => { try { return window.matchMedia?.(q).matches ?? false } catch { return false } }
+    const loggedIn = () => authStore.isAuthenticated && !!localStorage.getItem('token')
+    const session = jsonStore(window.sessionStorage)
     instance = createAnalytics({
       local: jsonStore(window.localStorage),
-      session: jsonStore(window.sessionStorage),
-      isEnabled: () => authStore.isAuthenticated && !!localStorage.getItem('token')
-        && router.currentRoute.value.name !== 'shared-recipe',
+      session,
+      isEnabled: (event) => loggedIn() && (!event || SHARE_EVENTS.includes(event)
+        || router.currentRoute.value.name !== 'shared-recipe'),
       owner: () => (authStore.user?.id != null ? String(authStore.user.id) : null),
       context: () => ({
         device: deviceType({ ua: nav.userAgent, width: window.innerWidth, touchPoints: nav.maxTouchPoints }),
@@ -400,7 +464,24 @@ export function installAnalytics({ router, authStore }) {
         })
         return response.status
       },
+      sendAnonymous: async (events) => {
+        const response = await window.fetch(PUBLIC_ENDPOINT, {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ events }),
+        })
+        return response.status
+      },
     })
+    share = createShareTracking({ analytics: instance, session })
+    shareLoggedIn = loggedIn
+    let wasAuthenticated = authStore.isAuthenticated
+    authStore.$subscribe(() => {
+      const now = authStore.isAuthenticated
+      if (now && !wasAuthenticated) share.loggedIn()
+      wasAuthenticated = now
+    }, { detached: true })
     document.addEventListener('visibilitychange', () => instance.onVisibility(document.visibilityState !== 'hidden'))
     window.addEventListener('pagehide', () => instance.onPageHide())
     window.setInterval(() => { if (document.visibilityState !== 'hidden') instance.flush() }, FLUSH_INTERVAL_MS)
@@ -416,6 +497,11 @@ export function installAnalytics({ router, authStore }) {
 }
 
 export const previousRouteName = () => lastFrom
+
+// Teilen-Seite geöffnet (vor dem Laden des Rezepts; ob der Link gilt, prüft der Server)
+export function trackSharedView(token) {
+  share?.viewed(token, shareLoggedIn())
+}
 
 export function track(event, props) {
   if (!instance) return

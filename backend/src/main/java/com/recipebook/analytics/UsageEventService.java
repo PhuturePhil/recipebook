@@ -19,13 +19,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 /**
- * Nimmt Nutzungs-Events eingeloggter Nutzer an. Ungültige Events werden still verworfen – der Client
- * schickt fire-and-forget, eine Fehlermeldung würde dort niemand lesen.
+ * Nimmt Nutzungs-Events an: eingeloggte Nutzer mit Pseudonym, Gäste auf Teilen-Seiten nur teilen_link_aufgerufen
+ * ohne Pseudonym. Ungültige Events werden still verworfen – der Client schickt fire-and-forget, eine Fehlermeldung
+ * würde dort niemand lesen.
  */
 @Service
 public class UsageEventService {
 
     static final int MAX_EVENTS_PER_BATCH = 50;
+    static final int MAX_ANONYMOUS_EVENTS_PER_BATCH = 5;
+    static final Set<String> ANONYMOUS_EVENTS = Set.of(ShareEventResolver.LINK_VIEWED);
     static final int MAX_PROPS = 20;
     static final int MAX_STRING_LENGTH = 300;
     static final int MAX_PROPS_JSON_LENGTH = 4000;
@@ -42,38 +45,56 @@ public class UsageEventService {
 
     private final UsageEventRepository repository;
     private final UserPseudonymizer pseudonymizer;
+    private final ShareEventResolver shareEvents;
     private final ObjectMapper objectMapper;
     private final String appName;
     private final Clock clock;
     private final AtomicBoolean warnedMissingSalt = new AtomicBoolean();
 
     @Autowired
-    public UsageEventService(UsageEventRepository repository, UserPseudonymizer pseudonymizer, ObjectMapper objectMapper,
+    public UsageEventService(UsageEventRepository repository, UserPseudonymizer pseudonymizer,
+                             ShareEventResolver shareEvents, ObjectMapper objectMapper,
                              @Value("${app.analytics.app-name:rezepte}") String appName) {
-        this(repository, pseudonymizer, objectMapper, appName, Clock.systemUTC());
+        this(repository, pseudonymizer, shareEvents, objectMapper, appName, Clock.systemUTC());
     }
 
-    UsageEventService(UsageEventRepository repository, UserPseudonymizer pseudonymizer, ObjectMapper objectMapper,
-                      String appName, Clock clock) {
+    UsageEventService(UsageEventRepository repository, UserPseudonymizer pseudonymizer, ShareEventResolver shareEvents,
+                      ObjectMapper objectMapper, String appName, Clock clock) {
         this.repository = repository;
         this.pseudonymizer = pseudonymizer;
+        this.shareEvents = shareEvents;
         this.objectMapper = objectMapper;
         this.appName = appName;
         this.clock = clock;
     }
 
     public int record(long userId, UsageEventBatch batch) {
-        if (batch == null || batch.events() == null || batch.events().isEmpty()) return 0;
-        if (!pseudonymizer.isConfigured()) {
-            if (warnedMissingSalt.compareAndSet(false, true)) {
-                log.warn("ANALYTICS_SALT fehlt oder ist zu kurz – Nutzungs-Events werden verworfen");
-            }
-            return 0;
+        if (isEmpty(batch) || !saltConfigured()) return 0;
+        return store(batch, MAX_EVENTS_PER_BATCH, pseudonymizer.pseudonym(userId));
+    }
+
+    /** Gäste ohne Login (Teilen-Seite): nur ANONYMOUS_EVENTS, ohne Pseudonym. Ohne Salt ebenfalls aus. */
+    public int recordAnonymous(UsageEventBatch batch) {
+        if (isEmpty(batch) || !saltConfigured()) return 0;
+        return store(batch, MAX_ANONYMOUS_EVENTS_PER_BATCH, null);
+    }
+
+    private static boolean isEmpty(UsageEventBatch batch) {
+        return batch == null || batch.events() == null || batch.events().isEmpty();
+    }
+
+    private boolean saltConfigured() {
+        if (pseudonymizer.isConfigured()) return true;
+        if (warnedMissingSalt.compareAndSet(false, true)) {
+            log.warn("ANALYTICS_SALT fehlt oder ist zu kurz – Nutzungs-Events werden verworfen");
         }
-        String pseudonym = pseudonymizer.pseudonym(userId);
+        return false;
+    }
+
+    private int store(UsageEventBatch batch, int maxEvents, String pseudonym) {
         Instant now = clock.instant();
         List<UsageEvent> rows = new ArrayList<>();
-        for (UsageEventBatch.Event e : batch.events().subList(0, Math.min(batch.events().size(), MAX_EVENTS_PER_BATCH))) {
+        for (UsageEventBatch.Event e : batch.events().subList(0, Math.min(batch.events().size(), maxEvents))) {
             UsageEvent row = toRow(e, pseudonym, now);
             if (row != null) rows.add(row);
         }
@@ -81,9 +102,15 @@ public class UsageEventService {
         return rows.size();
     }
 
+    // pseudonym == null: Gast, nur ANONYMOUS_EVENTS. Teilen-Events bekommen ihre props vom Server (Token → Referenz).
     private UsageEvent toRow(UsageEventBatch.Event e, String pseudonym, Instant now) {
         if (e == null || e.event() == null || !EVENT_NAME.matcher(e.event()).matches()) return null;
-        String propsJson = objectMapper.writeValueAsString(cleanProps(e.props()));
+        if (pseudonym == null && !ANONYMOUS_EVENTS.contains(e.event())) return null;
+        Map<String, Object> props = shareEvents.handles(e.event())
+                ? shareEvents.resolve(e.event(), e.props(), pseudonym != null)
+                : cleanProps(e.props());
+        if (props == null) return null;
+        String propsJson = objectMapper.writeValueAsString(props);
         if (propsJson.length() > MAX_PROPS_JSON_LENGTH) return null;
         return new UsageEvent(
                 appName,

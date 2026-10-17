@@ -378,4 +378,24 @@ class ShareLinkServiceTest {
         assertNull(result.getIngredients().get(0).groupName());
         assertEquals("Salsa", result.getIngredients().get(1).groupName());
     }
+
+    @Test
+    void linkState_reportsStatusAndIdsWithoutTheToken() {
+        ShareLink valid = linkCreatedAt(NOW.minus(Duration.ofDays(1)));
+        valid.setId(11L);
+        ShareLink expired = linkCreatedAt(NOW.minus(Duration.ofDays(31)));
+        expired.setId(12L);
+        ShareLink revoked = linkCreatedAt(NOW.minus(Duration.ofDays(1)));
+        revoked.setId(13L);
+        revoked.setRevoked(true);
+        when(shareLinkRepository.findByToken("valid")).thenReturn(Optional.of(valid));
+        when(shareLinkRepository.findByToken("expired")).thenReturn(Optional.of(expired));
+        when(shareLinkRepository.findByToken("revoked")).thenReturn(Optional.of(revoked));
+        when(shareLinkRepository.findByToken("unknown")).thenReturn(Optional.empty());
+
+        assertEquals(new ShareLinkService.LinkState(11L, 1L, "gueltig"), shareLinkService.linkState("valid"));
+        assertEquals(new ShareLinkService.LinkState(12L, 1L, "abgelaufen"), shareLinkService.linkState("expired"));
+        assertEquals(new ShareLinkService.LinkState(13L, 1L, "zurueckgezogen"), shareLinkService.linkState("revoked"));
+        assertEquals(new ShareLinkService.LinkState(null, null, "ungueltig"), shareLinkService.linkState("unknown"));
+    }
 }

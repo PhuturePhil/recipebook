@@ -1,5 +1,6 @@
 package com.recipebook.analytics;
 
+import com.recipebook.service.ShareLinkService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.json.JsonMapper;
@@ -21,9 +22,13 @@ class UsageEventServiceTest {
     private static final Instant NOW = Instant.parse("2026-10-17T10:00:00Z");
     private static final String SALT = "test-salt-0123456789abcdef";
 
+    private static final String TOKEN = "abc123DEF456ghi789JKLm";
+
     private final UsageEventRepository repository = mock(UsageEventRepository.class);
+    private final ShareLinkService shareLinkService = mock(ShareLinkService.class);
+    private final ShareEventResolver shareEvents = new ShareEventResolver(shareLinkService);
     private final UserPseudonymizer pseudonymizer = new UserPseudonymizer(SALT);
-    private final UsageEventService service = new UsageEventService(repository, pseudonymizer,
+    private final UsageEventService service = new UsageEventService(repository, pseudonymizer, shareEvents,
             JsonMapper.builder().build(), "rezepte", Clock.fixed(NOW, ZoneOffset.UTC));
 
     private static UsageEventBatch.Event event(String name, Long ts, Map<String, Object> props) {
@@ -85,9 +90,11 @@ class UsageEventServiceTest {
 
     @Test
     void record_withoutSalt_storesNothing() {
-        UsageEventService noSalt = new UsageEventService(repository, new UserPseudonymizer(""),
+        UsageEventService noSalt = new UsageEventService(repository, new UserPseudonymizer(""), shareEvents,
                 JsonMapper.builder().build(), "rezepte", Clock.fixed(NOW, ZoneOffset.UTC));
         assertEquals(0, noSalt.record(1L, new UsageEventBatch(List.of(event("suche", null, null)))));
+        assertEquals(0, noSalt.recordAnonymous(new UsageEventBatch(List.of(
+                event("teilen_link_aufgerufen", null, Map.of("token", TOKEN))))));
         verify(repository, never()).insertAll(any());
     }
 
@@ -128,5 +135,97 @@ class UsageEventServiceTest {
         Map<String, Object> props = new LinkedHashMap<>();
         for (int i = 0; i < 30; i++) props.put("k" + i, i);
         assertEquals(UsageEventService.MAX_PROPS, UsageEventService.cleanProps(props).size());
+    }
+
+    @Test
+    void recordAnonymous_storesShareViewWithoutPseudonymAndWithoutToken() {
+        when(shareLinkService.linkState(TOKEN)).thenReturn(new ShareLinkService.LinkState(11L, 99L, "gueltig"));
+        Map<String, Object> props = new LinkedHashMap<>();
+        props.put("token", TOKEN);
+        props.put("recipeId", 1);
+        props.put("extra", "x");
+
+        assertEquals(1, service.recordAnonymous(new UsageEventBatch(List.of(event("teilen_link_aufgerufen", null, props)))));
+        UsageEvent row = stored().get(0);
+        assertNull(row.userPseudonym());
+        assertEquals("teilen_link_aufgerufen", row.event());
+        assertEquals("a1b2-c3", row.sessionId());
+        assertEquals("{\"recipeId\":99,\"shareLinkId\":11,\"linkRef\":\"" + ShareEventResolver.linkRef(TOKEN)
+                + "\",\"link\":\"gueltig\",\"status\":\"anonym\"}", row.propsJson());
+        assertFalse(row.propsJson().contains(TOKEN));
+    }
+
+    @Test
+    void recordAnonymous_acceptsOnlyTheShareViewEvent() {
+        when(shareLinkService.linkState(TOKEN)).thenReturn(new ShareLinkService.LinkState(11L, 99L, "gueltig"));
+        int n = service.recordAnonymous(new UsageEventBatch(List.of(
+                event("rezept_geoeffnet", null, Map.of("recipeId", 1)),
+                event("suche", null, Map.of("query", "spam")),
+                event("teilen_login", null, Map.of("token", TOKEN)),
+                event("teilen_link_aufgerufen", null, Map.of("token", TOKEN)))));
+        assertEquals(1, n);
+        assertEquals("teilen_link_aufgerufen", stored().get(0).event());
+    }
+
+    @Test
+    void recordAnonymous_dropsMissingOrMalformedTokens() {
+        assertEquals(0, service.recordAnonymous(new UsageEventBatch(List.of(
+                event("teilen_link_aufgerufen", null, null),
+                event("teilen_link_aufgerufen", null, Map.of("token", "kurz")),
+                event("teilen_link_aufgerufen", null, Map.of("token", "<script>alert(1)</script>xx")),
+                event("teilen_link_aufgerufen", null, Map.of("token", 12345678901234567L))))));
+        verifyNoInteractions(shareLinkService);
+    }
+
+    @Test
+    void recordAnonymous_countsUnknownLinksAsInvalid() {
+        when(shareLinkService.linkState(TOKEN)).thenReturn(new ShareLinkService.LinkState(null, null, "ungueltig"));
+        service.recordAnonymous(new UsageEventBatch(List.of(event("teilen_link_aufgerufen", null, Map.of("token", TOKEN)))));
+        String json = stored().get(0).propsJson();
+        assertEquals("{\"linkRef\":\"" + ShareEventResolver.linkRef(TOKEN) + "\",\"link\":\"ungueltig\",\"status\":\"anonym\"}", json);
+    }
+
+    @Test
+    void recordAnonymous_capsBatchSize() {
+        when(shareLinkService.linkState(TOKEN)).thenReturn(new ShareLinkService.LinkState(11L, 99L, "gueltig"));
+        List<UsageEventBatch.Event> many = new ArrayList<>();
+        for (int i = 0; i < 20; i++) many.add(event("teilen_link_aufgerufen", null, Map.of("token", TOKEN)));
+        assertEquals(UsageEventService.MAX_ANONYMOUS_EVENTS_PER_BATCH, service.recordAnonymous(new UsageEventBatch(many)));
+    }
+
+    @Test
+    void record_shareEventsWhenLoggedIn_carryPseudonymAndServerSideProps() {
+        when(shareLinkService.linkState(TOKEN)).thenReturn(new ShareLinkService.LinkState(11L, 99L, "abgelaufen"));
+        Map<String, Object> login = new LinkedHashMap<>();
+        login.put("token", TOKEN);
+        login.put("seit_ms", 42000);
+        login.put("recipeId", 1);
+        service.record(7L, new UsageEventBatch(List.of(
+                event("teilen_link_aufgerufen", null, Map.of("token", TOKEN, "recipeId", 1)),
+                event("teilen_login", null, login))));
+        List<UsageEvent> rows = stored();
+        String ref = ShareEventResolver.linkRef(TOKEN);
+        assertEquals(pseudonymizer.pseudonym(7L), rows.get(0).userPseudonym());
+        assertEquals("{\"recipeId\":99,\"shareLinkId\":11,\"linkRef\":\"" + ref
+                + "\",\"link\":\"abgelaufen\",\"status\":\"eingeloggt\"}", rows.get(0).propsJson());
+        assertEquals(pseudonymizer.pseudonym(7L), rows.get(1).userPseudonym());
+        assertEquals("{\"recipeId\":99,\"shareLinkId\":11,\"linkRef\":\"" + ref
+                + "\",\"link\":\"abgelaufen\",\"seit_ms\":42000}", rows.get(1).propsJson());
+    }
+
+    @Test
+    void record_otherEventsUnchanged() {
+        service.record(7L, new UsageEventBatch(List.of(event("pdf_gespeichert", null, Map.of("recipeId", 5)))));
+        assertEquals("{\"recipeId\":5}", stored().get(0).propsJson());
+        verifyNoInteractions(shareLinkService);
+    }
+
+    @Test
+    void linkRef_isShortStableHashOfTheToken() {
+        String ref = ShareEventResolver.linkRef(TOKEN);
+        assertEquals(ShareEventResolver.LINK_REF_LENGTH, ref.length());
+        assertTrue(ref.matches("[0-9a-f]+"));
+        assertEquals(ref, ShareEventResolver.linkRef(TOKEN));
+        assertNotEquals(ref, ShareEventResolver.linkRef(TOKEN + "x"));
     }
 }

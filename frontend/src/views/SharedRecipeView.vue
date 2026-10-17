@@ -100,6 +100,7 @@ import KeepScreenOnToggle from '@/components/KeepScreenOnToggle.vue'
 import TranslationBanner from '@/components/TranslationBanner.vue'
 import SourceLink from '@/components/SourceLink.vue'
 import { sourceDomain } from '@/utils/sourceUrl'
+import { trackSharedView } from '@/utils/analytics'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -146,6 +147,7 @@ onMounted(async () => {
   robotsMeta.name = 'robots'
   robotsMeta.content = 'noindex, nofollow'
   document.head.appendChild(robotsMeta)
+  trackSharedView(route.params.token)
 
   try {
     recipe.value = await fetchRecipe()

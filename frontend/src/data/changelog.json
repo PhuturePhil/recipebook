@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026-10-17.2",
+    "datum": "17.10.2026",
+    "titel": "Statistik: PDF und geteilte Links",
+    "punkte": [
+      "Die Statistik zählt jetzt auch, wie oft „Als PDF speichern“ genutzt wird",
+      "Bei geteilten Rezept-Links wird gezählt, wie oft sie geöffnet werden – bei Gästen ohne Anmeldung ganz ohne Personenbezug",
+      "Meldet sich jemand nach einem geteilten Link an, zählt das ebenfalls; der Link selbst wird dabei nicht gespeichert"
+    ]
+  },
+  {
     "version": "2026-10-17.1",
     "datum": "17.10.2026",
     "titel": "Anonyme Nutzungsstatistik",

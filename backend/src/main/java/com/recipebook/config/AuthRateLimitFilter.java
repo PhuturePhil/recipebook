@@ -65,7 +65,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     }
 
     // Caddy replaces any client-supplied X-Forwarded-For, so the first entry is the real client.
-    static String clientIp(HttpServletRequest request) {
+    public static String clientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
             return forwarded.split(",")[0].trim();

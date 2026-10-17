@@ -10,7 +10,9 @@ import {
   createChangeAggregator,
   createSearchReporter,
   createAnalytics,
+  createShareTracking,
   jsonStore,
+  SHARE_EVENTS,
   BATCH_SIZE,
   FLUSH_AT,
   MAX_QUEUE,
@@ -50,17 +52,19 @@ const memoryStorage = () => {
   }
 }
 
-const setup = ({ status = 204, enabled = true, user = '7', local = memoryStorage() } = {}) => {
+const setup = ({ status = 204, enabled = true, user = '7', local = memoryStorage(), isEnabled } = {}) => {
   let clock = 1_000_000
   let ids = 0
   const sent = []
-  const state = { status, enabled, user, visible: true }
+  const anonymous = []
+  const session = memoryStorage()
+  const state = { status, enabled, user, visible: true, anonymousStatus: 204 }
   const a = createAnalytics({
     local: jsonStore(local),
-    session: jsonStore(memoryStorage()),
+    session: jsonStore(session),
     now: () => clock,
     newId: () => `id${++ids}`,
-    isEnabled: () => state.enabled,
+    isEnabled: isEnabled ?? (() => state.enabled),
     owner: () => state.user,
     context: () => ({ device: 'mobile', display: 'pwa' }),
     isVisible: () => state.visible,
@@ -69,10 +73,17 @@ const setup = ({ status = 204, enabled = true, user = '7', local = memoryStorage
       sent.push(events)
       return state.status
     },
+    sendAnonymous: async (events) => {
+      if (state.anonymousStatus instanceof Error) throw state.anonymousStatus
+      anonymous.push(...events)
+      return state.anonymousStatus
+    },
   })
   return {
     a,
     sent,
+    anonymous,
+    session,
     state,
     local,
     tick: (ms) => { clock += ms },
@@ -428,4 +439,114 @@ test('Besuch endet, während er gesichert ist: Sicherung weg, kein Nachmelden', 
   const ends = [...first.flat(), ...second.flat()].filter((e) => e.event === 'rezept_verlassen')
   assert.equal(ends.length, 1)
   assert.equal(ends[0].props.abschluss, undefined)
+})
+
+// ---------- Paket 2: PDF und Teilen ----------
+
+test('pdf_gespeichert: landet mit recipeId in der Warteschlange', async () => {
+  const t = setup()
+  t.a.track('pdf_gespeichert', { recipeId: 42 })
+  await t.a.flush()
+  assert.deepEqual(t.flat().map((e) => [e.event, e.props]), [['pdf_gespeichert', { recipeId: 42 }]])
+})
+
+test('isEnabled bekommt den Event-Namen (Teilen-Seite: nur Teilen-Events), flush fragt ohne Event', async () => {
+  const asked = []
+  const t = setup({ isEnabled: (event) => { asked.push(event); return !event || SHARE_EVENTS.includes(event) } })
+  t.a.track('rezept_geoeffnet', { recipeId: 1 })
+  t.a.track('teilen_link_aufgerufen', { token: 'tok' })
+  await t.a.flush()
+  assert.deepEqual(t.flat().map((e) => e.event), ['teilen_link_aufgerufen'])
+  assert.deepEqual(asked, ['rezept_geoeffnet', 'teilen_link_aufgerufen', undefined])
+})
+
+test('trackAnonymous: sofort raus, ohne Warteschlange, mit Sitzung und Gerät', async () => {
+  const t = setup({ enabled: false, user: null })
+  await t.a.trackAnonymous('teilen_link_aufgerufen', { token: 'tok' })
+  assert.equal(t.anonymous.length, 1)
+  const e = t.anonymous[0]
+  assert.equal(e.event, 'teilen_link_aufgerufen')
+  assert.deepEqual(e.props, { token: 'tok' })
+  assert.equal(e.sessionId, t.a.currentSessionId())
+  assert.equal(e.device, 'mobile')
+  assert.equal(e.owner, undefined)
+  assert.deepEqual(t.queue(), [])
+  assert.deepEqual(t.sent, [])
+})
+
+test('trackAnonymous: Fehler beim Versand stören nie', async () => {
+  const t = setup({ enabled: false })
+  t.state.anonymousStatus = new Error('offline')
+  await t.a.trackAnonymous('teilen_link_aufgerufen', { token: 'tok' })
+  assert.deepEqual(t.queue(), [])
+})
+
+const shareSetup = (options) => {
+  const t = setup(options)
+  const share = createShareTracking({ analytics: t.a, session: jsonStore(t.session), now: () => t.now })
+  return { ...t, share, guest: () => JSON.parse(t.session.getItem('an:share-guest') ?? 'null') }
+}
+
+test('Teilen-Seite als Gast: anonym gemeldet, Herkunft für den späteren Login gemerkt', async () => {
+  const t = shareSetup({ enabled: false, user: null })
+  t.share.viewed('TokenAAAAAAAAAAAAAAAAA', false)
+  assert.deepEqual(t.anonymous.map((e) => [e.event, e.props]),
+    [['teilen_link_aufgerufen', { token: 'TokenAAAAAAAAAAAAAAAAA' }]])
+  assert.deepEqual(t.queue(), [])
+  assert.deepEqual(t.guest(), { token: 'TokenAAAAAAAAAAAAAAAAA', ts: t.now })
+})
+
+test('Teilen-Seite: derselbe Link in derselben Sitzung zählt einmal, ein anderer Link extra', async () => {
+  const t = shareSetup({ enabled: false, user: null })
+  t.share.viewed('TokenAAAAAAAAAAAAAAAAA', false)
+  t.tick(5000)
+  t.share.viewed('TokenAAAAAAAAAAAAAAAAA', false)
+  t.share.viewed('TokenBBBBBBBBBBBBBBBBB', false)
+  assert.deepEqual(t.anonymous.map((e) => e.props.token), ['TokenAAAAAAAAAAAAAAAAA', 'TokenBBBBBBBBBBBBBBBBB'])
+  assert.equal(t.guest().token, 'TokenBBBBBBBBBBBBBBBBB')
+})
+
+test('Teilen-Seite eingeloggt: über die Warteschlange (mit Konto), keine Gast-Herkunft', async () => {
+  const t = shareSetup()
+  t.share.viewed('TokenAAAAAAAAAAAAAAAAA', true)
+  await t.a.flush()
+  assert.deepEqual(t.flat().map((e) => [e.event, e.props]),
+    [['teilen_link_aufgerufen', { token: 'TokenAAAAAAAAAAAAAAAAA' }]])
+  assert.deepEqual(t.anonymous, [])
+  assert.equal(t.guest(), null)
+  t.share.loggedIn()
+  await t.a.flush()
+  assert.equal(t.flat().length, 1)
+})
+
+test('teilen_login: Gast meldet sich nach dem Teilen-Aufruf an → einmal mit Herkunft und Abstand', async () => {
+  const t = shareSetup({ enabled: false, user: null })
+  t.share.viewed('TokenAAAAAAAAAAAAAAAAA', false)
+  t.tick(90 * 1000)
+  t.state.enabled = true
+  t.state.user = '7'
+  t.share.loggedIn()
+  t.share.loggedIn()
+  await t.a.flush()
+  assert.deepEqual(t.flat().map((e) => [e.event, e.props]),
+    [['teilen_login', { token: 'TokenAAAAAAAAAAAAAAAAA', seit_ms: 90000 }]])
+  assert.equal(t.guest(), null)
+})
+
+test('teilen_login: Anmeldung ohne vorherigen Teilen-Aufruf meldet nichts', async () => {
+  const t = shareSetup()
+  t.share.loggedIn()
+  await t.a.flush()
+  assert.deepEqual(t.sent, [])
+})
+
+test('Teilen-Seite: kaputter Token oder kaputter Speicher stören nie', () => {
+  const t = shareSetup({ enabled: false, user: null })
+  t.share.viewed(undefined, false)
+  t.share.viewed('', false)
+  t.session.setItem('an:share-guest', '{kaputt')
+  t.session.setItem('an:share-seen', '[1,2]')
+  t.share.loggedIn()
+  t.share.viewed('TokenAAAAAAAAAAAAAAAAA', false)
+  assert.equal(t.anonymous.length, 1)
 })
