@@ -72,6 +72,8 @@
           </li>
         </ol>
       </section>
+
+      <LegalLinks :report="report" />
     </div>
   </div>
 </template>
@@ -89,10 +91,16 @@ import TranslationBanner from '@/components/TranslationBanner.vue'
 import SourceLink from '@/components/SourceLink.vue'
 import { sourceDomain } from '@/utils/sourceUrl'
 import { trackSharedView } from '@/utils/analytics'
+import LegalLinks from '@/components/LegalLinks.vue'
 
 const route = useRoute()
 
 const recipe = ref(null)
+// Die Teilen-Antwort kennt keine Rezept-ID; der Link selbst identifiziert das Rezept
+const report = computed(() => ({
+  title: recipe.value?.title ?? '',
+  url: `${window.location.origin}/share/${route.params.token}`,
+}))
 const loading = ref(true)
 const errorMessage = ref(null)
 const currentServings = ref(1)

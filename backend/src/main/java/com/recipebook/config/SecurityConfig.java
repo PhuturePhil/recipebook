@@ -58,6 +58,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/register-with-invite").permitAll()
                         .requestMatchers("/api/auth/password-reset", "/api/auth/reset-password").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/verify-email").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/share/**").permitAll()
                         // Gast-Sicht: lesen ohne Anmeldung, die Sichtbarkeit (nur öffentliche Rezepte) prüft RecipeAccess
                         .requestMatchers(HttpMethod.GET, "/api/recipes/sources", "/api/recipes/tags", "/api/recipes/units").authenticated()

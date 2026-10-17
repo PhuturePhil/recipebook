@@ -43,8 +43,11 @@
       
       <div class="links">
         <a href="#" @click.prevent="showResetForm = true">Passwort vergessen?</a>
+        <p class="signup-link">Noch kein Konto? <RouterLink to="/registrieren">Konto erstellen</RouterLink></p>
       </div>
     </div>
+
+    <LegalLinks />
 
     <div v-if="showResetForm" class="modal-overlay" @click.self="showResetForm = false">
       <div class="modal-content">
@@ -87,6 +90,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { authService } from '@/services/authService'
+import LegalLinks from '@/components/LegalLinks.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -120,6 +124,8 @@ function redirectTarget() {
 }
 
 onMounted(async () => {
+  // Nach der Konto-Bestätigung kommt die Adresse mit
+  if (typeof route.query.email === 'string') email.value = route.query.email
   if (authStore.sessionExpired) {
     error.value = 'Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.'
     authStore.sessionExpired = false
@@ -169,6 +175,7 @@ async function handlePasswordReset() {
 <style scoped>
 .login-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 80vh;
@@ -346,6 +353,17 @@ button:disabled {
 
 .links a:hover {
   text-decoration: underline;
+}
+
+.signup-link {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+  color: var(--text2);
+}
+
+.links .signup-link a {
+  color: var(--akzent-text);
+  font-weight: 600;
 }
 
 .modal-overlay {

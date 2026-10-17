@@ -45,6 +45,7 @@
         </button>
       </template>
       <ThemeSeg />
+      <LegalLinks class="shell-legal" />
     </div>
   </nav>
 </template>
@@ -52,6 +53,7 @@
 <script setup>
 import AppIcon from './AppIcon.vue'
 import ThemeSeg from './ThemeSeg.vue'
+import LegalLinks from '@/components/LegalLinks.vue'
 import { useNewBadge } from '@/composables/useNewBadge'
 
 defineProps({
@@ -69,3 +71,7 @@ const TABS = [
   { id: 'zutaten', label: 'Zutaten', icon: 'karotte', to: '/ingredients' },
 ]
 </script>
+
+<style scoped>
+.legal-links.shell-legal { margin: 12px 0 0; padding: 0 4px; justify-content: flex-start; }
+</style>

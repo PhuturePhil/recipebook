@@ -10,14 +10,7 @@
 
     <div class="gast-cta">
       <RouterLink to="/login" class="ui-btn ui-btn--primaer">Anmelden</RouterLink>
-      <button type="button" class="ui-btn" :aria-expanded="showHint" @click="showHint = !showHint">Konto erstellen</button>
-    </div>
-
-    <!-- Bis es eine offene Registrierung gibt, entstehen Konten nur über Einladungslinks -->
-    <div v-if="showHint" class="gast-hint">
-      <div class="ui-karte" role="status">
-        <p>Konten gibt es zurzeit nur mit Einladung – frag jemanden aus deiner Familie nach dem Einladungslink.</p>
-      </div>
+      <RouterLink to="/registrieren" class="ui-btn">Konto erstellen</RouterLink>
     </div>
 
     <div v-if="recipes.length" class="gast-home__list">
@@ -26,6 +19,8 @@
         <RecipeCard v-for="recipe in recipes" :key="recipe.id" :recipe="recipe" :show-tags="false" />
       </div>
     </div>
+
+    <LegalLinks />
   </div>
 </template>
 
@@ -33,9 +28,9 @@
 import { onMounted, ref } from 'vue'
 import { recipeService } from '@/services/recipeService'
 import RecipeCard from '@/components/RecipeCard.vue'
+import LegalLinks from '@/components/LegalLinks.vue'
 
 const recipes = ref([])
-const showHint = ref(false)
 
 onMounted(async () => {
   try {

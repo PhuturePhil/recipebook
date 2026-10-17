@@ -157,9 +157,6 @@ a.recipe-visibility:hover { color: var(--akzent-text); }
 .gast-cta { display: flex; gap: 10px; margin: 22px auto 26px; padding: 0 16px; max-width: 460px; }
 .gast-cta .ui-btn { flex: 1; text-decoration: none; }
 .gast-home__list { padding: 0 16px; }
-.gast-hint { max-width: 460px; margin: -10px auto 22px; padding: 0 16px; }
-.gast-hint .ui-karte { font-size: 14.5px; line-height: 1.5; color: var(--text2); }
-.gast-hint p { margin: 0; }
 
 /* Eingabe-Dialog (Familie gründen / umbenennen) */
 .name-dialog__input { width: 100%; margin-top: 4px; }

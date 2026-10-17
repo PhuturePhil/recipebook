@@ -21,6 +21,7 @@
         <span class="shell-mi-label">Darstellung</span>
         <ThemeSeg />
       </div>
+      <LegalLinks class="shell-legal" @click="emit('close')" />
     </div>
   </div>
 </template>
@@ -30,6 +31,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
 import ThemeSeg from './ThemeSeg.vue'
+import LegalLinks from '@/components/LegalLinks.vue'
 import { useNewBadge } from '@/composables/useNewBadge'
 import { useTheme } from '@/composables/useTheme'
 
@@ -76,3 +78,7 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.legal-links.shell-legal { margin: 14px auto 0; }
+</style>

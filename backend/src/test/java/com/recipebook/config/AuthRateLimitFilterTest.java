@@ -44,6 +44,18 @@ class AuthRateLimitFilterTest {
     }
 
     @Test
+    void shouldCountSignupAndVerificationWithLoginPerIp() throws Exception {
+        for (int i = 0; i < AuthRateLimitFilter.LIMIT_PER_IP - 1; i++) {
+            send("POST", i % 2 == 0 ? "/api/auth/signup" : "/api/auth/verify-email", "203.0.113.9");
+        }
+        assertEquals(200, send("POST", "/api/auth/login", "203.0.113.9").getStatus());
+
+        assertEquals(429, send("POST", "/api/auth/signup", "203.0.113.9").getStatus());
+        assertEquals(429, send("POST", "/api/auth/verify-email", "203.0.113.9").getStatus());
+        assertEquals(429, send("POST", "/api/auth/login", "203.0.113.9").getStatus());
+    }
+
+    @Test
     void shouldNotLimitAuthenticatedOrReadOnlyEndpoints() throws Exception {
         for (int i = 0; i < 30; i++) {
             assertEquals(200, send("GET", "/api/auth/me", "203.0.113.8").getStatus());

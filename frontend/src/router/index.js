@@ -30,6 +30,30 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/registrieren',
+      name: 'signup',
+      component: () => import('@/views/SignupView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/konto-bestaetigen',
+      name: 'verify-email',
+      component: () => import('@/views/VerifyEmailView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/impressum',
+      name: 'impressum',
+      component: () => import('@/views/ImpressumView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/datenschutz',
+      name: 'datenschutz',
+      component: () => import('@/views/DatenschutzView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/share/:token',
       name: 'shared-recipe',
       component: () => import('@/views/SharedRecipeView.vue'),
@@ -121,7 +145,7 @@ router.beforeEach(async (to, from, next) => {
     next({ name: 'login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } })
   } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next({ name: 'home' })
-  } else if (to.name === 'login' && authStore.isAuthenticated) {
+  } else if ((to.name === 'login' || to.name === 'signup') && authStore.isAuthenticated) {
     next({ name: 'home' })
   } else {
     next()

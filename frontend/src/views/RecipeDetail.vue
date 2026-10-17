@@ -215,6 +215,9 @@
         ><AppIcon name="stern" :size="17" />Zum Bewerten anmelden</router-link>
       </section>
 
+      <!-- Öffentliche Rezepte anderer: Melde-Link (Notice-and-Takedown) plus Impressum/Datenschutz -->
+      <LegalLinks v-if="reportable" :report="report" />
+
       <footer class="print-footer">
         <p>Aus dem Familienkochbuch — pastoors.cloud</p>
         <p class="print-footer__small">Für den privaten Gebrauch</p>
@@ -302,7 +305,8 @@ import RatingForm from '@/components/RatingForm.vue'
 import RatingDialog from '@/components/RatingDialog.vue'
 import DetailActionBar from '@/components/shell/DetailActionBar.vue'
 import AppIcon from '@/components/shell/AppIcon.vue'
-import { visibilityLabel } from '@/utils/visibility'
+import { visibilityLabel, VISIBILITY } from '@/utils/visibility'
+import LegalLinks from '@/components/LegalLinks.vue'
 import {
   formatRating,
   ratingLabel,
@@ -359,6 +363,12 @@ const searchTag = (tag) => {
 const isGuest = computed(() => !authStore.isAuthenticated)
 const isOwner = computed(() => recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
 const visibility = computed(() => visibilityLabel(recipe.value))
+const reportable = computed(() => isGuest.value || (recipe.value?.visibility === VISIBILITY.PUBLIC && !isOwner.value))
+const report = computed(() => recipe.value && {
+  recipeId: recipe.value.id,
+  title: shown.value?.title ?? recipe.value.title,
+  url: `${window.location.origin}/recipe/${recipe.value.id}`,
+})
 const canEdit = computed(() =>
   authStore.isAdmin || (recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
 )

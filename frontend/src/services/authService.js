@@ -245,6 +245,30 @@ class AuthService {
     }
   }
 
+  // Offene Registrierung: der Server antwortet immer gleich (202), das Konto entsteht erst mit dem Mail-Link
+  async signup({ vorname, nachname, email, password }) {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vorname, nachname, email, password })
+    })
+    if (!response.ok) {
+      throw new Error(await parseError(response, 'Die Registrierung hat nicht geklappt. Bitte versuche es noch einmal.'))
+    }
+  }
+
+  async verifyEmail(token) {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    })
+    if (!response.ok) {
+      throw new Error(await parseError(response, 'Der Bestätigungslink ist ungültig oder abgelaufen.'))
+    }
+    return (await response.json()).email
+  }
+
   async requestPasswordReset(email) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/password-reset`, {

@@ -1,0 +1,19 @@
+/* Konto-Karten (Registrierung, Bestätigung) im Stil der Einladungsseite */
+.konto { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 20px 16px; }
+.konto__card { width: 100%; max-width: 400px; padding: 28px 22px; display: flex; flex-direction: column; gap: 10px; }
+.konto__card--mitte { text-align: center; }
+.konto__chip { width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 4px; }
+.konto h1 { font-size: 1.3rem; line-height: 1.35; margin: 0 0 6px; color: var(--text); text-align: center; }
+.konto__text { margin: 0 0 6px; color: var(--text2); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.konto__text strong { color: var(--text); font-weight: 650; }
+.konto__form { display: flex; flex-direction: column; gap: 12px; }
+.konto__feld { display: flex; flex-direction: column; gap: 5px; }
+.konto__feld label { font-size: 14px; font-weight: 600; color: var(--text); }
+.konto__feld .ui-input { width: 100%; box-sizing: border-box; }
+.konto__zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.konto .ui-btn { text-decoration: none; }
+.konto__form .ui-btn--primaer { margin-top: 4px; }
+.konto__error { margin: 0; padding: 10px 12px; border-radius: var(--radius); background: var(--neg-weich); color: var(--neg); font-size: 14px; line-height: 1.45; }
+.konto__alt { margin: 6px 0 0; text-align: center; font-size: 14px; color: var(--text2); }
+.konto__alt a { color: var(--akzent-text); font-weight: 600; text-decoration: none; }
+.konto__alt a:hover { text-decoration: underline; }

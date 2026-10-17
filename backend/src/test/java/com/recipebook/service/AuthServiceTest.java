@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,6 +42,7 @@ class AuthServiceTest {
     @Mock private AuthenticationManager authenticationManager;
     @Mock private JavaMailSender mailSender;
     @Mock private FamilyService familyService;
+    @Mock private SignupService signupService;
 
     private AuthService authService;
     private User user;
@@ -48,7 +50,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthService(userRepository, recipeRepository, tokenRepository, invitationTokenRepository,
-                passwordEncoder, jwtService, authenticationManager, mailSender, familyService);
+                passwordEncoder, jwtService, authenticationManager, mailSender, familyService, signupService);
         user = new User();
         user.setId(7L);
         user.setEmail("anna@test.de");
@@ -208,6 +210,28 @@ class AuthServiceTest {
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, ex.getStatusCode());
         verify(authenticationManager, times(AuthService.LOGIN_LIMIT_PER_ACCOUNT)).authenticate(any());
+    }
+
+    @Test
+    void login_unconfirmedRegistrationWithCorrectPassword_getsTheConfirmHint() {
+        when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("Bad credentials"));
+        when(signupService.isAwaitingVerification("neu@test.de", "geheim123")).thenReturn(true);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> authService.login("neu@test.de", "geheim123"));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertEquals(SignupService.AWAITING_VERIFICATION, ex.getReason());
+        verifyNoInteractions(jwtService);
+    }
+
+    @Test
+    void login_unconfirmedRegistrationWithWrongPassword_staysAPlainFailure() {
+        when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("Bad credentials"));
+        when(signupService.isAwaitingVerification("neu@test.de", "falsch123")).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class, () -> authService.login("neu@test.de", "falsch123"));
+        verifyNoInteractions(jwtService);
     }
 
     private void linkWithSso(boolean passwordLoginForSsoUsers) {

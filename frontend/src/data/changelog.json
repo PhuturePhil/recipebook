@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026-10-17.5",
+    "datum": "17.10.2026",
+    "titel": "Eigenes Konto erstellen, Impressum und Datenschutz",
+    "punkte": [
+      "Auf der Startseite gibt es jetzt „Konto erstellen“: Name, E-Mail und Passwort eingeben – das Konto wird aktiv, sobald du den Link aus der Bestätigungsmail öffnest",
+      "Impressum und Datenschutzerklärung findest du unten auf der Anmelde- und Startseite sowie unter Mehr",
+      "Bei öffentlichen und geteilten Rezepten kannst du über „Inhalt melden“ eine Mail an uns schreiben, falls etwas nicht hierher gehört",
+      "Familien-Einladungen und die Anmeldung funktionieren wie gewohnt"
+    ]
+  },
+  {
     "version": "2026-10-17.4",
     "datum": "17.10.2026",
     "titel": "Lange Quellen-Adressen passen aufs Handy",

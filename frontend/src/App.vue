@@ -36,11 +36,13 @@ const PAGES = {
   'admin-users': { tab: 'mehr', side: 'admin', title: 'Benutzerverwaltung', back: true },
   families: { tab: 'mehr', side: 'familien', title: 'Familien', back: true },
   'family-detail': { tab: 'mehr', side: 'familien', title: 'Familie', back: '/familien', navTitle: true },
+  impressum: { tab: 'mehr', title: 'Impressum', back: true },
+  datenschutz: { tab: 'mehr', title: 'Datenschutz', back: true },
   'shared-recipe': { title: 'Pastoors Familienrezepte' },
   'not-found': { title: 'Pastoors Familienrezepte' },
 }
 // Anmelde-Abläufe haben ihre eigene Karte, dort keine Kopfzeile/Navigation
-const AUTH_FLOW = ['login', 'oidc-callback', 'reset-password', 'invite', 'family-invite']
+const AUTH_FLOW = ['login', 'oidc-callback', 'reset-password', 'invite', 'family-invite', 'signup', 'verify-email']
 // Familien-Eintrag trägt beim Launch ein NEU, bis man die Seite einmal geöffnet hat
 const FAMILIEN_SEEN_KEY = 'familien:gesehen'
 const familienNeu = ref(localStorage.getItem(FAMILIEN_SEEN_KEY) !== '1')

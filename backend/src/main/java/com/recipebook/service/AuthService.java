@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -68,6 +69,7 @@ public class AuthService {
     private boolean passwordLoginForSsoUsers;
 
     private final FamilyService familyService;
+    private final SignupService signupService;
 
     public AuthService(
             UserRepository userRepository,
@@ -78,7 +80,8 @@ public class AuthService {
             JwtService jwtService,
             AuthenticationManager authenticationManager,
             JavaMailSender mailSender,
-            FamilyService familyService) {
+            FamilyService familyService,
+            SignupService signupService) {
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
         this.tokenRepository = tokenRepository;
@@ -88,6 +91,7 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.mailSender = mailSender;
         this.familyService = familyService;
+        this.signupService = signupService;
     }
 
     public record LoginResult(String token, User user) {}
@@ -101,9 +105,15 @@ public class AuthService {
         if (email != null && userRepository.findByEmailIgnoreCase(email.trim()).filter(this::isSsoOnly).isPresent()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, SSO_ONLY_MESSAGE);
         }
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
-        );
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+        } catch (BadCredentialsException e) {
+            // Nur wer das richtige Passwort kennt, erfährt, dass die Registrierung noch auf Bestätigung wartet
+            if (signupService.isAwaitingVerification(email, password)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, SignupService.AWAITING_VERIFICATION);
+            }
+            throw e;
+        }
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
