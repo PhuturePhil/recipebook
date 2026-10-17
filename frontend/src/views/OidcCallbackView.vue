@@ -14,6 +14,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { takeInvite, invitePath } from '@/utils/pendingInvite'
 
 const router = useRouter()
 const route = useRoute()
@@ -30,7 +31,9 @@ onMounted(async () => {
 
   const success = await authStore.loginWithOidcTicket(ticket)
   if (success) {
-    router.replace('/')
+    // Kam die Anmeldung von einer Familien-Einladung, geht es dorthin zurück
+    const invite = takeInvite()
+    router.replace(invite ? invitePath(invite) : '/')
   } else {
     error.value = authStore.error || 'Die Anmeldung ist fehlgeschlagen. Bitte erneut anmelden.'
   }

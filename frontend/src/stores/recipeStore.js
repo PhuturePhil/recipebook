@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { recipeService } from '@/services/recipeService'
 import { useUiStore } from '@/stores/uiStore'
+import { useAuthStore } from '@/stores/authStore'
+import { SCOPE_ALL, SCOPE_MINE, scopeRecipes, normalizeScope } from '@/utils/families'
 import { filterRecipes, matchTag, normalizeText, sortRecipes, SORT_OPTIONS } from '@/utils/recipeSearch'
 
 export const QUICK_MAX_MINUTES = 30
@@ -29,6 +31,10 @@ const recipeSearchText = (recipe) => normalizeText([
   ...(recipe.tags ?? []),
 ].filter(Boolean).join(' | '))
 
+export { SCOPE_ALL, SCOPE_MINE, scopeRecipes }
+
+const viewerKey = () => useAuthStore().user?.id ?? 'gast'
+
 const toSummary = (recipe) => ({
   id: recipe.id,
   title: recipe.title,
@@ -48,6 +54,10 @@ const toSummary = (recipe) => ({
   nutrition: recipe.nutrition ?? null,
   ratingAvg: recipe.ratingAvg ?? null,
   ratingCount: recipe.ratingCount ?? null,
+  ownerId: recipe.ownerId ?? null,
+  createdByFirstName: recipe.createdByFirstName ?? null,
+  visibility: recipe.visibility ?? null,
+  families: recipe.families ?? [],
 })
 
 export const useRecipeStore = defineStore('recipe', {
@@ -59,7 +69,10 @@ export const useRecipeStore = defineStore('recipe', {
     searchTerms: [],
     pendingSearchTerm: '',
     sortMode: readSortPreference(),
+    scope: SCOPE_ALL,
+    _scopeViewer: null,
     _lastFetched: null,
+    _viewer: null,
   }),
 
   getters: {
@@ -82,6 +95,11 @@ export const useRecipeStore = defineStore('recipe', {
 
     searchTexts: (state) => new Map(state.recipes.map((r) => [r.id, recipeSearchText(r)])),
 
+    // Die gewählte Sammlung; Suche, Tags und Sortierung wirken darin
+    scopedRecipes(state) {
+      return scopeRecipes(state.recipes, state.scope, state._viewer)
+    },
+
     filteredRecipes() {
       const badgeMap = this.computedBadges
       const searchTexts = this.searchTexts
@@ -91,7 +109,7 @@ export const useRecipeStore = defineStore('recipe', {
         const badge = BADGE_SEARCH_ALIASES[text] ?? BADGE_NAMES.find((b) => normalizeText(b) === text)
         return badge ? (badgeMap.get(recipe.id) ?? []).includes(badge) : undefined
       }
-      const filtered = filterRecipes(this.recipes, this.activeSearchTerms, {
+      const filtered = filterRecipes(this.scopedRecipes, this.activeSearchTerms, {
         searchText: (recipe) => searchTexts.get(recipe.id) ?? '',
         matchKeyword,
       })
@@ -109,6 +127,15 @@ export const useRecipeStore = defineStore('recipe', {
 
   actions: {
     async fetchRecipes({ background = false } = {}) {
+      // Anderes Konto oder Gast ↔ angemeldet: nichts aus der vorigen Sicht weiterzeigen
+      const viewer = viewerKey()
+      if (viewer !== this._viewer) {
+        this.recipes = []
+        // Eine eben für dieses Konto gewählte Sammlung (Beitritt per Einladung) bleibt stehen
+        if (this._scopeViewer !== viewer) this.scope = SCOPE_ALL
+        this._viewer = viewer
+        this._forceRefresh = true
+      }
       const stale = !this._lastFetched || Date.now() - this._lastFetched > 2 * 60 * 1000
       if (this.recipes.length > 0 && !stale && !this._forceRefresh) return
       this._forceRefresh = false
@@ -118,6 +145,8 @@ export const useRecipeStore = defineStore('recipe', {
       uiStore.showLoading('Rezepte werden geladen…')
       try {
         const data = await recipeService.getAll()
+        // Während des Ladens abgemeldet/gewechselt: Antwort gehört zur alten Sicht
+        if (viewerKey() !== viewer) return
         this.recipes = data
         this._lastFetched = Date.now()
       } catch (error) {
@@ -220,6 +249,11 @@ export const useRecipeStore = defineStore('recipe', {
       } finally {
         this.loading = false
       }
+    },
+
+    setScope(scope) {
+      this.scope = normalizeScope(scope)
+      this._scopeViewer = viewerKey()
     },
 
     setSearchTerms(terms) {

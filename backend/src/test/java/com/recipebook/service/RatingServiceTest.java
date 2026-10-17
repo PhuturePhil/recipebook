@@ -2,12 +2,14 @@ package com.recipebook.service;
 
 import com.recipebook.dto.RatingDto;
 import com.recipebook.dto.RatingRequest;
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.RecipeRating;
 import com.recipebook.model.User;
 import com.recipebook.repository.RecipeRatingRepository;
 import com.recipebook.repository.RecipeRepository;
 import com.recipebook.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -37,8 +39,16 @@ class RatingServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private RecipeAccess recipeAccess;
+
     @InjectMocks
     private RatingService ratingService;
+
+    @BeforeEach
+    void visibleByDefault() {
+        lenient().when(recipeAccess.canView(any(), any())).thenReturn(true);
+    }
 
     private static User user(long id, String vorname, String nachname) {
         User u = new User();
@@ -67,7 +77,7 @@ class RatingServiceTest {
 
     @Test
     void getRatings_unknownRecipe_throws404() {
-        when(recipeRepository.existsById(9L)).thenReturn(false);
+        when(recipeAccess.canView(9L, 1L)).thenReturn(false);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> ratingService.getRatings(9L, 1L));
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
@@ -77,7 +87,6 @@ class RatingServiceTest {
     @Test
     void getRatings_mapsNameOwnAndDeletedUser() {
         Recipe recipe = recipe(7);
-        when(recipeRepository.existsById(7L)).thenReturn(true);
         when(ratingRepository.findByRecipeIdWithUser(7L)).thenReturn(List.of(
                 rating(3, recipe, user(5, "Paco", "Pastoors"), 4),
                 rating(2, recipe, user(6, " Anna ", ""), 5),
@@ -97,7 +106,6 @@ class RatingServiceTest {
 
     @Test
     void getRatings_neverExposesEmailAsName() {
-        when(recipeRepository.existsById(7L)).thenReturn(true);
         when(ratingRepository.findByRecipeIdWithUser(7L)).thenReturn(List.of(rating(1, recipe(7), user(5, null, null), 3)));
 
         RatingDto dto = ratingService.getRatings(7L, 5L).get(0);
@@ -147,7 +155,7 @@ class RatingServiceTest {
 
     @Test
     void addRating_unknownRecipe_throws404() {
-        when(recipeRepository.findById(9L)).thenReturn(Optional.empty());
+        when(recipeAccess.canView(9L, 5L)).thenReturn(false);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> ratingService.addRating(9L, 5L, new RatingRequest(3, null)));
@@ -214,5 +222,47 @@ class RatingServiceTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> ratingService.deleteRating(7L, 3L, 5L, true));
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void getRatings_invisibleRecipe_throws404WithoutReadingRatings() {
+        when(recipeAccess.canView(7L, RecipeAccess.GUEST)).thenReturn(false);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> ratingService.getRatings(7L, RecipeAccess.GUEST));
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        verifyNoInteractions(ratingRepository);
+    }
+
+    @Test
+    void getRatings_guestSeesOnlyFirstNames() {
+        when(ratingRepository.findByRecipeIdWithUser(7L)).thenReturn(List.of(
+                rating(3, recipe(7), user(5, "Paco", "Pastoors"), 4)));
+
+        RatingDto dto = ratingService.getRatings(7L, RecipeAccess.GUEST).get(0);
+
+        assertEquals("Paco", dto.userName());
+        assertNull(dto.userId());
+        assertFalse(dto.own());
+    }
+
+    @Test
+    void addRating_invisibleRecipe_throws404() {
+        when(recipeAccess.canView(7L, 6L)).thenReturn(false);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> ratingService.addRating(7L, 6L, new RatingRequest(5, null)));
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        verify(ratingRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteRating_invisibleRecipe_throws404EvenForAdmin() {
+        when(recipeAccess.canView(7L, 1L)).thenReturn(false);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> ratingService.deleteRating(7L, 3L, 1L, true));
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        verify(ratingRepository, never()).delete(any());
     }
 }

@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026-10-17.3",
+    "datum": "17.10.2026",
+    "titel": "Familien: Rezepte mit deinen Leuten teilen",
+    "punkte": [
+      "Neu unter Mehr → Familien: Gründe eine Familie oder einen Freundeskreis und lade bis zu 10 Leute per Link ein",
+      "Beim Rezept wählst du unter „Sichtbar für“: privat, für deine Familien oder öffentlich",
+      "In der Rezeptliste wechselst du oben zwischen Alle, Meine und deinen Familien; jede Karte zeigt, von wem das Rezept ist",
+      "Öffentliche Rezepte kann man auch ohne Anmeldung lesen – deine bisherigen Rezepte bleiben wie gewohnt in der Familie Pastoors"
+    ]
+  },
+  {
     "version": "2026-10-17.2",
     "datum": "17.10.2026",
     "titel": "Statistik: PDF und geteilte Links",

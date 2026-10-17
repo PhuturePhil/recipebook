@@ -1,17 +1,20 @@
 <template>
-  <div class="home-view">
+  <GuestHome v-if="!authStore.isAuthenticated" />
+  <div v-else class="home-view">
     <div v-if="store.error" class="error">
       {{ store.error }}
     </div>
 
     <div v-else-if="store.filteredRecipes.length === 0 && !store.loading" class="empty">
       <p v-if="store.activeSearchTerms.length">Keine Rezepte gefunden für "{{ store.searchQuery }}"</p>
+      <p v-else-if="store.recipes.length">In dieser Sammlung sind noch keine Rezepte.</p>
       <p v-else>Noch keine Rezepte vorhanden. Erstelle dein erstes Rezept!</p>
     </div>
 
-    <div v-if="store.recipes.length > 0" class="recipe-count">
-      <span v-if="isFiltered">{{ store.filteredRecipes.length }} von {{ store.recipes.length }} Rezepten</span>
-      <span v-else>{{ store.recipes.length }} Rezepte</span>
+    <div v-if="store.scopedRecipes.length > 0" class="recipe-count">
+      <span v-if="isFiltered">{{ store.filteredRecipes.length }} von {{ store.scopedRecipes.length }} Rezepten</span>
+      <span v-else>{{ store.scopedRecipes.length }} {{ store.scopedRecipes.length === 1 ? 'Rezept' : 'Rezepte' }}</span>
+      <span v-if="scopeLabel"> · {{ scopeLabel }}</span>
     </div>
 
     <div class="recipe-grid">
@@ -26,24 +29,41 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
-import { useRecipeStore } from '@/stores/recipeStore'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRecipeStore, SCOPE_ALL, SCOPE_MINE } from '@/stores/recipeStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useFamilyStore } from '@/stores/familyStore'
 import RecipeCard from '@/components/RecipeCard.vue'
+import GuestHome from '@/components/GuestHome.vue'
 
 const store = useRecipeStore()
+const authStore = useAuthStore()
+const familyStore = useFamilyStore()
 
 const isFiltered = computed(() =>
-  store.activeSearchTerms.length > 0 && store.filteredRecipes.length < store.recipes.length
+  store.activeSearchTerms.length > 0 && store.filteredRecipes.length < store.scopedRecipes.length
 )
 
+// Trefferzeile nennt die gewählte Sammlung („38 Rezepte · Familie Pastoors“)
+const scopeLabel = computed(() => {
+  if (store.scope === SCOPE_MINE) return 'Meine'
+  if (store.scope === SCOPE_ALL) return ''
+  return familyStore.byId(store.scope)?.name ?? ''
+})
+
+// Familie verlassen o. Ä.: gewählte Sammlung gibt es nicht mehr → zurück auf „Alle“
+watch(() => [familyStore.loaded, familyStore.families.length], () => {
+  if (typeof store.scope === 'number' && familyStore.loaded && !familyStore.byId(store.scope)) store.setScope(SCOPE_ALL)
+})
+
 const onVisibilityChange = () => {
-  if (document.visibilityState === 'visible') {
+  if (document.visibilityState === 'visible' && authStore.isAuthenticated) {
     store.fetchRecipes({ background: true })
   }
 }
 
 onMounted(() => {
-  store.fetchRecipes()
+  if (authStore.isAuthenticated) store.fetchRecipes()
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
 

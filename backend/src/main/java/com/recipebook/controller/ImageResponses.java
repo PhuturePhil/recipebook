@@ -6,6 +6,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.recipebook.service.RecipeImageTypes;
+
 import java.net.URI;
 import java.util.Base64;
 import java.util.regex.Matcher;
@@ -24,7 +26,8 @@ final class ImageResponses {
             return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(imageUrl)).build();
         }
         Matcher m = DATA_URL.matcher(imageUrl);
-        if (!m.matches()) throw noImage();
+        // Nur Rasterbilder: ein SVG würde als Dokument unserer Domain Skripte ausführen können
+        if (!m.matches() || !RecipeImageTypes.isAllowed(m.group(1))) throw noImage();
         byte[] bytes;
         try {
             bytes = Base64.getMimeDecoder().decode(m.group(2));
@@ -32,7 +35,8 @@ final class ImageResponses {
             throw noImage();
         }
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(m.group(1)))
+                .contentType(MediaType.parseMediaType(m.group(1).toLowerCase(java.util.Locale.ROOT)))
+                .header("X-Content-Type-Options", "nosniff")
                 .cacheControl(cache)
                 .body(bytes);
     }

@@ -59,4 +59,16 @@ class AuthRateLimitFilterTest {
 
         assertEquals("198.51.100.1", AuthRateLimitFilter.clientIp(request));
     }
+
+    @Test
+    void shouldLimitFamilyInviteLookupAndJoinPerIpInOwnBucket() throws Exception {
+        for (int i = 0; i < AuthRateLimitFilter.INVITE_LIMIT_PER_IP; i++) {
+            String uri = i % 2 == 0 ? "/api/family-invites/abcdefghijklmnopqrst" : "/api/family-invites/abcdefghijklmnopqrst/join";
+            assertEquals(200, send(i % 2 == 0 ? "GET" : "POST", uri, "203.0.113.9").getStatus());
+        }
+
+        assertEquals(429, send("GET", "/api/family-invites/zzzzzzzzzzzzzzzzzzzz", "203.0.113.9").getStatus());
+        assertEquals(200, send("POST", "/api/auth/login", "203.0.113.9").getStatus(), "Login hat einen eigenen Topf");
+        assertEquals(200, send("GET", "/api/family-invites/zzzzzzzzzzzzzzzzzzzz", "203.0.113.10").getStatus());
+    }
 }

@@ -2,6 +2,7 @@ package com.recipebook.controller;
 
 import com.recipebook.dto.RatingDto;
 import com.recipebook.dto.RatingRequest;
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Role;
 import com.recipebook.service.RatingService;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Bewertungen eines Rezepts. Bewusst ohne Ownership-Prüfung: jeder eingeloggte Nutzer darf jedes Rezept bewerten.
+ * Bewertungen eines Rezepts. Ohne Ownership-Prüfung: wer das Rezept sehen darf, darf es bewerten.
  * Nur in der App – Share-Link, PDF und Übersetzung enthalten keine Bewertungen.
  */
 @RestController
@@ -28,8 +29,9 @@ public class RecipeRatingController {
     }
 
     @GetMapping
+    // Auch für Gäste lesbar, sofern das Rezept öffentlich ist
     public List<RatingDto> getRatings(@PathVariable Long recipeId, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ratingService.getRatings(recipeId, userDetails.getId());
+        return ratingService.getRatings(recipeId, RecipeAccess.viewerId(userDetails));
     }
 
     @PostMapping

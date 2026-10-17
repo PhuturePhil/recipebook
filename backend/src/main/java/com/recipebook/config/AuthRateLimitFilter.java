@@ -21,6 +21,9 @@ import java.util.Set;
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     static final int LIMIT_PER_IP = 10;
+    // Familien-Einladungen (Code nachschlagen, beitreten) haben einen eigenen Topf, damit Login + Beitritt reichen
+    static final int INVITE_LIMIT_PER_IP = 20;
+    static final String INVITE_PREFIX = "/api/family-invites/";
     static final Duration WINDOW = Duration.ofMinutes(1);
     static final String MESSAGE = "Zu viele Versuche. Bitte warte eine Minute und versuche es dann erneut.";
 
@@ -44,7 +47,12 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        if (isInviteRequest(request)) return false;
         return !"POST".equals(request.getMethod()) || !PUBLIC_AUTH_ENDPOINTS.contains(request.getRequestURI());
+    }
+
+    private static boolean isInviteRequest(HttpServletRequest request) {
+        return request.getRequestURI() != null && request.getRequestURI().startsWith(INVITE_PREFIX);
     }
 
     @Override
@@ -53,7 +61,9 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        if (!rateLimiter.tryAcquire("ip:" + clientIp(request), LIMIT_PER_IP, WINDOW)) {
+        boolean invite = isInviteRequest(request);
+        String key = (invite ? "invite-ip:" : "ip:") + clientIp(request);
+        if (!rateLimiter.tryAcquire(key, invite ? INVITE_LIMIT_PER_IP : LIMIT_PER_IP, WINDOW)) {
             response.setStatus(429);
             response.setHeader("Retry-After", String.valueOf(WINDOW.toSeconds()));
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);

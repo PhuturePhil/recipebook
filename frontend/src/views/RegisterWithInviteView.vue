@@ -5,10 +5,10 @@
 
       <div v-if="success" class="success-message">
         Dein Account wurde erstellt. Du kannst dich jetzt anmelden.
-        <router-link to="/login">Zum Login</router-link>
+        <router-link :to="loginTarget">Zum Login</router-link>
       </div>
 
-      <div v-else-if="!token" class="error-message">
+      <div v-else-if="!token && !familyCode" class="error-message">
         Ungültiger oder fehlender Einladungslink.
       </div>
 
@@ -62,13 +62,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { authService } from '@/services/authService'
 
 const route = useRoute()
 
 const token = ref('')
+// Familien-Einladungslink (/einladung/:code → „Konto erstellen“)
+const familyCode = ref('')
+const loginTarget = computed(() =>
+  familyCode.value ? { path: '/login', query: { redirect: `/einladung/${familyCode.value}` } } : '/login'
+)
 const vorname = ref('')
 const nachname = ref('')
 const email = ref('')
@@ -80,6 +85,7 @@ const success = ref(false)
 
 onMounted(() => {
   token.value = route.query.token || ''
+  familyCode.value = typeof route.query.family === 'string' ? route.query.family : ''
 })
 
 async function handleSubmit() {
@@ -94,6 +100,7 @@ async function handleSubmit() {
   try {
     await authService.registerWithInvite({
       token: token.value,
+      familyCode: familyCode.value,
       vorname: vorname.value,
       nachname: nachname.value,
       email: email.value,

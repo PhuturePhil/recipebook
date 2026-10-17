@@ -92,6 +92,50 @@
     </div>
 
     <div class="form-group">
+      <label id="visibility-label">Sichtbar für</label>
+      <div class="vis-options" role="radiogroup" aria-labelledby="visibility-label">
+        <div
+          v-for="option in visibilityOptions"
+          :key="option.value"
+          :class="['vis-option', { 'vis-option--active': formData.visibility === option.value }]"
+          @click="chooseVisibility(option.value)"
+        >
+          <span class="vis-radio" aria-hidden="true"></span>
+          <AppIcon :name="option.icon" :size="20" />
+          <div class="vis-option__body">
+            <label class="vis-option__title">
+              <input
+                type="radio"
+                class="visually-hidden"
+                name="visibility"
+                :value="option.value"
+                :checked="formData.visibility === option.value"
+                @change="chooseVisibility(option.value)"
+              />{{ option.title }}
+            </label>
+            <p v-if="option.desc" class="vis-option__desc">{{ option.desc }}</p>
+            <div v-if="option.value === FAMILY && formData.visibility === FAMILY" class="vis-fam-list">
+              <label v-for="family in familyStore.families" :key="family.id" class="vis-fam" @click.stop>
+                <input
+                  type="checkbox"
+                  class="visually-hidden"
+                  :checked="formData.familyIds.includes(family.id)"
+                  @change="toggleVisibilityFamily(family.id)"
+                />
+                <span :class="['vis-check', { 'vis-check--on': formData.familyIds.includes(family.id) }]" aria-hidden="true">
+                  <AppIcon name="haken" :size="13" />
+                </span>{{ family.name }}
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <router-link v-if="familyStore.loaded && !familyStore.families.length" to="/familien" class="vis-found-link">
+        Gründe zuerst eine Familie
+      </router-link>
+    </div>
+
+    <div class="form-group">
       <label>Personenanzahl</label>
       <div class="servings-fields">
         <div class="servings-field">
@@ -409,6 +453,16 @@ import { ingredientCatalogService } from '@/services/ingredientCatalogService'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useFamilyStore } from '@/stores/familyStore'
+import {
+  FAMILY,
+  PRIVATE,
+  PUBLIC,
+  defaultVisibility,
+  visibilityFromRecipe,
+  pickVisibility,
+  toggleFamily,
+} from '@/utils/recipeVisibility'
 import TagInput from '@/components/TagInput.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import StartChoice from '@/components/form/StartChoice.vue'
@@ -491,6 +545,7 @@ const emit = defineEmits(['submit'])
 const store = useRecipeStore()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
+const familyStore = useFamilyStore()
 const isEdit = ref(!!props.recipe)
 const scanning = ref(false)
 const scanError = ref('')
@@ -513,7 +568,9 @@ const formData = ref({
   sourceUrl: '',
   tags: [],
   sections: [ingredientSection(null, [emptyIngredient()])],
-  instructions: ['']
+  instructions: [''],
+  // Beim Anlegen: alle eigenen Familien (noch nicht geladen → wird nachgetragen, sonst entscheidet der Server)
+  ...(familyStore.loaded ? defaultVisibility(familyStore.families) : { visibility: null, familyIds: [] }),
 })
 
 // All ingredients in form order
@@ -567,6 +624,28 @@ const languageSelection = computed({
   set: (choice) => applyLanguageChoice(formData.value, choice)
 })
 const savedSnapshot = ref(formSnapshot(formData.value))
+
+// „Sichtbar für“: Familie nur, wer in einer Familie ist; einziger Hilfetext unter „Öffentlich“
+const visibilityOptions = computed(() => [
+  { value: PRIVATE, icon: 'schloss', title: 'Privat — nur du' },
+  ...(familyStore.families.length ? [{ value: FAMILY, icon: 'familie', title: 'Familie' }] : []),
+  { value: PUBLIC, icon: 'globus', title: 'Öffentlich', desc: 'Auch ohne Anmeldung lesbar — nichts für abgeschriebene Buchrezepte.' },
+])
+
+const setVisibility = ({ visibility, familyIds }) => {
+  formData.value.visibility = visibility
+  formData.value.familyIds = familyIds
+}
+const chooseVisibility = (value) => setVisibility(pickVisibility(formData.value, value, familyStore.families))
+const toggleVisibilityFamily = (id) => setVisibility(toggleFamily(formData.value, id))
+
+// Familien kamen erst nach dem Öffnen an: Vorgabe nachtragen, ohne dass das Formular als geändert gilt
+watch(() => familyStore.loaded, (loaded) => {
+  if (!loaded || isEdit.value || formData.value.visibility) return
+  const clean = !isDirty()
+  setVisibility(defaultVisibility(familyStore.families))
+  if (clean) savedSnapshot.value = formSnapshot(formData.value)
+})
 
 const isDirty = () => formSnapshot(formData.value) !== savedSnapshot.value
 
@@ -750,7 +829,8 @@ watch(
         sections: loadedSections(newRecipe.ingredients),
         instructions: newRecipe.instructions?.length
           ? [...newRecipe.instructions]
-          : ['']
+          : [''],
+        ...visibilityFromRecipe(newRecipe),
       }
       savedSnapshot.value = formSnapshot(formData.value)
       resizeAllTextareas()

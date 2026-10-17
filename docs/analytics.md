@@ -62,10 +62,12 @@ bzw. bei Display aus); `gesamt_ms` = Spanne vom Öffnen bis zum Verlassen inkl. 
 | bewertung_abgegeben | `recipeId`, `sterne`, `mitKommentar` |
 | teilen_link_erstellt | `recipeId`, `erneuert` (true = neuer Link ersetzt den alten) |
 | rezept_angelegt / rezept_bearbeitet | `recipeId` |
-| seite_geoeffnet | `seite` (`zutaten`, `naehrwerte_badges`, `changelog`), `sichtbar_ms` (gekappt bei 30 Min.) – gesendet beim Verlassen |
+| seite_geoeffnet | `seite` (`zutaten`, `naehrwerte_badges`, `changelog`, `familien`, `familie`), `sichtbar_ms` (gekappt bei 30 Min.) – gesendet beim Verlassen |
 | pdf_gespeichert | `recipeId` – Klick auf „Als PDF speichern“ (ob danach wirklich gespeichert oder gedruckt wird, sieht die App nicht) |
 | teilen_link_aufgerufen | `recipeId`, `shareLinkId` (beide nur bei bekanntem Link), `linkRef`, `link` (`gueltig`, `abgelaufen`, `zurueckgezogen`, `ungueltig` = unbekannter Token), `status` (`eingeloggt` = mit Pseudonym, `anonym` = Gast ohne Pseudonym) – einmal pro Sitzung und Link (Neuladen zählt nicht doppelt) |
 | teilen_login | `recipeId`, `shareLinkId`, `linkRef`, `link` wie oben = der zuletzt als Gast geöffnete Teilen-Link, `seit_ms` = Zeit vom Teilen-Aufruf bis zum Login – wenn sich ein Gast im selben Tab danach anmeldet (Herkunft in sessionStorage `an:share-guest`, einmalig) |
+| familie_angelegt | – (ohne Familienname/-id) |
+| einladung_angenommen | – Beitritt über einen Familien-Einladungslink (ohne Code, ohne Familie) |
 | popup_neuerungen | `aktion`: `angezeigt` (mit `version`, `eintraege`) beim Öffnen; beim Schließen `weggeklickt` (`wie`: `knopf`, `daneben`, `esc`) oder `alle_neuerungen`, jeweils mit `version` und `sichtbar_ms` (gekappt bei 30 Min.) |
 
 `besuch` verbindet `rezept_geoeffnet` und `rezept_verlassen` eines Rezeptbesuchs.

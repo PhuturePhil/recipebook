@@ -32,7 +32,7 @@
           {{ ratingLabel(recipe.ratingAvg, recipe.ratingCount) }}
         </button>
       </div>
-      <div v-if="recipe.tags?.length" class="recipe-card__tags">
+      <div v-if="showTags && recipe.tags?.length" class="recipe-card__tags">
         <button
           v-for="tag in recipe.tags"
           :key="tag"
@@ -47,7 +47,12 @@
           {{ badge }}
         </span>
       </div>
-      <p v-if="createdText" class="recipe-card__created">{{ createdText }}</p>
+      <p v-if="showOrigin || visHint" class="recipe-card__created">
+        <span v-if="showOrigin" class="origin-chip">
+          <span :class="['mini-avatar', avatarTone(recipe.ownerId)]">{{ ownerInitials }}</span>von {{ recipe.createdByFirstName }}
+        </span>
+        <span v-if="visHint" class="vis-hint"><AppIcon :name="visHint.icon" :size="13" />{{ visHint.text }}</span>
+      </p>
     </div>
   </div>
 </template>
@@ -58,8 +63,12 @@ import { useRouter } from 'vue-router'
 import { useRecipeImage } from '@/composables/useRecipeImage'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { tagSearchTerm } from '@/utils/recipeTags'
-import { ratingLabel, ratingCountLabel, createdLine, ratingsRoute } from '@/utils/ratings'
+import { ratingLabel, ratingCountLabel, ratingsRoute } from '@/utils/ratings'
+import { useAuthStore } from '@/stores/authStore'
+import { avatarTone } from '@/stores/familyStore'
+import { visibilityLabel, initials } from '@/utils/visibility'
 import RatingStars from '@/components/RatingStars.vue'
+import AppIcon from '@/components/shell/AppIcon.vue'
 
 const props = defineProps({
   recipe: {
@@ -69,6 +78,11 @@ const props = defineProps({
   badges: {
     type: Array,
     default: () => []
+  },
+  // Gast-Startseite: Tags führen dort in keine Suche
+  showTags: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -80,7 +94,13 @@ const kcalPerServing = computed(() => {
   return kcal == null ? null : Math.round(kcal).toLocaleString('de-DE')
 })
 
-const createdText = computed(() => createdLine(props.recipe.createdBy, props.recipe.createdAt))
+// Herkunft nur bei fremden Rezepten; Sichtbarkeit nur für Angemeldete (Gäste sehen ohnehin nur Öffentliches)
+const authStore = useAuthStore()
+const showOrigin = computed(() =>
+  !!props.recipe.createdByFirstName && props.recipe.ownerId !== authStore.user?.id
+)
+const ownerInitials = computed(() => initials(props.recipe.createdBy || props.recipe.createdByFirstName))
+const visHint = computed(() => (authStore.isAuthenticated ? visibilityLabel(props.recipe) : null))
 
 const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/\s+/g, '-')
 
@@ -193,6 +213,10 @@ const navigateToRatings = () => {
   margin: 10px 0 0;
   font-size: 0.78rem;
   color: var(--text3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
 }
 
 .recipe-card__tags {

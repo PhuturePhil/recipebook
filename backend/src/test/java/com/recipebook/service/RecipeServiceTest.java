@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.ImageCredit;
 import com.recipebook.model.Ingredient;
@@ -48,6 +49,9 @@ class RecipeServiceTest {
     @Mock
     private RecipeTagService recipeTagService;
 
+    @Mock
+    private RecipeAccess recipeAccess;
+
     @InjectMocks
     private RecipeService recipeService;
 
@@ -56,6 +60,8 @@ class RecipeServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(recipeAccess.resolve(any(), any(), any(), any()))
+            .thenReturn(new RecipeAccess.Stored(false, new java.util.LinkedHashSet<>()));
         testUser = new User();
         testUser.setId(1L);
         testUser.setEmail("test@test.de");
@@ -631,5 +637,49 @@ class RecipeServiceTest {
         recipeService.applyTags(testRecipe);
 
         assertEquals(List.of("Curry", "Indisch"), testRecipe.getTags());
+    }
+
+    private static RecipeRepository.RecipeSummaryProjection summary(long id, long ownerId, boolean isPublic) {
+        RecipeRepository.RecipeSummaryProjection p = mock(RecipeRepository.RecipeSummaryProjection.class);
+        lenient().when(p.getId()).thenReturn(id);
+        lenient().when(p.getTitle()).thenReturn("Rezept " + id);
+        lenient().when(p.getCreatedBy()).thenReturn("Anna Pastoors");
+        lenient().when(p.getCreatedByFirstName()).thenReturn("Anna");
+        lenient().when(p.getOwnerId()).thenReturn(ownerId);
+        lenient().when(p.getIsPublic()).thenReturn(isPublic);
+        return p;
+    }
+
+    @Test
+    void findAllSummaries_asGuest_onlyPublicWithFirstNameAndNoOwnerId() {
+        when(recipeAccess.visibleIds(RecipeAccess.GUEST)).thenReturn(java.util.Set.of(2L));
+        when(recipeAccess.familiesByRecipe(RecipeAccess.GUEST)).thenReturn(java.util.Map.of());
+        var rows = List.of(summary(1, 7, false), summary(2, 7, true));
+        when(recipeRepository.findAllSummaries()).thenReturn(rows);
+
+        var result = recipeService.findAllSummaries(RecipeAccess.GUEST);
+
+        assertEquals(1, result.size());
+        assertEquals(2L, result.get(0).getId());
+        assertEquals("Anna", result.get(0).getCreatedBy());
+        assertNull(result.get(0).getOwnerId());
+        assertEquals("PUBLIC", result.get(0).getVisibility());
+    }
+
+    @Test
+    void findAllSummaries_asMember_showsFullNameOwnerAndFamilies() {
+        when(recipeAccess.visibleIds(5L)).thenReturn(java.util.Set.of(1L, 2L));
+        when(recipeAccess.familiesByRecipe(5L)).thenReturn(java.util.Map.of(1L,
+            List.of(new com.recipebook.family.FamilyRef(3L, "Familie Pastoors"))));
+        var rows = List.of(summary(1, 7, false), summary(2, 5, false), summary(3, 9, false));
+        when(recipeRepository.findAllSummaries()).thenReturn(rows);
+
+        var result = recipeService.findAllSummaries(5L);
+
+        assertEquals(List.of(1L, 2L), result.stream().map(r -> r.getId()).toList());
+        assertEquals("Anna Pastoors", result.get(0).getCreatedBy());
+        assertEquals(7L, result.get(0).getOwnerId());
+        assertEquals("FAMILY", result.get(0).getVisibility());
+        assertEquals("PRIVATE", result.get(1).getVisibility());
     }
 }

@@ -33,6 +33,18 @@
         <button type="button" class="badge-remove" :aria-label="`${badge} entfernen`" @click="removeTerm(badge)"><AppIcon name="schliessen" :size="14" /></button>
       </span>
     </div>
+    <div v-if="familyStore.families.length" class="scope-row" role="group" aria-label="Sammlung">
+      <button
+        v-for="chip in scopeChips"
+        :key="chip.key"
+        type="button"
+        :class="['scope-chip', { 'scope-chip--plain': !chip.family, 'scope-chip--active': chip.active }]"
+        :aria-pressed="chip.active"
+        @click="store.setScope(chip.value)"
+      >
+        <span v-if="chip.family" :class="['mini-avatar', avatarTone(chip.value)]">{{ chip.initial }}</span>{{ chip.label }}
+      </button>
+    </div>
     <div
       v-if="showTagBar"
       :class="['search-tags', { 'search-tags--expanded': tagsExpanded }]"
@@ -77,12 +89,24 @@
 <script setup>
 import AppIcon from '@/components/shell/AppIcon.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useRecipeStore } from '@/stores/recipeStore'
+import { useRecipeStore, SCOPE_ALL, SCOPE_MINE } from '@/stores/recipeStore'
+import { useFamilyStore, shortFamilyName, avatarTone } from '@/stores/familyStore'
 import { SORT_OPTIONS } from '@/utils/recipeSearch'
 import { tagBarEntries, tagCounts, tagSearchTerm } from '@/utils/recipeTags'
 import { track, createSearchReporter, SEARCH_DELAY_MS } from '@/utils/analytics'
 
 const store = useRecipeStore()
+const familyStore = useFamilyStore()
+
+// Sammlungs-Chips: Alle · Meine · je Familie (nur wer in mind. einer Familie ist)
+const scopeChips = computed(() => [
+  { key: SCOPE_ALL, value: SCOPE_ALL, label: 'Alle', active: store.scope === SCOPE_ALL },
+  { key: SCOPE_MINE, value: SCOPE_MINE, label: 'Meine', active: store.scope === SCOPE_MINE },
+  ...familyStore.families.map((f) => {
+    const label = shortFamilyName(f.name)
+    return { key: `f${f.id}`, value: f.id, label, initial: label.charAt(0).toLocaleUpperCase('de-DE'), family: true, active: store.scope === f.id }
+  }),
+])
 const badges = ref([])
 const inputValue = ref('')
 const inputEl = ref(null)

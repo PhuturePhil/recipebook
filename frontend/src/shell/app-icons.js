@@ -1,4 +1,4 @@
-// app-icons v1.5 — Master: workspace/snippets/app-icons.js
+// app-icons v1.7 — Master: workspace/snippets/app-icons.js
 // Gemeinsames Linien-Icon-Set für die Pastoors-PWAs (Plan: plans/design-vereinheitlichung.md).
 // Pro App kopiert — Änderungen zuerst hier, dann in alle Apps übernehmen.
 //
@@ -86,7 +86,13 @@
     // v1.5 (Rezepte)
     karotte:    '<path d="M2.5 21.5s9.6-3.4 12.4-6.2a4.4 4.4 0 0 0-6.2-6.2C5.9 11.9 2.5 21.5 2.5 21.5z"/><path d="M8.6 14l-2-2M15.2 15l-2.4-2.4"/><path d="M21.5 9s-1.3-2-3.4-2C16.5 7 15 9 15 9s1.3 2 3.4 2 3.1-2 3.1-2z"/><path d="M15 2.5s-2 1.3-2 3.4S15 9 15 9s2-1.8 2-3.4c0-2.1-2-3.1-2-3.1z"/>',
     globus:     '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5a13 13 0 0 1 0 17a13 13 0 0 1 0-17z"/>',
-    topf:       '<path d="M4.5 10.5h15v6a3.5 3.5 0 0 1-3.5 3.5H8a3.5 3.5 0 0 1-3.5-3.5z"/><path d="M2.5 10.5h19"/><path d="M9 7c0-1.2 1-1.5 1-2.8M13.5 7c0-1.2 1-1.5 1-2.8"/>'
+    topf:       '<path d="M4.5 10.5h15v6a3.5 3.5 0 0 1-3.5 3.5H8a3.5 3.5 0 0 1-3.5-3.5z"/><path d="M2.5 10.5h19"/><path d="M9 7c0-1.2 1-1.5 1-2.8M13.5 7c0-1.2 1-1.5 1-2.8"/>',
+    // v1.6 (Anleihen: Prüffälle einsortieren)
+    einreihen:  '<path d="M11 6h9M14 12h6M11 18h9"/><path d="M3.5 12h7"/><path d="M7.5 9l3 3-3 3"/>',
+    // v1.7 (Rezepte: Familien)
+    familie:    '<path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M12 16.2s-3-1.8-3-3.8a1.7 1.7 0 0 1 3-1.1 1.7 1.7 0 0 1 3 1.1c0 2-3 3.8-3 3.8z"/>',
+    kopieren:   '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5.5A1.5 1.5 0 0 1 4 13.5v-8A1.5 1.5 0 0 1 5.5 4h8A1.5 1.5 0 0 1 15 5.5V6"/>',
+    teilen:     '<path d="M12 3.5V14"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7.5 10H6A1.5 1.5 0 0 0 4.5 11.5V19A1.5 1.5 0 0 0 6 20.5h12A1.5 1.5 0 0 0 19.5 19v-7.5A1.5 1.5 0 0 0 18 10h-1.5"/>'
   };
 
   function svg(name, size, cls) {

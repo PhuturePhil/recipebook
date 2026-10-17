@@ -23,7 +23,7 @@
         @click="emit('more')"
       >
         <AppIcon name="mehr" :size="21" /><span>Mehr</span>
-        <i class="shell-dot" :hidden="!neu"></i>
+        <i class="shell-dot" :hidden="!neu && !mehr.some((m) => m.badge)"></i>
       </button>
     </div>
     <div class="shell-side-more">
@@ -38,6 +38,7 @@
         >
           <AppIcon :name="m.icon" :size="21" /><span>{{ m.label }}</span>
           <span v-if="m.id === 'neuerungen'" class="badge-neu" :hidden="!neu">NEU</span>
+          <span v-else-if="m.badge" class="badge-neu">NEU</span>
         </RouterLink>
         <button v-else type="button" class="shell-tab" :data-tab="m.id" @click="m.onClick">
           <AppIcon :name="m.icon" :size="21" /><span>{{ m.label }}</span>

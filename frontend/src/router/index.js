@@ -51,13 +51,15 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
-      meta: { requiresAuth: true }
+      // Gäste sehen hier die Gast-Startseite
+      meta: { requiresAuth: false }
     },
     {
       path: '/recipe/:id',
       name: 'recipe-detail',
       component: () => import('@/views/RecipeDetail.vue'),
-      meta: { requiresAuth: true }
+      // Öffentliche Rezepte auch für Gäste; alles andere beantwortet der Server mit 404
+      meta: { requiresAuth: false }
     },
     {
       path: '/recipe/new',
@@ -82,6 +84,24 @@ const router = createRouter({
       name: 'changelog',
       component: () => import('@/views/ChangelogView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/familien',
+      name: 'families',
+      component: () => import('@/views/FamiliesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/familien/:id(\\d+)',
+      name: 'family-detail',
+      component: () => import('@/views/FamilyDetailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/einladung/:code',
+      name: 'family-invite',
+      component: () => import('@/views/FamilyInviteView.vue'),
+      meta: { requiresAuth: false }
     },
     {
       path: '/:pathMatch(.*)*',

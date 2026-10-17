@@ -224,14 +224,15 @@ class AuthService {
     }
   }
 
-  async registerWithInvite({ token, vorname, nachname, email, password }) {
+  // token: Admin-Einladung; familyCode: Familien-Einladungslink (das neue Konto tritt der Familie gleich bei)
+  async registerWithInvite({ token, familyCode, vorname, nachname, email, password }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register-with-invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ token, vorname, nachname, email, password })
+        body: JSON.stringify({ token: token || null, familyCode: familyCode || null, vorname, nachname, email, password })
       })
       if (!response.ok) {
         const msg = await parseError(response, 'Registrierung fehlgeschlagen.')

@@ -2,12 +2,15 @@ package com.recipebook.dto;
 
 public class RegisterWithInviteRequest {
     private String token;
+    private String familyCode;
     private String vorname;
     private String nachname;
     private String email;
     private String password;
 
     public String getToken() { return token; }
+    public String getFamilyCode() { return familyCode; }
+    public void setFamilyCode(String familyCode) { this.familyCode = familyCode; }
     public void setToken(String token) { this.token = token; }
     public String getVorname() { return vorname; }
     public void setVorname(String vorname) { this.vorname = vorname; }

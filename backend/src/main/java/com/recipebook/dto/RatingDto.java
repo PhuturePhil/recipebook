@@ -27,4 +27,9 @@ public record RatingDto(
             userId != null && Objects.equals(userId, currentUserId)
         );
     }
+
+    public static RatingDto forGuest(RecipeRating rating) {
+        return new RatingDto(rating.getId(), rating.getStars(), rating.getComment(), rating.getCreatedAt(),
+            null, UserNames.firstName(rating.getUser()), false);
+    }
 }

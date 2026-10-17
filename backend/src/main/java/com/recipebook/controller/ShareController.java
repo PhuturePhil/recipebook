@@ -2,6 +2,7 @@ package com.recipebook.controller;
 
 import com.recipebook.dto.ShareLinkDto;
 import com.recipebook.dto.SharedRecipeDto;
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.service.ShareLinkService;
 import com.recipebook.service.SharePreviewHtml;
@@ -25,14 +26,19 @@ public class ShareController {
 
     private final ShareLinkService shareLinkService;
     private final SharePreviewService sharePreviewService;
+    private final RecipeAccess recipeAccess;
 
-    public ShareController(ShareLinkService shareLinkService, SharePreviewService sharePreviewService) {
+    public ShareController(ShareLinkService shareLinkService, SharePreviewService sharePreviewService,
+                           RecipeAccess recipeAccess) {
         this.shareLinkService = shareLinkService;
         this.sharePreviewService = sharePreviewService;
+        this.recipeAccess = recipeAccess;
     }
 
+    // Teilen-Links verwalten darf, wer das Rezept sehen darf
     @GetMapping("/recipes/{id}/share")
-    public ResponseEntity<ShareLinkDto> getShareLink(@PathVariable Long id) {
+    public ResponseEntity<ShareLinkDto> getShareLink(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        recipeAccess.requireVisible(id, RecipeAccess.viewerId(userDetails));
         return shareLinkService.findActiveShareLink(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
@@ -40,12 +46,14 @@ public class ShareController {
 
     @PostMapping("/recipes/{id}/share")
     public ResponseEntity<ShareLinkDto> createShareLink(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        recipeAccess.requireVisible(id, RecipeAccess.viewerId(userDetails));
         ShareLinkDto shareLink = shareLinkService.createShareLink(id, userDetails != null ? userDetails.getId() : null);
         return ResponseEntity.status(HttpStatus.CREATED).body(shareLink);
     }
 
     @DeleteMapping("/recipes/{id}/share")
-    public ResponseEntity<Void> revokeShareLink(@PathVariable Long id) {
+    public ResponseEntity<Void> revokeShareLink(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        recipeAccess.requireVisible(id, RecipeAccess.viewerId(userDetails));
         shareLinkService.revokeShareLinks(id);
         return ResponseEntity.noContent().build();
     }

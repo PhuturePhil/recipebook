@@ -56,9 +56,15 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/register-with-invite").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register-with-invite").permitAll()
                         .requestMatchers("/api/auth/password-reset", "/api/auth/reset-password").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/share/**").permitAll()
+                        // Gast-Sicht: lesen ohne Anmeldung, die Sichtbarkeit (nur öffentliche Rezepte) prüft RecipeAccess
+                        .requestMatchers(HttpMethod.GET, "/api/recipes/sources", "/api/recipes/tags", "/api/recipes/units").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/recipes", "/api/recipes/{id}", "/api/recipes/{id}/image",
+                                "/api/recipes/{id}/ratings", "/api/recipes/{id}/translation", "/api/recipes/{id}/nutrition").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/nutrition/info").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/family-invites/{code}").permitAll()
                         .requestMatchers("/api/auth/oidc/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/events/public").permitAll()
                         .requestMatchers("/api/**").authenticated()

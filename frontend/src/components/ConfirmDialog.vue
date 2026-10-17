@@ -10,6 +10,7 @@
     >
       <h2 id="confirm-title" class="confirm-title">{{ title }}</h2>
       <p v-if="text" id="confirm-text" class="confirm-text">{{ text }}</p>
+      <slot />
       <div class="confirm-actions">
         <button ref="cancelBtn" type="button" class="confirm-cancel" @click="emit('cancel')">{{ cancelLabel }}</button>
         <button type="button" class="confirm-ok" :class="{ destructive }" @click="emit('confirm')">{{ confirmLabel }}</button>
@@ -40,7 +41,7 @@ const onKey = (e) => {
     e.stopPropagation()
     emit('cancel')
   } else if (e.key === 'Tab') {
-    const buttons = [...(dialog.value?.querySelectorAll('button') ?? [])]
+    const buttons = [...(dialog.value?.querySelectorAll('input, button') ?? [])]
     if (!buttons.length) return
     const at = buttons.indexOf(document.activeElement)
     const next = (at + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length
@@ -52,7 +53,10 @@ const onKey = (e) => {
 onMounted(() => {
   prevFocus = document.activeElement
   document.addEventListener('keydown', onKey, true)
-  cancelBtn.value?.focus()
+  // Mit Eingabefeld (Slot) startet der Fokus dort
+  const input = dialog.value?.querySelector('input')
+  if (input) input.focus()
+  else cancelBtn.value?.focus()
 })
 onUnmounted(() => {
   document.removeEventListener('keydown', onKey, true)

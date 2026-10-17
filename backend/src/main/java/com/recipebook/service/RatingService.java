@@ -2,6 +2,7 @@ package com.recipebook.service;
 
 import com.recipebook.dto.RatingDto;
 import com.recipebook.dto.RatingRequest;
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.model.Recipe;
 import com.recipebook.model.RecipeRating;
 import com.recipebook.model.User;
@@ -31,26 +32,29 @@ public class RatingService {
     private final RecipeRatingRepository ratingRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final RecipeAccess recipeAccess;
 
     public RatingService(RecipeRatingRepository ratingRepository, RecipeRepository recipeRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, RecipeAccess recipeAccess) {
         this.ratingRepository = ratingRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
+        this.recipeAccess = recipeAccess;
     }
 
+    // Gäste (öffentliche Rezepte) sehen von den Bewertenden nur den Vornamen
     @Transactional(readOnly = true)
     public List<RatingDto> getRatings(Long recipeId, Long currentUserId) {
-        if (!recipeRepository.existsById(recipeId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, RECIPE_NOT_FOUND);
-        }
+        requireVisible(recipeId, currentUserId);
+        boolean guest = currentUserId == null || currentUserId == RecipeAccess.GUEST;
         return ratingRepository.findByRecipeIdWithUser(recipeId).stream()
-            .map(r -> RatingDto.of(r, currentUserId))
+            .map(r -> guest ? RatingDto.forGuest(r) : RatingDto.of(r, currentUserId))
             .toList();
     }
 
     @Transactional
     public RatingDto addRating(Long recipeId, Long userId, RatingRequest request) {
+        requireVisible(recipeId, userId);
         Recipe recipe = recipeRepository.findById(recipeId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, RECIPE_NOT_FOUND));
         User user = userId != null ? userRepository.findById(userId).orElse(null) : null;
@@ -68,6 +72,7 @@ public class RatingService {
 
     @Transactional
     public void deleteRating(Long recipeId, Long ratingId, Long currentUserId, boolean isAdmin) {
+        requireVisible(recipeId, currentUserId);
         RecipeRating rating = ratingRepository.findById(ratingId)
             .filter(r -> r.getRecipe() != null && Objects.equals(r.getRecipe().getId(), recipeId))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, RATING_NOT_FOUND));
@@ -76,6 +81,12 @@ public class RatingService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, NOT_ALLOWED);
         }
         ratingRepository.delete(rating);
+    }
+
+    private void requireVisible(Long recipeId, Long userId) {
+        if (!recipeAccess.canView(recipeId, userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, RECIPE_NOT_FOUND);
+        }
     }
 
     static String normalizeComment(String comment) {

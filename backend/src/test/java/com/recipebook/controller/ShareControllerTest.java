@@ -1,6 +1,7 @@
 package com.recipebook.controller;
 
 import com.recipebook.config.JwtAuthenticationFilter;
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.config.SecurityConfig;
 import com.recipebook.dto.SharedRecipeDto;
 import com.recipebook.dto.SharedRecipeDto.SharedIngredientDto;
@@ -10,6 +11,7 @@ import com.recipebook.service.JwtService;
 import com.recipebook.service.ShareLinkService;
 import com.recipebook.service.SharePreview;
 import com.recipebook.service.SharePreviewService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -37,6 +39,15 @@ class ShareControllerTest {
 
     @MockitoBean
     private SharePreviewService sharePreviewService;
+
+    @MockitoBean
+    private RecipeAccess recipeAccess;
+
+    @BeforeEach
+    void visibleByDefault() {
+        lenient().when(recipeAccess.canView(any(), any())).thenReturn(true);
+        lenient().when(recipeAccess.decorate(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     @MockitoBean
     private JwtService jwtService;

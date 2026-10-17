@@ -4,6 +4,7 @@ import com.recipebook.config.JwtAuthenticationFilter;
 import com.recipebook.config.SecurityConfig;
 import com.recipebook.dto.RatingDto;
 import com.recipebook.dto.RatingRequest;
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Role;
 import com.recipebook.model.User;
@@ -64,10 +65,21 @@ class RecipeRatingControllerTest {
     }
 
     @Test
-    void getRatings_withoutAuth_isRejected() throws Exception {
+    void getRatings_asGuest_asksServiceWithGuestId() throws Exception {
+        when(ratingService.getRatings(7L, RecipeAccess.GUEST)).thenReturn(List.of(dto(2, 4, null, "Paco", false)));
+
         mockMvc.perform(get("/api/recipes/7/ratings"))
-                .andExpect(status().isForbidden());
-        verifyNoInteractions(ratingService);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].userName").value("Paco"));
+    }
+
+    @Test
+    void getRatings_asGuestForHiddenRecipe_is404() throws Exception {
+        when(ratingService.getRatings(7L, RecipeAccess.GUEST))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Das Rezept wurde nicht gefunden."));
+
+        mockMvc.perform(get("/api/recipes/7/ratings"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

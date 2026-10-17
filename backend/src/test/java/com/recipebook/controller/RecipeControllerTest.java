@@ -1,6 +1,7 @@
 package com.recipebook.controller;
 
 import com.recipebook.config.JwtAuthenticationFilter;
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.config.SecurityConfig;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
@@ -10,6 +11,7 @@ import com.recipebook.service.CustomUserDetailsService;
 import com.recipebook.service.JwtService;
 import com.recipebook.service.RecipeService;
 import com.recipebook.service.RecipeTranslationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +45,15 @@ class RecipeControllerTest {
 
     @MockitoBean
     private RecipeTranslationService translationService;
+
+    @MockitoBean
+    private RecipeAccess recipeAccess;
+
+    @BeforeEach
+    void visibleByDefault() {
+        lenient().when(recipeAccess.canView(any(), any())).thenReturn(true);
+        lenient().when(recipeAccess.decorate(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     @MockitoBean
     private JwtService jwtService;
@@ -139,10 +150,132 @@ class RecipeControllerTest {
     }
 
     @Test
-    void getImage_shouldRequireLogin() throws Exception {
+    void getImage_ofHiddenRecipe_is404ForGuestAndStranger() throws Exception {
+        doThrow(RecipeAccess.notFound()).when(recipeAccess).requireVisible(7L, RecipeAccess.GUEST);
+        doThrow(RecipeAccess.notFound()).when(recipeAccess).requireVisible(7L, 6L);
+
         mockMvc.perform(get("/api/recipes/7/image"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/recipes/7/image").with(user(principal(6, Role.USER))))
+                .andExpect(status().isNotFound());
         verify(recipeService, never()).findImageUrl(any());
+    }
+
+    @Test
+    void getImage_ofPublicRecipe_isServedToGuests() throws Exception {
+        byte[] png = {(byte) 0x89, 0x50, 0x4E, 0x47};
+        when(recipeService.findImageUrl(7L)).thenReturn(Optional.of("data:image/png;base64," + Base64.getEncoder().encodeToString(png)));
+
+        mockMvc.perform(get("/api/recipes/7/image"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"));
+        verify(recipeAccess).requireVisible(7L, RecipeAccess.GUEST);
+    }
+
+    @Test
+    void getImage_neverServesSvg() throws Exception {
+        String svg = Base64.getEncoder().encodeToString("<svg onload=alert(1)></svg>".getBytes());
+        when(recipeService.findImageUrl(12L)).thenReturn(Optional.of("data:image/svg+xml;base64," + svg));
+
+        mockMvc.perform(get("/api/recipes/12/image").with(user(principal(5, Role.USER))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Das Rezept hat kein Bild."));
+    }
+
+    @Test
+    void getRecipe_hiddenFromGuestAndStranger_is404WithoutLoading() throws Exception {
+        when(recipeAccess.canView(3L, RecipeAccess.GUEST)).thenReturn(false);
+        when(recipeAccess.canView(3L, 6L)).thenReturn(false);
+
+        mockMvc.perform(get("/api/recipes/3"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Das Rezept wurde nicht gefunden."));
+        mockMvc.perform(get("/api/recipes/3").with(user(principal(6, Role.USER))))
+                .andExpect(status().isNotFound());
+        verify(recipeService, never()).findById(3L);
+    }
+
+    @Test
+    void getRecipe_publicForGuest_isDecoratedAsGuest() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setId(3L);
+        recipe.setTitle("Dal");
+        when(recipeService.findById(3L)).thenReturn(Optional.of(recipe));
+
+        mockMvc.perform(get("/api/recipes/3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Dal"));
+        verify(recipeAccess).decorate(recipe, RecipeAccess.GUEST);
+    }
+
+    @Test
+    void translationAndNutrition_ofHiddenRecipe_are404() throws Exception {
+        when(recipeAccess.canView(92L, RecipeAccess.GUEST)).thenReturn(false);
+        when(recipeAccess.canView(92L, 6L)).thenReturn(false);
+
+        mockMvc.perform(get("/api/recipes/92/translation").param("lang", "en"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/recipes/92/translation").param("lang", "en").with(user(principal(6, Role.USER))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/recipes/92/nutrition"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/recipes/92/nutrition").with(user(principal(6, Role.USER))))
+                .andExpect(status().isNotFound());
+        verifyNoInteractions(translationService);
+        verify(recipeService, never()).findById(92L);
+    }
+
+    @Test
+    void updateAndDelete_ofHiddenRecipe_are404NotForbidden() throws Exception {
+        when(recipeAccess.canView(4L, 6L)).thenReturn(false);
+        when(recipeAccess.canView(4L, 1L)).thenReturn(false);
+
+        mockMvc.perform(put("/api/recipes/4").with(user(principal(6, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Gekapert\",\"ingredients\":[]}"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/api/recipes/4").with(user(principal(6, Role.USER))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/api/recipes/4").with(user(principal(1, Role.ADMIN))))
+                .andExpect(status().isNotFound());
+        verify(recipeService, never()).saveForUser(any(), any());
+        verify(recipeService, never()).deleteById(any());
+    }
+
+    @Test
+    void list_asGuest_asksForGuestView() throws Exception {
+        when(recipeService.findAllSummaries(RecipeAccess.GUEST)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/api/recipes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        verify(recipeService).findAllSummaries(RecipeAccess.GUEST);
+    }
+
+    @Test
+    void writing_asGuest_isRejected() throws Exception {
+        mockMvc.perform(post("/api/recipes").contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"X\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/recipes/4"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/recipes/tags"))
+                .andExpect(status().isForbidden());
+        verify(recipeService, never()).saveForUser(any(), any());
+    }
+
+    @Test
+    void createRecipe_withUnknownVisibilityOrSvgPhotoIsRejected() throws Exception {
+        mockMvc.perform(post("/api/recipes").with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"X\",\"ingredients\":[],\"visibility\":\"WORLD\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/recipes").with(user(principal(5, Role.USER)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"X\",\"ingredients\":[],\"imageUrl\":\"data:image/svg+xml;base64,PHN2Zz4=\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("JPEG")));
+        verify(recipeService, never()).saveForUser(any(), any());
     }
 
     @Test

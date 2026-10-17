@@ -42,17 +42,6 @@
         <ImageCredit :credit="recipe.imageCredit" />
       </figure>
 
-      <div v-if="!authStore.isAuthenticated" class="guest-hint">
-        <p>
-          Schön, dass du vorbeischaust! Dieses Rezept wurde mit dir aus dem Familienkochbuch
-          geteilt. Beschreibung und persönliche Notizen sind registrierten Nutzern vorbehalten.
-        </p>
-        <p>
-          Die Registrierung ist nur mit Einladung möglich — frag einfach die Person, die dir
-          den Link geschickt hat.
-        </p>
-        <router-link to="/login" class="guest-hint__link">Registriert? Hier anmelden</router-link>
-      </div>
 
       <div class="servings-control">
         <span class="servings-label">Personen:</span>
@@ -90,7 +79,6 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
 import { shareService } from '@/services/shareService'
 import { scaleIngredients } from '@/utils/scaleIngredients'
 import { groupSections } from '@/utils/ingredientGroups'
@@ -103,7 +91,6 @@ import { sourceDomain } from '@/utils/sourceUrl'
 import { trackSharedView } from '@/utils/analytics'
 
 const route = useRoute()
-const authStore = useAuthStore()
 
 const recipe = ref(null)
 const loading = ref(true)
@@ -285,32 +272,6 @@ const ingredientSections = computed(() => groupSections(scaledIngredients.value)
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.guest-hint {
-  margin-bottom: 24px;
-  padding: 16px;
-  background: var(--info-weich);
-  border: 1px solid var(--info-weich);
-  border-radius: 8px;
-  font-size: 0.925rem;
-  color: var(--color-text-primary, #333);
-}
-
-.guest-hint p + p {
-  margin-top: 8px;
-}
-
-.guest-hint__link {
-  display: inline-block;
-  margin-top: 12px;
-  color: var(--color-primary, #4a5568);
-  font-weight: 600;
-  text-underline-offset: 3px;
-}
-
-.guest-hint__link:hover {
-  color: var(--color-primary-dark, #2d3748);
 }
 
 .servings-control {

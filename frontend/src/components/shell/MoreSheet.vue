@@ -14,7 +14,7 @@
       <h2 id="shellSheetTitle">Mehr</h2>
       <button v-for="m in mehr" :key="m.id" type="button" class="shell-mi" :data-mi="m.id" @click="pick(m)">
         <AppIcon :name="m.icon" :size="21" />
-        <span class="shell-mi-label">{{ m.label }}<span v-if="m.id === 'neuerungen'" class="badge-neu" :hidden="!neu">NEU</span></span>
+        <span class="shell-mi-label">{{ m.label }}<span v-if="m.id === 'neuerungen'" class="badge-neu" :hidden="!neu">NEU</span><span v-else-if="m.badge" class="badge-neu">NEU</span></span>
       </button>
       <div class="shell-mi shell-mi-row">
         <AppIcon :name="dark ? 'dunkel' : 'hell'" :size="21" />

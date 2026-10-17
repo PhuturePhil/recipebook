@@ -2,6 +2,7 @@ package com.recipebook.service;
 
 import com.recipebook.dto.UpdateProfileRequest;
 import com.recipebook.dto.UpdateUserRequest;
+import com.recipebook.family.FamilyService;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.InvitationToken;
 import com.recipebook.model.PasswordResetToken;
@@ -66,6 +67,8 @@ public class AuthService {
     @Value("${app.auth.password-login-for-sso-users:false}")
     private boolean passwordLoginForSsoUsers;
 
+    private final FamilyService familyService;
+
     public AuthService(
             UserRepository userRepository,
             RecipeRepository recipeRepository,
@@ -74,7 +77,8 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AuthenticationManager authenticationManager,
-            JavaMailSender mailSender) {
+            JavaMailSender mailSender,
+            FamilyService familyService) {
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
         this.tokenRepository = tokenRepository;
@@ -83,6 +87,7 @@ public class AuthService {
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
         this.mailSender = mailSender;
+        this.familyService = familyService;
     }
 
     public record LoginResult(String token, User user) {}
@@ -232,6 +237,7 @@ public class AuthService {
         }
         tokenRepository.deleteByUser(user);
         invitationTokenRepository.deleteByInvitedBy(user);
+        familyService.removeUserEverywhere(user.getId());
         userRepository.delete(user);
     }
 
@@ -249,6 +255,28 @@ public class AuthService {
 
     @Transactional
     public User registerWithInvitation(String token, String vorname, String nachname, String email, String password) {
+        return registerWithInvitation(token, null, vorname, nachname, email, password);
+    }
+
+    /**
+     * Registrierung mit Einladung: entweder Admin-Einladung (einmalig, 24 h) oder Familien-Einladungslink
+     * (Konto wird direkt Mitglied; volle Familie → 409, ungültig/abgelaufen → 400 wie bisher).
+     */
+    @Transactional
+    public User registerWithInvitation(String token, String familyCode, String vorname, String nachname, String email,
+            String password) {
+        if ((token == null || token.isBlank()) && familyCode != null && !familyCode.isBlank()) {
+            try {
+                familyService.requireJoinable(familyCode);
+            } catch (ResponseStatusException e) {
+                if (e.getStatusCode().value() == HttpStatus.CONFLICT.value()) throw e;
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Der Einladungslink ist ungueltig oder abgelaufen.");
+            }
+            requireValidPassword(password);
+            User user = register(vorname, nachname, email, password, Role.USER);
+            familyService.join(familyCode, user.getId());
+            return user;
+        }
         InvitationToken invitationToken = invitationTokenRepository.findByToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Der Einladungslink ist ungueltig oder abgelaufen."));
         if (!invitationToken.isValid()) {

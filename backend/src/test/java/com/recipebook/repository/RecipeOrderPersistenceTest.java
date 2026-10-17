@@ -1,5 +1,6 @@
 package com.recipebook.repository;
 
+import com.recipebook.family.RecipeAccess;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.Recipe;
 import com.recipebook.service.IngredientAiService;
@@ -29,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DataJpaTest(properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
-@Import(RecipeService.class)
+@Import({RecipeService.class, RecipeAccess.class})
 class RecipeOrderPersistenceTest {
 
     @Autowired

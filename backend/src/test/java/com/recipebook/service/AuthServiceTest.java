@@ -1,6 +1,7 @@
 package com.recipebook.service;
 
 import com.recipebook.dto.UpdateProfileRequest;
+import com.recipebook.family.FamilyService;
 import com.recipebook.model.PasswordResetToken;
 import com.recipebook.model.Role;
 import com.recipebook.model.User;
@@ -39,6 +40,7 @@ class AuthServiceTest {
     @Mock private JwtService jwtService;
     @Mock private AuthenticationManager authenticationManager;
     @Mock private JavaMailSender mailSender;
+    @Mock private FamilyService familyService;
 
     private AuthService authService;
     private User user;
@@ -46,7 +48,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthService(userRepository, recipeRepository, tokenRepository, invitationTokenRepository,
-                passwordEncoder, jwtService, authenticationManager, mailSender);
+                passwordEncoder, jwtService, authenticationManager, mailSender, familyService);
         user = new User();
         user.setId(7L);
         user.setEmail("anna@test.de");

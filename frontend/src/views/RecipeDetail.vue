@@ -34,9 +34,11 @@
               @click="setLanguage('original')"
             >Original</button>
           </div>
-          <button class="btn-tool" @click="showShareModal = true">Teilen</button>
-          <button class="btn-tool" @click="printRecipe">Als PDF speichern</button>
-          <KeepScreenOnToggle />
+          <template v-if="!isGuest">
+            <button class="btn-tool" @click="showShareModal = true">Teilen</button>
+            <button class="btn-tool" @click="printRecipe">Als PDF speichern</button>
+            <KeepScreenOnToggle />
+          </template>
         </div>
         <p v-if="translationNote" class="translation-note">{{ translationNote }}</p>
       </header>
@@ -78,9 +80,22 @@
           <RatingStars :model-value="1" :count="1" :size="15" readonly aria-hidden="true" />
           {{ ratingLabel(ratingStats.avg, ratingStats.count) }}
         </button>
+        <span v-if="isGuest && recipe.createdByFirstName" class="meta-item meta-item--origin">
+          <AppIcon name="globus" :size="14" />von {{ recipe.createdByFirstName }}
+        </span>
       </div>
 
-      <p v-if="createdText" class="recipe-createdby">{{ createdText }}</p>
+      <div v-if="!isGuest && (createdText || visibility)" class="recipe-origin">
+        <p v-if="createdText" class="recipe-createdby">{{ createdText }}</p>
+        <!-- Sichtbarkeit: für den Besitzer Sprung in die Bearbeitung, sonst reine Info -->
+        <router-link
+          v-if="visibility && isOwner"
+          :to="`/recipe/${recipe.id}/edit`"
+          class="recipe-visibility"
+          :title="'Sichtbarkeit ändern'"
+        ><AppIcon :name="visibility.icon" :size="14" />{{ visibility.text }}</router-link>
+        <p v-else-if="visibility" class="recipe-visibility"><AppIcon :name="visibility.icon" :size="14" />{{ visibility.text }}</p>
+      </div>
 
       <div v-if="recipe.tags?.length" class="recipe-tags">
         <button
@@ -88,7 +103,8 @@
           :key="tag"
           type="button"
           class="recipe-tag"
-          :title="`Alle Rezepte mit „${tag}“`"
+          :disabled="isGuest"
+          :title="isGuest ? undefined : `Alle Rezepte mit „${tag}“`"
           @click="searchTag(tag)"
         >#{{ tag }}</button>
       </div>
@@ -158,10 +174,10 @@
           <span class="ratings-summary__value">{{ formatRating(ratingStats.avg) }}</span>
           <span class="ratings-summary__count">bei {{ ratingCountLabel(ratingStats.count) }}</span>
         </div>
-        <p v-else-if="!ratingsLoading && !ratingsError" class="ratings-state">Noch keine Bewertungen – sei die/der Erste!</p>
+        <p v-else-if="!ratingsLoading && !ratingsError" class="ratings-state">{{ isGuest ? 'Noch keine Bewertungen.' : 'Noch keine Bewertungen – sei die/der Erste!' }}</p>
 
         <!-- Mobil wird über „Bewerten“ in der Aktionsleiste bewertet (Popup); das Inline-Formular gibt es nur ab 1024 px -->
-        <RatingForm class="rating-form--inline" :recipe-id="recipe.id" @submitted="loadRatings(recipe.id)" />
+        <RatingForm v-if="!isGuest" class="rating-form--inline" :recipe-id="recipe.id" @submitted="loadRatings(recipe.id)" />
 
         <ul v-if="ratings.length" class="rating-list">
           <li v-for="r in visibleRatings" :key="r.id" class="rating-entry">
@@ -174,7 +190,7 @@
               <span class="rating-entry__date">{{ formatRatingDate(r.createdAt) }}</span>
               <span v-if="r.updated" class="rating-entry__updated">aktualisiert</span>
               <button
-                v-if="r.own || authStore.isAdmin"
+                v-if="!isGuest && (r.own || authStore.isAdmin)"
                 type="button"
                 class="rating-entry__delete"
                 @click="ratingToDelete = r"
@@ -190,6 +206,13 @@
           :aria-expanded="showAllRatings"
           @click="showAllRatings = !showAllRatings"
         >{{ showAllRatings ? 'Weniger anzeigen' : `Alle ${ratings.length} Bewertungen anzeigen` }}</button>
+
+        <!-- Gäste: die einzige Anmelde-Aufforderung auf einem öffentlichen Rezept -->
+        <router-link
+          v-if="isGuest"
+          :to="{ path: '/login', query: { redirect: route.fullPath } }"
+          class="ui-btn rate-login"
+        ><AppIcon name="stern" :size="17" />Zum Bewerten anmelden</router-link>
       </section>
 
       <footer class="print-footer">
@@ -197,7 +220,7 @@
         <p class="print-footer__small">Für den privaten Gebrauch</p>
       </footer>
 
-      <div class="detail-actions">
+      <div v-if="!isGuest" class="detail-actions">
         <button class="btn-cancel" @click="goBack">Zurück</button>
         <template v-if="canEdit">
           <button class="btn-delete" @click="handleDelete">Löschen</button>
@@ -208,6 +231,7 @@
       </div>
 
       <DetailActionBar
+        v-if="!isGuest"
         ref="actionBar"
         :can-edit="canEdit"
         @delete="showDeleteRecipe = true"
@@ -277,6 +301,8 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import RatingForm from '@/components/RatingForm.vue'
 import RatingDialog from '@/components/RatingDialog.vue'
 import DetailActionBar from '@/components/shell/DetailActionBar.vue'
+import AppIcon from '@/components/shell/AppIcon.vue'
+import { visibilityLabel } from '@/utils/visibility'
 import {
   formatRating,
   ratingLabel,
@@ -329,6 +355,10 @@ const searchTag = (tag) => {
   store.setPendingSearchTerm('')
   router.push('/')
 }
+// Gast auf einem öffentlichen Rezept: alles lesbar, nur Bewerten braucht ein Konto
+const isGuest = computed(() => !authStore.isAuthenticated)
+const isOwner = computed(() => recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
+const visibility = computed(() => visibilityLabel(recipe.value))
 const canEdit = computed(() =>
   authStore.isAdmin || (recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
 )
@@ -782,7 +812,11 @@ const confirmDeleteRecipe = async () => {
   cursor: pointer;
 }
 
-.recipe-tag:hover {
+.recipe-tag:disabled {
+  cursor: default;
+}
+
+.recipe-tag:not(:disabled):hover {
   color: var(--color-primary, #4a5568);
   text-decoration: underline;
 }
@@ -822,10 +856,36 @@ const confirmDeleteRecipe = async () => {
   border-color: var(--linie);
 }
 
-.recipe-createdby {
+.recipe-origin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
   margin: -6px 0 16px;
+}
+
+.recipe-createdby {
+  margin: 0;
   font-size: 0.85rem;
   color: var(--text3);
+}
+
+.recipe-origin .recipe-visibility {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.meta-item--origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text2);
+}
+
+.rate-login {
+  width: 100%;
+  margin-top: 14px;
+  text-decoration: none;
 }
 
 .meta-item--incomplete {
@@ -1234,6 +1294,7 @@ const confirmDeleteRecipe = async () => {
 
   .recipe-ratings,
   .recipe-createdby,
+  .recipe-origin,
   .meta-item--rating,
   .recipe-tools,
   .recipe-tags,

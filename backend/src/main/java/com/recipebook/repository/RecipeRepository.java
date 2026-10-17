@@ -16,6 +16,21 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
   long countByUser_Id(Long userId);
 
+  // Sichtbar = öffentlich, eigenes Rezept oder für eine Familie freigegeben, in der der Nutzer Mitglied ist.
+  // Gäste fragen mit einer ID, die es nicht gibt (RecipeAccess.GUEST).
+  String VISIBLE_TO_USER = "(r.publicVisible = true OR r.user.id = :userId OR EXISTS ("
+      + "SELECT 1 FROM RecipeFamily rf, FamilyMember m "
+      + "WHERE rf.recipeId = r.id AND m.familyId = rf.familyId AND m.userId = :userId))";
+
+  @Query("SELECT COUNT(r) > 0 FROM Recipe r WHERE r.id = :id AND " + VISIBLE_TO_USER)
+  boolean isVisibleTo(@Param("id") Long id, @Param("userId") Long userId);
+
+  @Query("SELECT r.id FROM Recipe r WHERE " + VISIBLE_TO_USER)
+  List<Long> findIdsVisibleTo(@Param("userId") Long userId);
+
+  @Query("SELECT r.publicVisible FROM Recipe r WHERE r.id = :recipeId")
+  Optional<Boolean> findPublicVisible(@Param("recipeId") Long recipeId);
+
   interface StoredIngredient {
     Long getId();
     String getAmount();
@@ -48,6 +63,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     LocalDateTime getCreatedAt();
     Double getRatingAvg();
     Long getRatingCount();
+    Long getOwnerId();
+    String getCreatedByFirstName();
+    Boolean getIsPublic();
   }
 
   @Query(value =
@@ -60,7 +78,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       "COALESCE(CONCAT_WS(' ', NULLIF(u.vorname, ''), NULLIF(u.nachname, '')), '') AS createdBy, " +
       "STRING_AGG(i.name, ', ') AS ingredientNames, " +
       "r.created_at AS createdAt, " +
-      "rr.rating_avg AS ratingAvg, rr.rating_count AS ratingCount " +
+      "rr.rating_avg AS ratingAvg, rr.rating_count AS ratingCount, " +
+      "r.user_id AS ownerId, COALESCE(NULLIF(u.vorname, ''), '') AS createdByFirstName, r.is_public AS isPublic " +
       "FROM recipes r " +
       "LEFT JOIN ingredients i ON i.recipe_id = r.id " +
       "LEFT JOIN users u ON u.id = r.user_id " +

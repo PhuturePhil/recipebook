@@ -4,6 +4,9 @@ import com.recipebook.dto.NutritionSummaryDto;
 import com.recipebook.dto.RecipeNutritionDto;
 import com.recipebook.dto.RecipeSummaryDto;
 import com.recipebook.dto.SourceAuthorDto;
+import com.recipebook.family.FamilyRef;
+import com.recipebook.family.RecipeAccess;
+import com.recipebook.family.Visibility;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.ImageCredit;
 import com.recipebook.model.Recipe;
@@ -25,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,10 +42,11 @@ public class RecipeService {
     private final IngredientAiService ingredientAiService;
     private final RecipeTranslationService translationService;
     private final RecipeTagService recipeTagService;
+    private final RecipeAccess recipeAccess;
 
     public RecipeService(RecipeRepository recipeRepository, UserRepository userRepository, RecipeImageService recipeImageService,
             NutritionService nutritionService, IngredientAiService ingredientAiService,
-            RecipeTranslationService translationService, RecipeTagService recipeTagService) {
+            RecipeTranslationService translationService, RecipeTagService recipeTagService, RecipeAccess recipeAccess) {
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.recipeImageService = recipeImageService;
@@ -49,10 +54,17 @@ public class RecipeService {
         this.ingredientAiService = ingredientAiService;
         this.translationService = translationService;
         this.recipeTagService = recipeTagService;
+        this.recipeAccess = recipeAccess;
     }
-    
-    public List<RecipeSummaryDto> findAllSummaries() {
-        List<RecipeSummaryProjection> projections = recipeRepository.findAllSummaries();
+
+    /** Alle Rezepte, die der Betrachter sehen darf (Gäste: RecipeAccess.GUEST → nur öffentliche). */
+    public List<RecipeSummaryDto> findAllSummaries(Long viewerId) {
+        Set<Long> visible = recipeAccess.visibleIds(viewerId);
+        boolean guest = viewerId == null || viewerId == RecipeAccess.GUEST;
+        Map<Long, List<FamilyRef>> families = recipeAccess.familiesByRecipe(viewerId);
+        List<RecipeSummaryProjection> projections = recipeRepository.findAllSummaries().stream()
+            .filter(p -> visible.contains(p.getId()))
+            .toList();
         Map<Long, Integer> servings = new LinkedHashMap<>();
         projections.forEach(p -> servings.put(p.getId(), p.getBaseServings()));
         Map<Long, RecipeNutrition> nutrition = nutritionService.calculateAll(servings);
@@ -68,7 +80,14 @@ public class RecipeService {
             );
             dto.setAuthor(p.getAuthor());
             dto.setSource(p.getSource());
-            dto.setCreatedBy(p.getCreatedBy());
+            String firstName = p.getCreatedByFirstName() == null || p.getCreatedByFirstName().isBlank()
+                ? p.getCreatedBy() : p.getCreatedByFirstName().trim();
+            dto.setCreatedBy(guest ? firstName : p.getCreatedBy());
+            dto.setCreatedByFirstName(firstName);
+            dto.setOwnerId(guest ? null : p.getOwnerId());
+            List<FamilyRef> shared = families.getOrDefault(p.getId(), List.of());
+            dto.setFamilies(shared);
+            dto.setVisibility(Visibility.of(Boolean.TRUE.equals(p.getIsPublic()), !shared.isEmpty()).name());
             dto.setIngredientNames(p.getIngredientNames());
             dto.setTranslatedSearchText(translatedSearch.get(p.getId()));
             dto.setTags(tags.getOrDefault(p.getId(), List.of()));
@@ -139,11 +158,22 @@ public class RecipeService {
         if (exists) recipe.setCreatedAt(recipeRepository.findCreatedAt(recipe.getId()).orElse(null));
         User owner = exists ? recipeRepository.findOwner(recipe.getId()).orElse(user) : user;
         recipe.setUser(owner);
-        if (!exists) return recipeRepository.save(recipe);
-        Recipe managed = recipeRepository.findById(recipe.getId()).orElseThrow();
-        copyInto(managed, recipe);
-        // save() läuft über saveForUser ohne eigene Transaktion, erst das Repository schreibt die Änderungen
-        return recipeRepository.save(managed);
+        Long editorId = user != null ? user.getId() : RecipeAccess.GUEST;
+        Long ownerId = owner != null ? owner.getId() : editorId;
+        RecipeAccess.Stored access = recipeAccess.resolve(recipe, ownerId, editorId,
+            exists ? recipeAccess.stored(recipe.getId()) : null);
+        recipe.setPublicVisible(access.isPublic());
+        Recipe saved;
+        if (!exists) {
+            saved = recipeRepository.save(recipe);
+        } else {
+            Recipe managed = recipeRepository.findById(recipe.getId()).orElseThrow();
+            copyInto(managed, recipe);
+            // save() läuft über saveForUser ohne eigene Transaktion, erst das Repository schreibt die Änderungen
+            saved = recipeRepository.save(managed);
+        }
+        recipeAccess.writeLinks(saved.getId(), access.familyIds());
+        return saved;
     }
 
     // Kein Merge des Request-Graphen: neue Zeilen ohne id würden vor dem Laden der Liste ohne sort_order eingefügt (HTTP 500)
@@ -164,6 +194,7 @@ public class RecipeService {
         managed.setLanguage(edited.getLanguage());
         managed.setLanguageAuto(edited.getLanguageAuto());
         managed.setUser(edited.getUser());
+        managed.setPublicVisible(edited.isPublicVisible());
 
         Map<Long, Ingredient> storedRows = new HashMap<>();
         managed.getIngredients().forEach(i -> storedRows.put(i.getId(), i));

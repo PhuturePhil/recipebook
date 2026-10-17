@@ -133,6 +133,7 @@ public class AuthController {
     public ResponseEntity<UserResponse> registerWithInvite(@RequestBody com.recipebook.dto.RegisterWithInviteRequest request) {
         User user = authService.registerWithInvitation(
                 request.getToken(),
+                request.getFamilyCode(),
                 request.getVorname(),
                 request.getNachname(),
                 request.getEmail(),

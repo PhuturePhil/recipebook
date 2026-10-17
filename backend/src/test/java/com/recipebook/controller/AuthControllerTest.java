@@ -123,4 +123,26 @@ class AuthControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Der Benutzer hat noch 7 Rezepte und kann deshalb nicht geloescht werden."));
     }
+
+    @Test
+    void register_isOnlyForAdmins() throws Exception {
+        String body = "{\"vorname\":\"X\",\"email\":\"x@test.de\",\"password\":\"Geheim123!\"}";
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/auth/register").with(user(new CustomUserDetails(account(5, Role.USER))))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(authService);
+    }
+
+    @Test
+    void registerWithInvite_passesTheFamilyCodeThrough() throws Exception {
+        User created = account(50, Role.USER);
+        when(authService.registerWithInvitation(eq(null), eq("famcode1234567890abc"), eq("Silvia"), any(), eq("s@test.de"), any()))
+                .thenReturn(created);
+
+        mockMvc.perform(post("/api/auth/register-with-invite").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"familyCode\":\"famcode1234567890abc\",\"vorname\":\"Silvia\",\"email\":\"s@test.de\",\"password\":\"Geheim123!\"}"))
+                .andExpect(status().isOk());
+    }
 }

@@ -25,6 +25,10 @@ public class RecipeSummaryDto {
   private LocalDateTime createdAt;
   private Double ratingAvg;
   private Long ratingCount;
+  private Long ownerId;
+  private String createdByFirstName;
+  private String visibility;
+  private List<com.recipebook.family.FamilyRef> families = List.of();
 
   public RecipeSummaryDto(Long id, String title, String description, String imageUrl,
       Integer prepTimeMinutes, Integer baseServings, Integer servingsTo, Long ingredientCount) {
@@ -74,4 +78,16 @@ public class RecipeSummaryDto {
   public void setRatingAvg(Double ratingAvg) { this.ratingAvg = ratingAvg; }
   public Long getRatingCount() { return ratingCount; }
   public void setRatingCount(Long ratingCount) { this.ratingCount = ratingCount; }
+
+  public Long getOwnerId() { return ownerId; }
+  public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
+
+  public String getCreatedByFirstName() { return createdByFirstName; }
+  public void setCreatedByFirstName(String createdByFirstName) { this.createdByFirstName = createdByFirstName; }
+
+  public String getVisibility() { return visibility; }
+  public void setVisibility(String visibility) { this.visibility = visibility; }
+
+  public List<com.recipebook.family.FamilyRef> getFamilies() { return families; }
+  public void setFamilies(List<com.recipebook.family.FamilyRef> families) { this.families = families; }
 }

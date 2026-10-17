@@ -1,5 +1,6 @@
 import { ingredientSection, isGroupRow, sectionsToIngredients } from './ingredientGroups.js'
 import { sourceUrlProblem } from './sourceUrl.js'
+import { visibilityPayload } from './recipeVisibility.js'
 
 export const emptyIngredient = () => ({ name: '', amount: '', unit: '' })
 
@@ -11,9 +12,10 @@ export const isBlankIngredient = (ingredient) =>
 
 // The API knows no sections: they become one flat list with a groupName per ingredient
 export function cleanRecipeData(formData) {
-  const { sections, ...data } = formData
+  const { sections, visibility, familyIds, ...data } = formData
   return {
     ...data,
+    ...visibilityPayload(visibility, familyIds),
     ingredients: sectionsToIngredients(sections).filter((i) => !isBlankIngredient(i)),
     instructions: formData.instructions.filter((i) => !blank(i))
   }

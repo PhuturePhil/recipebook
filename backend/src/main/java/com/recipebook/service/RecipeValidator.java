@@ -1,5 +1,6 @@
 package com.recipebook.service;
 
+import com.recipebook.family.Visibility;
 import com.recipebook.model.Ingredient;
 import com.recipebook.model.Recipe;
 import com.recipebook.translation.RecipeLanguage;
@@ -62,6 +63,15 @@ public final class RecipeValidator {
         String urlProblem = RecipeSourceUrl.problem(recipe.getSourceUrl());
         if (urlProblem != null) {
             errors.add(error("sourceUrl", urlProblem));
+        }
+
+        String imageProblem = RecipeImageTypes.problem(recipe.getImageUrl());
+        if (imageProblem != null) {
+            errors.add(error("imageUrl", imageProblem));
+        }
+
+        if (recipe.getVisibility() != null && Visibility.parse(recipe.getVisibility()) == null) {
+            errors.add(error("visibility", "Die Sichtbarkeit muss „PRIVATE“, „FAMILY“ oder „PUBLIC“ sein."));
         }
 
         if (recipe.getLanguage() != null && !RecipeLanguage.isSupported(recipe.getLanguage())) {

@@ -3,6 +3,7 @@ package com.recipebook.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import com.recipebook.family.FamilyRef;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -77,6 +78,27 @@ public class Recipe {
     @JoinColumn(name = "user_id")
     @JsonIgnore
     private User user;
+
+    @Column(name = "is_public", nullable = false)
+    @JsonIgnore
+    private boolean publicVisible;
+
+    // Sichtbarkeit im Request (null = beim Bearbeiten unverändert, beim Anlegen alle eigenen Familien)
+    // und in der Antwort aus Sicht des Betrachters; gespeichert wird über is_public + recipe_families
+    @Transient
+    private String visibility;
+
+    @Transient
+    private List<Long> familyIds;
+
+    @Transient
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private List<FamilyRef> families;
+
+    // Gäste sehen vom Ersteller nur den Vornamen
+    @Transient
+    @JsonIgnore
+    private boolean guestView;
     
     public Recipe() {}
     
@@ -236,7 +258,54 @@ public class Recipe {
     @Transient
     @JsonProperty(value = "createdBy", access = JsonProperty.Access.READ_ONLY)
     public String getCreatedBy() {
-        return UserNames.fullName(user);
+        return guestView ? UserNames.firstName(user) : UserNames.fullName(user);
+    }
+
+    @Transient
+    @JsonProperty(value = "createdByFirstName", access = JsonProperty.Access.READ_ONLY)
+    public String getCreatedByFirstName() {
+        return UserNames.firstName(user);
+    }
+
+    public boolean isPublicVisible() {
+        return publicVisible;
+    }
+
+    public void setPublicVisible(boolean publicVisible) {
+        this.publicVisible = publicVisible;
+    }
+
+    public String getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(String visibility) {
+        this.visibility = visibility;
+    }
+
+    public List<Long> getFamilyIds() {
+        return familyIds;
+    }
+
+    public void setFamilyIds(List<Long> familyIds) {
+        this.familyIds = familyIds;
+    }
+
+    public List<FamilyRef> getFamilies() {
+        return families;
+    }
+
+    public void setFamilies(List<FamilyRef> families) {
+        this.families = families;
+    }
+
+    @JsonIgnore
+    public boolean isGuestView() {
+        return guestView;
+    }
+
+    public void setGuestView(boolean guestView) {
+        this.guestView = guestView;
     }
 
     @JsonProperty(value = "ownerId", access = JsonProperty.Access.READ_ONLY)
