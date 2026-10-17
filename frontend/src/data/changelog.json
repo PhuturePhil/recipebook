@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026-10-17.4",
+    "datum": "17.10.2026",
+    "titel": "Lange Quellen-Adressen passen aufs Handy",
+    "punkte": [
+      "Steht bei der Quelle eine lange Webadresse, bricht sie jetzt um – die Rezeptseite lässt sich auf dem Handy nicht mehr seitlich verschieben",
+      "Gilt auch für geteilte Rezept-Links; beim Drucken und im PDF bleibt die volle Adresse lesbar"
+    ]
+  },
+  {
     "version": "2026-10-17.3",
     "datum": "17.10.2026",
     "titel": "Familien: Rezepte mit deinen Leuten teilen",

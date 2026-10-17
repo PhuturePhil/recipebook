@@ -914,6 +914,8 @@ const confirmDeleteRecipe = async () => {
   background: var(--color-bg-secondary, #f0f0f0);
   border-radius: 8px;
   font-size: 0.875rem;
+  /* Lange Webadressen im Quellenfeld umbrechen statt die Seite zu verbreitern (Rezept 194) */
+  overflow-wrap: anywhere;
 }
 
 .source-label {

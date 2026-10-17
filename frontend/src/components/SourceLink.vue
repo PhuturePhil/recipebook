@@ -47,6 +47,7 @@ const domain = computed(() => sourceDomain(url.value))
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  max-width: 100%;
   /* Größere Tippfläche ohne die Zeile höher zu machen */
   padding: 12px 4px;
   margin: -12px 0;
@@ -58,6 +59,11 @@ const domain = computed(() => sourceDomain(url.value))
 
 .source-link:hover .source-link__domain {
   text-decoration-thickness: 2px;
+}
+
+.source-link__domain {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .source-link__icon {

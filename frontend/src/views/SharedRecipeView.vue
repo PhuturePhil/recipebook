@@ -245,6 +245,8 @@ const ingredientSections = computed(() => groupSections(scaledIngredients.value)
   font-size: 0.95rem;
   color: var(--color-text-secondary, #666);
   font-style: italic;
+  /* „nach: <lange Webadresse>“ umbrechen statt die Seite zu verbreitern */
+  overflow-wrap: anywhere;
 }
 
 .source-url {
