@@ -152,8 +152,7 @@ a.recipe-visibility:hover { color: var(--akzent-text); }
 .gast-home { max-width: var(--shell-max); margin: 0 auto; padding-bottom: 32px; }
 .gast-hero { text-align: center; padding: 42px 24px 4px; }
 .gast-hero .app-chip { width: 64px; height: 64px; border-radius: 17px; margin: 0 auto 16px; }
-.gast-hero h1 { font-size: 23px; font-weight: 750; letter-spacing: -.3px; margin: 0 0 8px; color: var(--text); }
-.gast-hero .pitch { font-size: 15px; color: var(--text2); line-height: 1.5; margin: 0 auto; max-width: 300px; }
+.gast-hero h1 { font-size: 23px; font-weight: 750; letter-spacing: -.3px; margin: 0; color: var(--text); }
 .gast-cta { display: flex; gap: 10px; margin: 22px auto 26px; padding: 0 16px; max-width: 460px; }
 .gast-cta .ui-btn { flex: 1; text-decoration: none; }
 .gast-home__list { padding: 0 16px; }
