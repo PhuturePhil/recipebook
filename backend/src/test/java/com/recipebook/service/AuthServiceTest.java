@@ -285,6 +285,43 @@ class AuthServiceTest {
     }
 
     @Test
+    void loginMethod_shouldSendSsoLinkedUserToSso() {
+        linkWithSso(false);
+        when(userRepository.findByEmailIgnoreCase("Anna@test.de")).thenReturn(Optional.of(user));
+
+        assertEquals(AuthService.LOGIN_METHOD_SSO, authService.loginMethod(" Anna@test.de "));
+        verifyNoInteractions(authenticationManager, jwtService);
+    }
+
+    @Test
+    void loginMethod_shouldAskForPasswordWhenEmergencySwitchIsOn() {
+        linkWithSso(true);
+        lenient().when(userRepository.findByEmailIgnoreCase("anna@test.de")).thenReturn(Optional.of(user));
+
+        assertEquals(AuthService.LOGIN_METHOD_PASSWORD, authService.loginMethod("anna@test.de"));
+    }
+
+    @Test
+    void loginMethod_shouldAskForPasswordWhenOidcIsDisabled() {
+        user.setOidcSubject("sub-anna");
+        lenient().when(userRepository.findByEmailIgnoreCase("anna@test.de")).thenReturn(Optional.of(user));
+
+        assertEquals(AuthService.LOGIN_METHOD_PASSWORD, authService.loginMethod("anna@test.de"));
+    }
+
+    @Test
+    void loginMethod_shouldAskForPasswordForUnlinkedUnknownAndEmptyAddresses() {
+        ReflectionTestUtils.setField(authService, "oidcEnabled", true);
+        when(userRepository.findByEmailIgnoreCase("anna@test.de")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("unbekannt@test.de")).thenReturn(Optional.empty());
+
+        assertEquals(AuthService.LOGIN_METHOD_PASSWORD, authService.loginMethod("anna@test.de"));
+        assertEquals(AuthService.LOGIN_METHOD_PASSWORD, authService.loginMethod("unbekannt@test.de"));
+        assertEquals(AuthService.LOGIN_METHOD_PASSWORD, authService.loginMethod("  "));
+        assertEquals(AuthService.LOGIN_METHOD_PASSWORD, authService.loginMethod(null));
+    }
+
+    @Test
     void requestPasswordReset_shouldNotSendMailToSsoLinkedUser() {
         linkWithSso(false);
         when(userRepository.findByEmail("anna@test.de")).thenReturn(Optional.of(user));

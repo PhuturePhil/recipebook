@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -98,6 +99,22 @@ public class RecipeService {
             if (n != null) dto.setNutrition(NutritionSummaryDto.of(n));
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    public static final int TOP_PUBLIC_LIMIT = 5;
+
+    // Bestbewertete öffentliche Rezepte für die Gast-Startseite: immer aus Gastsicht und zusätzlich nur
+    // is_public – Familien- oder private Rezepte können hier nie auftauchen, auch nicht für Angemeldete.
+    // Reihenfolge: Durchschnitt, dann Anzahl Bewertungen, unbewertete zuletzt, sonst neueste zuerst.
+    public List<RecipeSummaryDto> findTopPublic() {
+        return findAllSummaries(RecipeAccess.GUEST).stream()
+            .filter(dto -> Visibility.PUBLIC.name().equals(dto.getVisibility()))
+            .sorted(Comparator
+                .comparing((RecipeSummaryDto dto) -> dto.getRatingAvg() == null ? 0d : dto.getRatingAvg(), Comparator.reverseOrder())
+                .thenComparing(dto -> dto.getRatingCount() == null ? 0L : dto.getRatingCount(), Comparator.reverseOrder())
+                .thenComparing(RecipeSummaryDto::getId, Comparator.reverseOrder()))
+            .limit(TOP_PUBLIC_LIMIT)
+            .collect(Collectors.toList());
     }
 
     public RecipeNutritionDto nutrition(Recipe recipe) {

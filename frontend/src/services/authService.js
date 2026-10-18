@@ -45,6 +45,24 @@ class AuthService {
     }
   }
 
+  // Anmeldung „E-Mail zuerst“: 'sso' = mit pastoors.cloud verknüpftes Konto, sonst 'password'
+  async loginMethod(email) {
+    const response = await fetch(`${API_BASE_URL}/auth/login-method`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email })
+    })
+    if (!response.ok) {
+      const error = new Error(await parseError(response, 'Die Anmeldung ist gerade nicht erreichbar.'))
+      error.status = response.status
+      throw error
+    }
+    const data = await response.json()
+    return data.method === 'sso' ? 'sso' : 'password'
+  }
+
   async exchangeOidcTicket(ticket) {
     const response = await fetch(`${API_BASE_URL}/auth/oidc/exchange`, {
       method: 'POST',

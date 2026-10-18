@@ -682,4 +682,60 @@ class RecipeServiceTest {
         assertEquals("FAMILY", result.get(0).getVisibility());
         assertEquals("PRIVATE", result.get(1).getVisibility());
     }
+
+    private static RecipeRepository.RecipeSummaryProjection rated(long id, boolean isPublic, Double avg, Long count) {
+        RecipeRepository.RecipeSummaryProjection p = summary(id, 7, isPublic);
+        lenient().when(p.getRatingAvg()).thenReturn(avg);
+        lenient().when(p.getRatingCount()).thenReturn(count);
+        return p;
+    }
+
+    @Test
+    void findTopPublic_onlyPublicSortedByAverageThenCountLimitFive() {
+        when(recipeAccess.visibleIds(RecipeAccess.GUEST)).thenReturn(java.util.Set.of(1L, 2L, 3L, 4L, 5L, 6L, 7L));
+        when(recipeAccess.familiesByRecipe(RecipeAccess.GUEST)).thenReturn(java.util.Map.of());
+        var rows = List.of(
+            rated(1, true, 4.0, 2L), rated(2, true, 5.0, 1L), rated(3, true, 5.0, 3L),
+            rated(4, true, null, null), rated(5, true, 3.5, 4L), rated(6, true, 4.0, 2L),
+            rated(7, true, null, null), rated(8, false, 5.0, 9L));
+        when(recipeRepository.findAllSummaries()).thenReturn(rows);
+
+        var result = recipeService.findTopPublic();
+
+        assertEquals(List.of(3L, 2L, 6L, 1L, 5L), result.stream().map(r -> r.getId()).toList());
+        assertTrue(result.stream().allMatch(r -> "PUBLIC".equals(r.getVisibility())));
+        assertTrue(result.stream().allMatch(r -> r.getOwnerId() == null), "Gastsicht ohne Besitzer-ID");
+        verify(recipeAccess, never()).visibleIds(argThat(id -> id != null && id != RecipeAccess.GUEST));
+    }
+
+    @Test
+    void findTopPublic_fillsWithUnratedPublicNewestFirst() {
+        when(recipeAccess.visibleIds(RecipeAccess.GUEST)).thenReturn(java.util.Set.of(1L, 2L, 3L));
+        when(recipeAccess.familiesByRecipe(RecipeAccess.GUEST)).thenReturn(java.util.Map.of());
+        var rows = List.of(rated(1, true, null, null), rated(2, true, 2.0, 1L), rated(3, true, null, null));
+        when(recipeRepository.findAllSummaries()).thenReturn(rows);
+
+        assertEquals(List.of(2L, 3L, 1L), recipeService.findTopPublic().stream().map(r -> r.getId()).toList());
+    }
+
+    @Test
+    void findTopPublic_neverShowsPrivateOrFamilyRecipes_evenIfAccessWouldLetThemThrough() {
+        // Selbst wenn die Sichtbarkeitsliste fälschlich private/Familien-Rezepte enthielte, filtert is_public sie heraus
+        when(recipeAccess.visibleIds(RecipeAccess.GUEST)).thenReturn(java.util.Set.of(1L, 2L, 3L));
+        when(recipeAccess.familiesByRecipe(RecipeAccess.GUEST)).thenReturn(java.util.Map.of());
+        var rows = List.of(rated(1, false, 5.0, 10L), rated(2, false, 4.9, 8L), rated(3, true, 1.0, 1L));
+        when(recipeRepository.findAllSummaries()).thenReturn(rows);
+
+        assertEquals(List.of(3L), recipeService.findTopPublic().stream().map(r -> r.getId()).toList());
+    }
+
+    @Test
+    void findTopPublic_emptyWithoutPublicRecipes() {
+        when(recipeAccess.visibleIds(RecipeAccess.GUEST)).thenReturn(java.util.Set.of());
+        when(recipeAccess.familiesByRecipe(RecipeAccess.GUEST)).thenReturn(java.util.Map.of());
+        var rows = List.of(rated(1, false, 5.0, 3L));
+        when(recipeRepository.findAllSummaries()).thenReturn(rows);
+
+        assertTrue(recipeService.findTopPublic().isEmpty());
+    }
 }

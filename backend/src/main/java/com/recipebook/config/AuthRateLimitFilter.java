@@ -29,6 +29,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private static final Set<String> PUBLIC_AUTH_ENDPOINTS = Set.of(
             "/api/auth/login",
+            "/api/auth/login-method",
             "/api/auth/password-reset",
             "/api/auth/reset-password",
             "/api/auth/register-with-invite",

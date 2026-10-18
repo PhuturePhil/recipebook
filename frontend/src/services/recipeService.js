@@ -34,6 +34,15 @@ class RecipeService {
     }
   }
 
+  // Gast-Startseite: die bestbewerteten öffentlichen Rezepte (Server liefert höchstens 5, nie Privates)
+  async getTopPublic() {
+    const response = await fetch(`${API_BASE_URL}/recipes/top`)
+    if (!response.ok) {
+      throw await httpError(response)
+    }
+    return await response.json()
+  }
+
   async getById(id) {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {

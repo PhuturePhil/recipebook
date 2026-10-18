@@ -1,3 +1,5 @@
+import { recipePath } from '../router/paths.js'
+
 // Bewertungen: Anzeige-Helfer (Durchschnitt mit einer Nachkommastelle, deutsches Komma)
 
 export const formatRating = (avg) => {
@@ -52,6 +54,6 @@ export const raterName = (rating) => rating?.userName?.trim() || 'Ehemaliges Mit
 // Sprung zum Abschnitt „Bewertungen“ auf der Rezeptseite (Bewertung auf der Rezeptkarte → Detail + Abschnitt)
 export const RATINGS_ANCHOR = 'bewertungen'
 
-export const ratingsRoute = (recipeId) => ({ path: `/recipe/${recipeId}`, hash: `#${RATINGS_ANCHOR}` })
+export const ratingsRoute = (recipeId) => ({ path: recipePath(recipeId), hash: `#${RATINGS_ANCHOR}` })
 
 export const wantsRatings = (hash) => hash === `#${RATINGS_ANCHOR}`

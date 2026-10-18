@@ -13,7 +13,7 @@
       <slot />
       <div class="confirm-actions">
         <button ref="cancelBtn" type="button" class="confirm-cancel" @click="emit('cancel')">{{ cancelLabel }}</button>
-        <button type="button" class="confirm-ok" :class="{ destructive }" @click="emit('confirm')">{{ confirmLabel }}</button>
+        <button type="button" class="confirm-ok" :class="{ destructive }" :disabled="confirmDisabled" @click="emit('confirm')">{{ confirmLabel }}</button>
       </div>
     </div>
   </div>
@@ -28,6 +28,8 @@ defineProps({
   confirmLabel: { type: String, default: 'OK' },
   cancelLabel: { type: String, default: 'Abbrechen' },
   destructive: { type: Boolean, default: false },
+  // Bestätigen erst freigeschaltet, wenn der Slot es erlaubt (z. B. Wort abgetippt)
+  confirmDisabled: { type: Boolean, default: false },
 })
 const emit = defineEmits(['confirm', 'cancel'])
 const dialog = ref(null)
@@ -41,7 +43,7 @@ const onKey = (e) => {
     e.stopPropagation()
     emit('cancel')
   } else if (e.key === 'Tab') {
-    const buttons = [...(dialog.value?.querySelectorAll('input, button') ?? [])]
+    const buttons = [...(dialog.value?.querySelectorAll('input, button') ?? [])].filter((el) => !el.disabled)
     if (!buttons.length) return
     const at = buttons.indexOf(document.activeElement)
     const next = (at + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length
@@ -140,9 +142,14 @@ onUnmounted(() => {
   color: var(--neg);
 }
 
-.confirm-ok.destructive:hover {
+.confirm-ok.destructive:hover:not(:disabled) {
   background: var(--neg);
   color: var(--flaeche);
+}
+
+.confirm-ok:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .confirm-cancel:focus-visible,

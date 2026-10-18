@@ -11,10 +11,10 @@ function parseMailto(href) {
 }
 
 test('Melde-Link geht an das Kontaktpostfach und nennt Rezept-ID, Titel und Adresse', () => {
-  const mail = parseMailto(reportMailto({ recipeId: 42, title: 'Linsen & Reis', url: 'https://pastoors.cloud/recipe/42' }))
+  const mail = parseMailto(reportMailto({ recipeId: 42, title: 'Linsen & Reis', url: 'https://pastoors.cloud/rezepte/42' }))
   assert.equal(mail.to, CONTACT_EMAIL)
   assert.equal(mail.subject, 'Meldung: Rezept 42 „Linsen & Reis“')
-  assert.match(mail.body, /https:\/\/pastoors\.cloud\/recipe\/42/)
+  assert.match(mail.body, /https:\/\/pastoors\.cloud\/rezepte\/42/)
   assert.match(mail.body, /Rezept-ID: 42/)
   assert.match(mail.body, /Grund/)
 })

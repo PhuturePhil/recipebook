@@ -44,6 +44,12 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponse(result.token(), userResponse));
     }
 
+    @PostMapping("/login-method")
+    public ResponseEntity<Map<String, String>> loginMethod(@RequestBody(required = false) Map<String, String> request) {
+        String email = request == null ? null : request.get("email");
+        return ResponseEntity.ok(Map.of("method", authService.loginMethod(email)));
+    }
+
     @GetMapping("/oidc/status")
     public ResponseEntity<Map<String, Boolean>> oidcStatus() {
         return ResponseEntity.ok(Map.of("enabled", oidcEnabled));

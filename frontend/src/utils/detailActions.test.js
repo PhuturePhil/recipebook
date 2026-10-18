@@ -20,6 +20,16 @@ test('detailActions: Linien-Icons aus dem App-Set, nur Löschen als Gefahr marki
   assert.ok(!byId.edit.danger && !byId.rate.danger)
 })
 
+test('detailActions: Bewerten ist die Hauptaktion rechts, Löschen dezent links', () => {
+  const all = detailActions(true)
+  assert.equal(all.at(-1).id, 'rate')
+  assert.equal(all.at(-1).tone, 'primaer')
+  assert.equal(all[0].id, 'delete')
+  assert.equal(all[0].tone, 'dezent')
+  assert.equal(all.filter((a) => a.tone === 'primaer').length, 1)
+  assert.equal(detailActions(false)[0].tone, 'primaer')
+})
+
 test('replacesTabBar: Formular und Rezeptseite ersetzen die Tab-Leiste, sonst nicht', () => {
   assert.equal(replacesTabBar('recipe-new'), true)
   assert.equal(replacesTabBar('recipe-edit'), true)

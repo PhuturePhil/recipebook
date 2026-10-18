@@ -43,6 +43,12 @@ public class RecipeController {
         return recipeService.findAllSummaries(RecipeAccess.viewerId(userDetails));
     }
 
+    // Gast-Startseite: die bestbewerteten öffentlichen Rezepte, unabhängig von der Anmeldung immer aus Gastsicht
+    @GetMapping("/top")
+    public List<RecipeSummaryDto> getTopPublicRecipes() {
+        return recipeService.findTopPublic();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Recipe> getRecipeById(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long viewer = RecipeAccess.viewerId(userDetails);

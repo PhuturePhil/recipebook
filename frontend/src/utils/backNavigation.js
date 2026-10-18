@@ -1,3 +1,5 @@
+import { recipePath } from '../router/paths.js'
+
 // Zurück-Navigation ohne doppelte Verlaufseinträge: Ist der vorige Verlaufseintrag schon das Ziel, geht es per
 // router.back() dorthin (Scrollposition und Suche bleiben, der aktuelle Eintrag fällt weg); sonst wird der aktuelle
 // Eintrag durch das Ziel ersetzt. So entsteht weder Liste → Rezept → Formular → Rezept noch ein Hin und Her.
@@ -21,8 +23,8 @@ export const navigateBackTo = (router, target, stateBack = window.history.state?
 
 // Ziel nach Speichern bzw. Abbrechen im Rezeptformular: Rezeptseite, bei abgebrochener Neuanlage die Liste
 export const formExitTarget = ({ isEdit, recipeId, savedId }) => {
-  if (savedId != null) return `/recipe/${savedId}`
-  return isEdit ? `/recipe/${recipeId}` : LIST_PATH
+  if (savedId != null) return recipePath(savedId)
+  return isEdit ? recipePath(recipeId) : LIST_PATH
 }
 
 // Zurück-Pfeil der Kopfzeile: back = Zielpfad (Rezeptseite → immer zur Liste) oder true (vorige Seite, ohne

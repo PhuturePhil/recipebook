@@ -1,10 +1,14 @@
 <template>
-  <div class="recipe-card" @click="navigateToDetail">
+  <!-- Ganze Karte klickbar über den Titel-Link (::after deckt die Karte ab) – echtes <a href>, damit Mittelklick und
+       „In neuem Tab öffnen“ gehen; Bewertung und Tags liegen als eigene Ziele darüber -->
+  <div class="recipe-card">
     <div v-if="recipe.imageUrl" ref="imageBox" class="recipe-card__image">
       <img v-if="imageSrc" :src="imageSrc" :alt="recipe.title" loading="lazy" decoding="async" />
     </div>
     <div class="recipe-card__content">
-      <h3 class="recipe-card__title">{{ recipe.title }}</h3>
+      <h3 class="recipe-card__title">
+        <RouterLink :to="recipePath(recipe.id)" class="recipe-card__link">{{ recipe.title }}</RouterLink>
+      </h3>
       <p class="recipe-card__description">{{ recipe.description }}</p>
       <div class="recipe-card__meta">
         <span v-if="recipe.prepTimeMinutes" class="recipe-card__count">
@@ -20,17 +24,17 @@
         >
           {{ recipe.nutrition.complete ? '' : 'mind. ' }}{{ kcalPerServing }} kcal
         </span>
-        <button
+        <!-- Tipp auf die Bewertung: Rezept öffnen und direkt zum Abschnitt „Bewertungen“ -->
+        <RouterLink
           v-if="recipe.ratingCount"
-          type="button"
+          :to="ratingsRoute(recipe.id)"
           class="recipe-card__count recipe-card__rating"
           :title="`Durchschnitt aus ${ratingCountLabel(recipe.ratingCount)} – zu den Bewertungen`"
           :aria-label="`${ratingLabel(recipe.ratingAvg, recipe.ratingCount)}, zu den Bewertungen`"
-          @click.stop="navigateToRatings"
         >
           <RatingStars :model-value="1" :count="1" :size="13" readonly aria-hidden="true" />
           {{ ratingLabel(recipe.ratingAvg, recipe.ratingCount) }}
-        </button>
+        </RouterLink>
       </div>
       <div v-if="showTags && recipe.tags?.length" class="recipe-card__tags">
         <button
@@ -39,7 +43,7 @@
           type="button"
           class="recipe-card__tag"
           :title="`Nach „${tag}“ suchen`"
-          @click.stop="searchTag(tag)"
+          @click="searchTag(tag)"
         >#{{ tag }}</button>
       </div>
       <div v-if="badges && badges.length" class="recipe-card__badges">
@@ -59,11 +63,11 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useRecipeImage } from '@/composables/useRecipeImage'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { tagSearchTerm } from '@/utils/recipeTags'
 import { ratingLabel, ratingCountLabel, ratingsRoute } from '@/utils/ratings'
+import { recipePath } from '@/router/paths.js'
 import { useAuthStore } from '@/stores/authStore'
 import { avatarTone } from '@/stores/familyStore'
 import { visibilityLabel, initials } from '@/utils/visibility'
@@ -104,7 +108,6 @@ const visHint = computed(() => (authStore.isAuthenticated ? visibilityLabel(prop
 
 const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/\s+/g, '-')
 
-const router = useRouter()
 const store = useRecipeStore()
 
 const searchTag = (tag) => {
@@ -119,19 +122,11 @@ const formatPrepTime = (minutes) => {
   const m = minutes % 60
   return m > 0 ? `${h} Std. ${m} Min.` : `${h} Std.`
 }
-
-const navigateToDetail = () => {
-  router.push(`/recipe/${props.recipe.id}`)
-}
-
-// Tipp auf die Bewertung: Rezept öffnen und direkt zum Abschnitt „Bewertungen“
-const navigateToRatings = () => {
-  router.push(ratingsRoute(props.recipe.id))
-}
 </script>
 
 <style scoped>
 .recipe-card {
+  position: relative;
   background: var(--flaeche);
   border: 1px solid var(--linie);
   border-radius: var(--radius-karte);
@@ -147,6 +142,33 @@ const navigateToRatings = () => {
 .recipe-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--bar-schatten);
+}
+
+.recipe-card:has(.recipe-card__link:focus-visible) {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+
+.recipe-card__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.recipe-card__link:focus-visible {
+  outline: none;
+}
+
+.recipe-card__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.recipe-card__rating,
+.recipe-card__tag {
+  position: relative;
+  z-index: 2;
 }
 
 .recipe-card__image {
@@ -193,6 +215,7 @@ const navigateToRatings = () => {
 }
 
 .recipe-card__rating {
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;

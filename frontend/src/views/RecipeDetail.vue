@@ -2,11 +2,14 @@
   <div class="recipe-detail">
     <div v-if="store.loading" class="loading">Lädt...</div>
 
-    <div v-else-if="notFound" class="not-found">
-      <h2>Rezept nicht gefunden</h2>
-      <p>Vielleicht wurde es gelöscht, oder der Link ist unvollständig.</p>
-      <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
-    </div>
+    <KitchenMishap
+      v-else-if="notFound"
+      class="recipe-missing"
+      title="Dieses Rezept ist uns angebrannt."
+      text="Es wurde gelöscht, ist nicht für dich freigegeben, oder der Link ist unvollständig."
+    >
+      <router-link to="/" class="ui-btn ui-btn--primaer">Zur Startseite</router-link>
+    </KitchenMishap>
 
     <div v-else-if="store.error" class="not-found">
       <p class="error">{{ store.error }}</p>
@@ -90,7 +93,7 @@
         <!-- Sichtbarkeit: für den Besitzer Sprung in die Bearbeitung, sonst reine Info -->
         <router-link
           v-if="visibility && isOwner"
-          :to="`/recipe/${recipe.id}/edit`"
+          :to="recipeEditPath(recipe.id)"
           class="recipe-visibility"
           :title="'Sichtbarkeit ändern'"
         ><AppIcon :name="visibility.icon" :size="14" />{{ visibility.text }}</router-link>
@@ -226,8 +229,8 @@
       <div v-if="!isGuest" class="detail-actions">
         <button class="btn-cancel" @click="goBack">Zurück</button>
         <template v-if="canEdit">
-          <button class="btn-delete" @click="handleDelete">Löschen</button>
-          <router-link :to="`/recipe/${recipe.id}/edit`" class="btn-edit">
+          <button class="btn-delete" @click="openDeleteRecipe">Löschen</button>
+          <router-link :to="recipeEditPath(recipe.id)" class="btn-edit">
             Bearbeiten
           </router-link>
         </template>
@@ -237,8 +240,8 @@
         v-if="!isGuest"
         ref="actionBar"
         :can-edit="canEdit"
-        @delete="showDeleteRecipe = true"
-        @edit="router.push(`/recipe/${recipe.id}/edit`)"
+        @delete="openDeleteRecipe"
+        @edit="router.push(recipeEditPath(recipe.id))"
         @rate="showRatingDialog = true"
       />
     </div>
@@ -264,9 +267,27 @@
       :text="`„${shown?.title ?? ''}“ wird endgültig gelöscht.`"
       confirm-label="Löschen"
       destructive
+      :confirm-disabled="!deleteWordOk"
       @confirm="confirmDeleteRecipe"
       @cancel="showDeleteRecipe = false"
-    />
+    >
+      <!-- Schutz vor Versehen: kurzes Küchenwort abtippen (für alle Konten, bewusst kein Passwort) -->
+      <label class="delete-word" for="delete-word-input">
+        Zum Bestätigen tippe <strong class="delete-word__word">{{ deleteWord }}</strong> ein:
+      </label>
+      <input
+        id="delete-word-input"
+        v-model="deleteWordInput"
+        class="delete-word__input"
+        type="text"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        enterkeyhint="done"
+        @keydown.enter.prevent="deleteWordOk && confirmDeleteRecipe()"
+      />
+    </ConfirmDialog>
 
     <RatingDialog
       v-if="showRatingDialog && recipe"
@@ -342,6 +363,9 @@ import {
   RECIPE_TOTAL_CAP_MS,
   SERVINGS_DELAY_MS,
 } from '@/utils/analytics'
+import { recipePath, recipeEditPath } from '@/router/paths.js'
+import KitchenMishap from '@/components/KitchenMishap.vue'
+import { pickDeleteWord, matchesDeleteWord } from '@/utils/deleteWord.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -367,7 +391,7 @@ const reportable = computed(() => isGuest.value || (recipe.value?.visibility ===
 const report = computed(() => recipe.value && {
   recipeId: recipe.value.id,
   title: shown.value?.title ?? recipe.value.title,
-  url: `${window.location.origin}/recipe/${recipe.value.id}`,
+  url: `${window.location.origin}${recipePath(recipe.value.id)}`,
 })
 const canEdit = computed(() =>
   authStore.isAdmin || (recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
@@ -402,6 +426,9 @@ const ratingToDelete = ref(null)
 const actionBar = ref(null)
 const showRatingDialog = ref(false)
 const showDeleteRecipe = ref(false)
+const deleteWord = ref(null)
+const deleteWordInput = ref('')
+const deleteWordOk = computed(() => matchesDeleteWord(deleteWordInput.value, deleteWord.value))
 
 const ratingStats = computed(() => ratingSummary(ratings.value))
 const visibleRatings = computed(() =>
@@ -647,13 +674,15 @@ const deleteRecipe = async () => {
   }
 }
 
-// Desktop (Knopfreihe am Seitenende) wie bisher mit Browser-Rückfrage
-const handleDelete = async () => {
-  if (confirm('Möchtest du dieses Rezept wirklich löschen?')) await deleteRecipe()
+// Mobil (Aktionsleiste) und Desktop (Knopfreihe) mit demselben App-Dialog samt Küchenwort
+const openDeleteRecipe = () => {
+  deleteWord.value = pickDeleteWord(deleteWord.value)
+  deleteWordInput.value = ''
+  showDeleteRecipe.value = true
 }
 
-// Mobil (Aktionsleiste) mit dem App-Dialog
 const confirmDeleteRecipe = async () => {
+  if (!deleteWordOk.value) return
   showDeleteRecipe.value = false
   await deleteRecipe()
 }
@@ -777,14 +806,48 @@ const confirmDeleteRecipe = async () => {
   background: var(--color-primary-dark, #2d3748);
 }
 
+/* Löschen dezent: grau, rot erst bei Hover/Druck */
 .btn-delete {
   background: transparent;
-  color: var(--color-error, #e53e3e);
-  border: 1px solid var(--color-error, #e53e3e);
+  color: var(--text2);
+  border: 1px solid var(--linie);
 }
 
-.btn-delete:hover {
+.btn-delete:hover,
+.btn-delete:active {
   background: var(--neg-weich);
+  color: var(--neg);
+  border-color: var(--neg);
+}
+
+.delete-word {
+  display: block;
+  margin: 16px 0 6px;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.delete-word__word {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.delete-word__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--linie);
+  border-radius: 10px;
+  background: var(--flaeche);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.delete-word__input:focus {
+  outline: 2px solid var(--akzent);
+  outline-offset: 1px;
+  border-color: var(--akzent);
 }
 
 .btn-cancel {

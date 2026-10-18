@@ -571,4 +571,28 @@ class RecipeControllerTest {
                 .andExpect(status().is4xxClientError());
         verifyNoInteractions(translationService);
     }
+
+    @Test
+    void topRecipes_isPublicForGuests() throws Exception {
+        var dto = new com.recipebook.dto.RecipeSummaryDto(4L, "Linsen-Dal", null, null, null, 4, null, 3L);
+        when(recipeService.findTopPublic()).thenReturn(java.util.List.of(dto));
+
+        mockMvc.perform(get("/api/recipes/top"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(4))
+                .andExpect(jsonPath("$[0].title").value("Linsen-Dal"));
+        verify(recipeService, never()).findAllSummaries(any());
+        verify(recipeService, never()).findById(any());
+    }
+
+    @Test
+    void topRecipes_staysGuestViewWhenLoggedIn() throws Exception {
+        when(recipeService.findTopPublic()).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/api/recipes/top").with(user(principal(5, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+        verify(recipeService).findTopPublic();
+        verify(recipeService, never()).findAllSummaries(any());
+    }
 }

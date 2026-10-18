@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { useAuthStore } from '@/stores/authStore'
+import { LEGACY_REDIRECTS, NEW_RECIPE_PATH, INGREDIENTS_PATH, RECIPE_DETAIL_ROUTE, RECIPE_EDIT_ROUTE } from './paths.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -60,7 +61,7 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
-      path: '/ingredients',
+      path: INGREDIENTS_PATH,
       name: 'ingredients',
       component: () => import('@/views/IngredientsView.vue'),
       meta: { requiresAuth: true }
@@ -79,20 +80,20 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
-      path: '/recipe/:id',
+      path: RECIPE_DETAIL_ROUTE,
       name: 'recipe-detail',
       component: () => import('@/views/RecipeDetail.vue'),
       // Öffentliche Rezepte auch für Gäste; alles andere beantwortet der Server mit 404
       meta: { requiresAuth: false }
     },
     {
-      path: '/recipe/new',
+      path: NEW_RECIPE_PATH,
       name: 'recipe-new',
       component: () => import('@/views/RecipeEdit.vue'),
       meta: { requiresAuth: true }
     },
     {
-      path: '/recipe/:id/edit',
+      path: RECIPE_EDIT_ROUTE,
       name: 'recipe-edit',
       component: () => import('@/views/RecipeEdit.vue'),
       meta: { requiresAuth: true }
@@ -127,6 +128,7 @@ const router = createRouter({
       component: () => import('@/views/FamilyInviteView.vue'),
       meta: { requiresAuth: false }
     },
+    ...LEGACY_REDIRECTS,
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',

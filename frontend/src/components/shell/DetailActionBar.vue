@@ -1,6 +1,7 @@
 <template>
   <!-- Ersetzt auf der Rezeptseite mobil die Tab-Leiste: gleiche Pille, Einträge im Tab-Stil (Icon über Label),
-       aber nur Aktionen – kein Aktiv-Zustand, kein Orange. Ab 1024 px gibt es die Leiste nicht. -->
+       nur Aktionen ohne Aktiv-Zustand. „Bewerten“ ist als Hauptaktion orange gefüllt (rechts, am Daumen),
+       „Löschen“ grau und erst bei Hover/Druck rot. Ab 1024 px gibt es die Leiste nicht. -->
   <div class="detail-action-bar shell-ui" role="group" aria-label="Rezept-Aktionen">
     <div class="shell-tabs">
       <button
@@ -8,7 +9,7 @@
         :key="a.id"
         :ref="(el) => { buttons[a.id] = el }"
         type="button"
-        :class="['shell-tab', { 'shell-tab--gefahr': a.danger }]"
+        :class="['shell-tab', a.tone && `shell-tab--${a.tone}`]"
         :data-action="a.id"
         :aria-haspopup="a.id === 'edit' ? undefined : 'dialog'"
         @click="onClick($event, a.id)"
@@ -65,12 +66,28 @@ defineExpose({
   }
 }
 
-.shell-tab--gefahr {
-  color: var(--neg);
+.shell-tab--dezent {
+  color: var(--text3);
+}
+
+.shell-tab--primaer {
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
+  font-weight: 700;
 }
 
 .shell-tab:active {
   background: var(--flaeche2);
+}
+
+.shell-tab--dezent:active {
+  background: var(--neg-weich);
+  color: var(--neg);
+}
+
+.shell-tab--primaer:active {
+  background: var(--akzent-hover);
+  color: var(--akzent-kontrast);
 }
 
 @media (hover: hover) {
@@ -79,8 +96,14 @@ defineExpose({
     color: var(--text);
   }
 
-  .shell-tab--gefahr:hover {
+  .shell-tab--dezent:hover {
+    background: var(--neg-weich);
     color: var(--neg);
+  }
+
+  .shell-tab--primaer:hover {
+    background: var(--akzent-hover);
+    color: var(--akzent-kontrast);
   }
 }
 

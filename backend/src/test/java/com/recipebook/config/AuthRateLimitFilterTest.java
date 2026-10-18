@@ -56,6 +56,18 @@ class AuthRateLimitFilterTest {
     }
 
     @Test
+    void shouldCountLoginMethodLookupWithLoginPerIp() throws Exception {
+        for (int i = 0; i < AuthRateLimitFilter.LIMIT_PER_IP - 1; i++) {
+            assertEquals(200, send("POST", "/api/auth/login-method", "203.0.113.10").getStatus());
+        }
+        assertEquals(200, send("POST", "/api/auth/login", "203.0.113.10").getStatus());
+
+        assertEquals(429, send("POST", "/api/auth/login-method", "203.0.113.10").getStatus());
+        assertEquals(429, send("POST", "/api/auth/login", "203.0.113.10").getStatus());
+        assertEquals(200, send("POST", "/api/auth/login-method", "203.0.113.11").getStatus());
+    }
+
+    @Test
     void shouldNotLimitAuthenticatedOrReadOnlyEndpoints() throws Exception {
         for (int i = 0; i < 30; i++) {
             assertEquals(200, send("GET", "/api/auth/me", "203.0.113.8").getStatus());

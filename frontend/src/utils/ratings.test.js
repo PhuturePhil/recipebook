@@ -100,7 +100,7 @@ test('raterName zeigt für gelöschte Nutzer „Ehemaliges Mitglied“', () => {
 })
 
 test('ratingsRoute führt zur Rezeptseite mit Anker auf den Abschnitt Bewertungen', () => {
-  assert.deepEqual(ratingsRoute(42), { path: '/recipe/42', hash: '#bewertungen' })
+  assert.deepEqual(ratingsRoute(42), { path: '/rezepte/42', hash: '#bewertungen' })
   assert.equal(RATINGS_ANCHOR, 'bewertungen')
 })
 

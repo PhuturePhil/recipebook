@@ -1,9 +1,11 @@
-// Rezept-Detailseite mobil: Aktionsleiste an der Stelle der Tab-Leiste (TabBar-Optik, nur Aktionen, kein Aktiv-Zustand)
+// Rezept-Detailseite mobil: Aktionsleiste an der Stelle der Tab-Leiste (TabBar-Optik, nur Aktionen, kein Aktiv-Zustand).
+// Daumenfreundlich von links nach rechts: Löschen dezent (rot erst bei Hover/Druck), Bearbeiten sekundär,
+// Bewerten als Hauptaktion rechts (gefüllt orange).
 
 const ACTIONS = [
-  { id: 'delete', label: 'Löschen', icon: 'loeschen', danger: true, needsEdit: true },
+  { id: 'delete', label: 'Löschen', icon: 'loeschen', tone: 'dezent', danger: true, needsEdit: true },
   { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', needsEdit: true },
-  { id: 'rate', label: 'Bewerten', icon: 'stern' },
+  { id: 'rate', label: 'Bewerten', icon: 'stern', tone: 'primaer' },
 ]
 
 // Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleibt nur „Bewerten“

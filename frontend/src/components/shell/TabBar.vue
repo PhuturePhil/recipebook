@@ -55,6 +55,7 @@ import AppIcon from './AppIcon.vue'
 import ThemeSeg from './ThemeSeg.vue'
 import LegalLinks from '@/components/LegalLinks.vue'
 import { useNewBadge } from '@/composables/useNewBadge'
+import { NEW_RECIPE_PATH, INGREDIENTS_PATH } from '@/router/paths.js'
 
 defineProps({
   active: { type: String, default: '' },
@@ -67,8 +68,8 @@ const neu = useNewBadge()
 
 const TABS = [
   { id: 'rezepte', label: 'Rezepte', icon: 'buch', to: '/' },
-  { id: 'neu', label: 'Neu', icon: 'plus', to: '/recipe/new' },
-  { id: 'zutaten', label: 'Zutaten', icon: 'karotte', to: '/ingredients' },
+  { id: 'neu', label: 'Neu', icon: 'plus', to: NEW_RECIPE_PATH },
+  { id: 'zutaten', label: 'Zutaten', icon: 'karotte', to: INGREDIENTS_PATH },
 ]
 </script>
 

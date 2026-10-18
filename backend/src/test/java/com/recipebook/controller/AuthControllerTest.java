@@ -69,6 +69,44 @@ class AuthControllerTest {
     }
 
     @Test
+    void loginMethod_shouldAnswerWithoutLoginAndTellSso() throws Exception {
+        when(authService.loginMethod("anna@test.de")).thenReturn(AuthService.LOGIN_METHOD_SSO);
+
+        mockMvc.perform(post("/api/auth/login-method")
+                        .header("X-Forwarded-For", "198.51.100.20")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"anna@test.de\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.method").value("sso"))
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void loginMethod_shouldAskForPasswordWithoutBody() throws Exception {
+        when(authService.loginMethod(null)).thenReturn(AuthService.LOGIN_METHOD_PASSWORD);
+
+        mockMvc.perform(post("/api/auth/login-method")
+                        .header("X-Forwarded-For", "198.51.100.21")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.method").value("password"));
+    }
+
+    @Test
+    void loginMethod_shouldBeRateLimitedPerIp() throws Exception {
+        when(authService.loginMethod(any())).thenReturn(AuthService.LOGIN_METHOD_PASSWORD);
+        for (int i = 0; i < 10; i++) {
+            mockMvc.perform(post("/api/auth/login-method").header("X-Forwarded-For", "198.51.100.22")
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"x" + i + "@test.de\"}"))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post("/api/auth/login-method").header("X-Forwarded-For", "198.51.100.22")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"y@test.de\"}"))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
     void login_shouldBeRateLimitedPerIp() throws Exception {
         String body = "{\"email\":\"a@test.de\",\"password\":\"falsch\"}";
         when(authService.login(any(), any())).thenReturn(new AuthService.LoginResult("t", account(1, Role.USER)));

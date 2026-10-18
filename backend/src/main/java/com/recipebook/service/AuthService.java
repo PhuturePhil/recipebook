@@ -96,6 +96,19 @@ public class AuthService {
 
     public record LoginResult(String token, User user) {}
 
+    public static final String LOGIN_METHOD_SSO = "sso";
+    public static final String LOGIN_METHOD_PASSWORD = "password";
+
+    /**
+     * Anmeldeseite „E-Mail zuerst“: verknüpfte pastoors.cloud-Konten gehen direkt zum SSO, alle anderen Adressen
+     * (auch unbekannte) bekommen das Passwortfeld. Verrät nicht mehr als der Passwort-Login mit SSO-Hinweis.
+     */
+    public String loginMethod(String email) {
+        if (email == null || email.isBlank()) return LOGIN_METHOD_PASSWORD;
+        return userRepository.findByEmailIgnoreCase(email.trim()).filter(this::isSsoOnly).isPresent()
+                ? LOGIN_METHOD_SSO : LOGIN_METHOD_PASSWORD;
+    }
+
     @Transactional
     public LoginResult login(String email, String password) {
         if (!rateLimiter.tryAcquire("login:" + normalize(email), LOGIN_LIMIT_PER_ACCOUNT, LOGIN_WINDOW)) {

@@ -4,45 +4,54 @@
       <h1>Pastoors Familienrezepte</h1>
       <h2>Anmelden</h2>
 
-      <div v-if="error" class="error-message">{{ error }}</div>
+      <div v-if="error" class="error-message" role="alert">{{ error }}</div>
 
-      <template v-if="oidcEnabled">
-        <a :href="oidcLoginUrl" class="oidc-button">Mit pastoors.cloud anmelden</a>
-        <p class="oidc-hint">Für die Familie – ein Login für alles auf pastoors.cloud.</p>
-        <div class="divider"><span>Anmelden mit E-Mail</span></div>
-      </template>
-      
-      <form @submit.prevent="handleLogin" :class="{ 'email-login-secondary': oidcEnabled }">
-        
+      <!-- „E-Mail zuerst“: Der Server sagt, ob die Adresse ein pastoors.cloud-Konto ist (→ SSO) oder ein Passwort braucht -->
+      <p v-if="ssoRedirect" class="sso-redirect" role="status">
+        Dein Konto ist mit pastoors.cloud verknüpft – du wirst weitergeleitet …
+      </p>
+
+      <form v-else novalidate @submit.prevent="step === 'email' ? handleContinue() : handleLogin()">
         <div class="form-group">
           <label for="email">E-Mail</label>
-          <input 
-            id="email" 
-            v-model="email" 
-            type="email" 
-            required 
-            placeholder="Ihre E-Mail"
-          />
+          <div class="email-row">
+            <input
+              id="email"
+              ref="emailInput"
+              v-model="email"
+              type="email"
+              required
+              autocomplete="username"
+              placeholder="Deine E-Mail"
+              :readonly="step === 'password'"
+              :class="{ 'is-locked': step === 'password' }"
+            />
+            <button v-if="step === 'password'" type="button" class="change-email" @click="changeEmail">Ändern</button>
+          </div>
         </div>
-        
-        <div class="form-group">
+
+        <div v-if="step === 'password'" class="form-group">
           <label for="password">Passwort</label>
-          <input 
-            id="password" 
-            v-model="password" 
-            type="password" 
-            required 
-            placeholder="Ihr Passwort"
+          <input
+            id="password"
+            ref="passwordInput"
+            v-model="password"
+            type="password"
+            required
+            autocomplete="current-password"
+            placeholder="Dein Passwort"
           />
         </div>
-        
-        <button type="submit" :disabled="loading">
-          {{ loading ? 'Anmelden...' : 'Anmelden' }}
+
+        <button type="submit" class="submit-btn" :disabled="loading">
+          <template v-if="step === 'email'">{{ loading ? 'Einen Moment …' : 'Weiter' }}</template>
+          <template v-else>{{ loading ? 'Anmelden …' : 'Anmelden' }}</template>
         </button>
       </form>
-      
+
       <div class="links">
-        <a href="#" @click.prevent="showResetForm = true">Passwort vergessen?</a>
+        <a v-if="oidcEnabled && !ssoRedirect" :href="oidcLoginUrl" class="sso-link">Mit pastoors.cloud anmelden</a>
+        <a href="#" @click.prevent="openReset">Passwort vergessen?</a>
         <p class="signup-link">Noch kein Konto? <RouterLink to="/registrieren">Konto erstellen</RouterLink></p>
       </div>
     </div>
@@ -52,32 +61,32 @@
     <div v-if="showResetForm" class="modal-overlay" @click.self="showResetForm = false">
       <div class="modal-content">
         <h3>Passwort zurücksetzen</h3>
-        <p>Geben Sie Ihre E-Mail ein, um einen Reset-Link zu erhalten.</p>
+        <p>Gib deine E-Mail ein, dann schicken wir dir einen Link zum Zurücksetzen.</p>
         <p v-if="oidcEnabled" class="reset-sso-hint">
-          Wer sich mit pastoors.cloud anmeldet, braucht hier kein Passwort – bitte oben „Mit pastoors.cloud anmelden“ nutzen.
+          Wer sich mit pastoors.cloud anmeldet, braucht hier kein Passwort – einfach die E-Mail eingeben und „Weiter“ tippen.
         </p>
-        
+
         <form @submit.prevent="handlePasswordReset">
           <div class="form-group">
             <label for="reset-email">E-Mail</label>
-            <input 
-              id="reset-email" 
-              v-model="resetEmail" 
-              type="email" 
-              required 
-              placeholder="Ihre E-Mail"
+            <input
+              id="reset-email"
+              v-model="resetEmail"
+              type="email"
+              required
+              placeholder="Deine E-Mail"
             />
           </div>
-          
+
           <div class="modal-actions">
             <button type="button" @click="showResetForm = false" class="btn-secondary">Abbrechen</button>
             <button type="submit" :disabled="resetLoading">
               {{ resetLoading ? 'Senden...' : 'Link senden' }}
             </button>
           </div>
-          
+
           <p v-if="resetSuccess" class="success-message">
-            Falls ein Konto mit dieser E-Mail existiert, wurde ein Link verschickt.
+            Falls ein Konto mit dieser E-Mail existiert, haben wir dir einen Link geschickt.
           </p>
         </form>
       </div>
@@ -86,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { authService } from '@/services/authService'
@@ -98,6 +107,7 @@ const authStore = useAuthStore()
 
 const oidcEnabled = ref(false)
 const oidcLoginUrl = authService.getOidcLoginUrl()
+let oidcStatus = Promise.resolve(false)
 
 const oidcErrors = {
   access_denied: 'Dein pastoors.cloud-Konto hat keinen Zugriff auf die Rezepte.',
@@ -107,10 +117,14 @@ const oidcErrors = {
   account_conflict: 'Dieses Rezepte-Konto ist bereits mit einem anderen pastoors.cloud-Login verknüpft.'
 }
 
+const step = ref('email')
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref(null)
+const ssoRedirect = ref(false)
+const emailInput = ref(null)
+const passwordInput = ref(null)
 
 const showResetForm = ref(false)
 const resetEmail = ref('')
@@ -135,15 +149,65 @@ onMounted(async () => {
     error.value = oidcErrors[oidcError] || 'Die Anmeldung über pastoors.cloud ist fehlgeschlagen.'
     router.replace({ name: 'login' })
   }
-  oidcEnabled.value = await authService.isOidcEnabled()
+  if (!email.value) emailInput.value?.focus()
+  oidcStatus = authService.isOidcEnabled()
+  oidcEnabled.value = await oidcStatus
 })
 
+async function showPasswordStep() {
+  step.value = 'password'
+  await nextTick()
+  passwordInput.value?.focus()
+}
+
+function changeEmail() {
+  step.value = 'email'
+  password.value = ''
+  error.value = null
+  nextTick(() => emailInput.value?.focus())
+}
+
+async function handleContinue() {
+  error.value = null
+  email.value = email.value.trim()
+  if (!emailInput.value?.checkValidity() || !email.value) {
+    error.value = 'Bitte gib eine gültige E-Mail-Adresse ein.'
+    emailInput.value?.focus()
+    return
+  }
+  loading.value = true
+  try {
+    // Ohne pastoors.cloud-Anmeldung (OIDC aus) gibt es nur das Passwort
+    const method = (await oidcStatus) ? await authService.loginMethod(email.value) : 'password'
+    if (method === 'sso') {
+      ssoRedirect.value = true
+      window.location.assign(oidcLoginUrl)
+      return
+    }
+    await showPasswordStep()
+  } catch (err) {
+    if (err.status === 429) {
+      error.value = err.message
+    } else {
+      // Prüfung nicht erreichbar: normal mit Passwort weiter, der Server weist SSO-Konten beim Login selbst hin
+      await showPasswordStep()
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
 async function handleLogin() {
+  if (!password.value) {
+    error.value = 'Bitte gib dein Passwort ein.'
+    passwordInput.value?.focus()
+    return
+  }
   loading.value = true
   error.value = null
-  
+
   const success = await authStore.login(email.value, password.value)
-  
+
   if (success) {
     router.push(redirectTarget())
   } else {
@@ -153,21 +217,26 @@ async function handleLogin() {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
-  
+
   loading.value = false
+}
+
+function openReset() {
+  resetEmail.value = resetEmail.value || email.value
+  showResetForm.value = true
 }
 
 async function handlePasswordReset() {
   resetLoading.value = true
   resetSuccess.value = false
-  
+
   try {
     await authService.requestPasswordReset(resetEmail.value)
     resetSuccess.value = true
   } catch (err) {
     error.value = 'Fehler beim Senden des Reset-Links'
   }
-  
+
   resetLoading.value = false
 }
 </script>
@@ -247,53 +316,52 @@ button:hover:not(:disabled) {
 
 button:disabled {
   background: var(--linie);
+  color: var(--text2);
   cursor: not-allowed;
 }
 
-.oidc-button {
-  display: block;
-  width: 100%;
-  padding: 16px 12px;
-  background: var(--akzent);
-  color: var(--akzent-kontrast);
-  border-radius: 6px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  text-align: center;
-  text-decoration: none;
-  transition: background 0.2s;
+.email-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
 }
 
-.oidc-hint {
-  margin: 8px 0 0;
-  text-align: center;
-  font-size: 0.85rem;
+.email-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+input.is-locked {
+  background: var(--flaeche2);
   color: var(--text2);
 }
 
-.email-login-secondary .form-group {
-  margin-bottom: 12px;
+.change-email {
+  width: auto;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--akzent-text);
+  border: 1px solid var(--linie);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
-.email-login-secondary label {
-  font-size: 0.85rem;
-}
-
-.email-login-secondary input {
-  padding: 9px;
-  font-size: 0.95rem;
-}
-
-.email-login-secondary button {
-  padding: 9px;
-  font-size: 0.95rem;
-  background: var(--flaeche);
-  color: var(--text);
-  border: 1px solid var(--akzent);
-}
-
-.email-login-secondary button:hover:not(:disabled) {
+.change-email:hover:not(:disabled) {
   background: var(--flaeche2);
+}
+
+.sso-redirect {
+  margin: 0;
+  padding: 14px 12px;
+  border-radius: 6px;
+  background: var(--akzent-weich);
+  color: var(--text);
+  text-align: center;
+}
+
+.links .sso-link {
+  display: block;
+  margin-bottom: 12px;
 }
 
 .reset-sso-hint {
@@ -301,26 +369,6 @@ button:disabled {
   background: var(--flaeche2);
   padding: 8px 10px;
   border-radius: 4px;
-}
-
-.oidc-button:hover {
-  background: var(--akzent-hover);
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 25px 0;
-  color: var(--text3);
-  font-size: 0.85rem;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  border-top: 1px solid var(--linie);
 }
 
 .error-message {

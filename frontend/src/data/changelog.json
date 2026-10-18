@@ -1,5 +1,20 @@
 [
   {
+    "version": "2026-10-18.1",
+    "datum": "18.10.2026",
+    "titel": "Einfachere Anmeldung, Bewerten im Fokus, deutsche Adressen",
+    "punkte": [
+      "Anmelden geht jetzt in zwei Schritten: erst die E-Mail, dann „Weiter“. Wer ein pastoors.cloud-Konto hat, landet automatisch bei der pastoors.cloud-Anmeldung, alle anderen geben danach ihr Passwort ein",
+      "Auf der Rezeptseite ist „Bewerten“ jetzt der orange Hauptknopf rechts unten, „Löschen“ ist grau und dezent links",
+      "Zum Löschen eines Rezepts tippst du ein kurzes Küchenwort wie „Salz“ ab – so löscht niemand mehr aus Versehen",
+      "Gäste sehen auf der Startseite die beliebtesten öffentlichen Rezepte und darunter, was ein eigenes Konto bringt",
+      "Rezeptkarten sind jetzt echte Links: Mittelklick oder „In neuem Tab öffnen“ funktioniert",
+      "Die Adressen sind jetzt deutsch (/rezepte/…, /rezepte/neu, /zutaten); alte Lesezeichen leiten automatisch weiter",
+      "Seiten, die es nicht gibt, zeigen eine angebrannte Pfanne statt eines nüchternen Fehlers",
+      "Die App duzt jetzt überall, auch auf der Anmeldeseite"
+    ]
+  },
+  {
     "version": "2026-10-17.7",
     "datum": "17.10.2026",
     "titel": "Neue Familie gleich mit deinen Rezepten",

@@ -1,33 +1,9 @@
 <template>
-  <div class="not-found">
-    <h1>Seite nicht gefunden</h1>
-    <p>Diese Adresse gibt es in der Rezeptsammlung nicht.</p>
-    <router-link to="/" class="btn-home">Zur Übersicht</router-link>
-  </div>
+  <KitchenMishap title="Diese Seite ist uns angebrannt." text="Die Adresse gibt es in der Rezeptsammlung nicht.">
+    <router-link to="/" class="ui-btn ui-btn--primaer">Zur Startseite</router-link>
+  </KitchenMishap>
 </template>
 
-<style scoped>
-.not-found {
-  max-width: 480px;
-  margin: 64px auto;
-  padding: 0 24px;
-  text-align: center;
-  color: var(--color-text-secondary, #666);
-}
-
-.not-found h1 {
-  font-size: 1.5rem;
-  color: var(--color-text-primary, #333);
-  margin-bottom: 12px;
-}
-
-.btn-home {
-  display: inline-block;
-  margin-top: 24px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
-  text-decoration: none;
-}
-</style>
+<script setup>
+import KitchenMishap from '@/components/KitchenMishap.vue'
+</script>
