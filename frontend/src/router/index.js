@@ -43,6 +43,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/email-bestaetigen',
+      name: 'confirm-email',
+      component: () => import('@/views/ConfirmEmailView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/impressum',
       name: 'impressum',
       component: () => import('@/views/ImpressumView.vue'),

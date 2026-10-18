@@ -5,6 +5,7 @@ public class UpdateProfileRequest {
     private String nachname;
     private String email;
     private String password;
+    private String currentPassword;
 
     public String getVorname() {
         return vorname;
@@ -36,5 +37,13 @@ public class UpdateProfileRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getCurrentPassword() {
+        return currentPassword;
+    }
+
+    public void setCurrentPassword(String currentPassword) {
+        this.currentPassword = currentPassword;
     }
 }

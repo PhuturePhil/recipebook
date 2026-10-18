@@ -85,6 +85,14 @@ class IngredientCatalogService {
     return request(`/ingredient-catalog/ai-requests/${id}/retry`, { method: 'POST', fallback: 'Fehler beim erneuten Versuch.' })
   }
 
+  approveAiRequest(id) {
+    return request(`/ingredient-catalog/ai-requests/${id}/approve`, { method: 'POST', fallback: 'Fehler bei der Freigabe.' })
+  }
+
+  rejectAiRequest(id) {
+    return request(`/ingredient-catalog/ai-requests/${id}/reject`, { method: 'POST', fallback: 'Fehler beim Ablehnen.' })
+  }
+
   resolveUnknown() {
     return request('/ingredient-catalog/ai-requests/resolve-unknown', { method: 'POST', fallback: 'Fehler beim Anstoßen der Zuordnung.' })
   }

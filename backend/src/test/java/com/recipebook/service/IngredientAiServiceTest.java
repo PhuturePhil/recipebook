@@ -69,7 +69,7 @@ class IngredientAiServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        when(transactionManager.getTransaction(any())).thenAnswer(inv -> new SimpleTransactionStatus());
         service = new IngredientAiService(openAiClient, mapper, requestRepository, ingredientRepository, aliasRepository,
             conversionRepository, rowRepository, referenceFoodRepository, referenceService,
             new TransactionTemplate(transactionManager), new SyncTaskExecutor());
@@ -80,7 +80,7 @@ class IngredientAiServiceTest {
             new Name("G490100", "Knoblauch roh"), new Name("F110100", "Apfel roh"), new Name("X1", "Bärlauch roh")));
         when(referenceFoodRepository.existsById(anyString())).thenReturn(true);
 
-        when(requestRepository.insertIfAbsent(anyString(), anyString(), anyString(), any(), any())).thenAnswer(inv -> {
+        when(requestRepository.insertIfAbsent(anyString(), anyString(), anyString(), any(), any(), anyBoolean(), any())).thenAnswer(inv -> {
             String kind = inv.getArgument(0);
             String key = inv.getArgument(1);
             boolean exists = store.values().stream().anyMatch(r -> r.getKind().equals(kind) && r.getRequestKey().equals(key));
@@ -92,10 +92,14 @@ class IngredientAiServiceTest {
             r.setIngredientName(inv.getArgument(2));
             r.setUnit(inv.getArgument(3));
             r.setIngredientId(inv.getArgument(4));
+            r.setNeedsReview(inv.getArgument(5));
+            r.setRequestedBy(inv.getArgument(6));
             r.setStatus(IngredientAiRequest.PENDING);
             store.put(r.getId(), r);
             return 1;
         });
+        when(requestRepository.existsByKindAndRequestKey(anyString(), anyString())).thenAnswer(inv -> store.values().stream()
+            .anyMatch(r -> r.getKind().equals(inv.getArgument(0)) && r.getRequestKey().equals(inv.getArgument(1))));
         when(requestRepository.findByStatusOrderByIdAsc(anyString())).thenAnswer(inv -> store.values().stream()
             .filter(r -> r.getStatus().equals(inv.getArgument(0))).toList());
         when(requestRepository.claim(anyLong())).thenAnswer(inv -> {
@@ -237,7 +241,7 @@ class IngredientAiServiceTest {
     void withoutApiKeyNothingIsRequested() throws Exception {
         when(openAiClient.isConfigured()).thenReturn(false);
         assertEquals(0, service.enqueueForIngredients(List.of(ingredient("1", "Stück", "Drachenfrucht"))));
-        verify(requestRepository, never()).insertIfAbsent(anyString(), anyString(), anyString(), any(), any());
+        verify(requestRepository, never()).insertIfAbsent(anyString(), anyString(), anyString(), any(), any(), anyBoolean(), any());
         verify(openAiClient, never()).completeJson(anyString(), any());
     }
 
@@ -254,5 +258,130 @@ class IngredientAiServiceTest {
         service.failInterruptedRequests();
         verify(requestRepository).failRunning(contains("Neustart"));
         verify(referenceService).invalidate();
+    }
+
+    // --- Sicherheitspaket: Freigabe (M6) und Kontingent (K1) ---
+
+    private static final String GARLIC = "{\"bls_code\":\"G490100\",\"canonical_name\":\"Knoblauch\","
+        + "\"ingredient_class\":\"VEGETABLE\",\"piece_weight_g\":4}";
+
+    private <T> T as(com.recipebook.model.Role role, long id, java.util.function.Supplier<T> call) {
+        com.recipebook.model.User u = new com.recipebook.model.User();
+        u.setId(id);
+        u.setEmail("u" + id + "@test.de");
+        u.setRole(role);
+        var details = new com.recipebook.model.CustomUserDetails(u);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+            new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(details, null,
+                details.getAuthorities()));
+        try {
+            return call.get();
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    private List<org.springframework.transaction.TransactionStatus> committed() {
+        ArgumentCaptor<org.springframework.transaction.TransactionStatus> st =
+            ArgumentCaptor.forClass(org.springframework.transaction.TransactionStatus.class);
+        verify(transactionManager, atLeastOnce()).commit(st.capture());
+        return st.getAllValues();
+    }
+
+    @Test
+    void requestByNonAdminIsCheckedButWaitsForApproval() throws Exception {
+        when(openAiClient.completeJson(anyString(), any())).thenReturn(json(GARLIC));
+
+        assertEquals(1, (int) as(com.recipebook.model.Role.USER, 5L,
+            () -> service.enqueueForIngredients(List.of(ingredient("2", "", "Knoblauchzehen")))));
+
+        IngredientAiRequest request = store.get(1L);
+        assertTrue(request.isNeedsReview());
+        assertEquals(5L, request.getRequestedBy());
+        assertEquals(IngredientAiRequest.REVIEW, request.getStatus());
+        assertNotNull(request.getResultJson(), "Vorschlag bleibt für die Freigabe gespeichert");
+        // Die Probe-Anwendung läuft in einer Transaktion, die zurückgerollt wird
+        assertTrue(committed().stream().anyMatch(org.springframework.transaction.TransactionStatus::isRollbackOnly));
+    }
+
+    @Test
+    void approvalAppliesTheStoredProposalWithoutAnotherAiCall() throws Exception {
+        when(openAiClient.completeJson(anyString(), any())).thenReturn(json(GARLIC));
+        as(com.recipebook.model.Role.USER, 5L,
+            () -> service.enqueueForIngredients(List.of(ingredient("2", "", "Knoblauchzehen"))));
+        clearInvocations(ingredientRepository, aliasRepository, conversionRepository, transactionManager);
+
+        IngredientAiRequest approved = service.approve(1L).orElseThrow();
+
+        assertEquals(IngredientAiRequest.DONE, approved.getStatus());
+        assertNotNull(approved.getReviewedAt());
+        verify(openAiClient, times(1)).completeJson(anyString(), any());
+        ArgumentCaptor<NutritionIngredient> saved = ArgumentCaptor.forClass(NutritionIngredient.class);
+        verify(ingredientRepository).save(saved.capture());
+        assertEquals("G490100", saved.getValue().getReferenceCode());
+        verify(aliasRepository).save(any(NutritionIngredientAlias.class));
+        assertTrue(committed().stream().noneMatch(org.springframework.transaction.TransactionStatus::isRollbackOnly));
+    }
+
+    @Test
+    void rejectionLeavesTheCatalogUntouchedAndAllowsRetry() throws Exception {
+        when(openAiClient.completeJson(anyString(), any())).thenReturn(json(GARLIC));
+        as(com.recipebook.model.Role.USER, 5L,
+            () -> service.enqueueForIngredients(List.of(ingredient("2", "", "Knoblauchzehen"))));
+        clearInvocations(ingredientRepository);
+
+        assertEquals(IngredientAiRequest.REJECTED, service.reject(1L).orElseThrow().getStatus());
+        verify(ingredientRepository, never()).save(any());
+        assertEquals(IngredientAiRequest.REJECTED, service.approve(1L).orElseThrow().getStatus(),
+            "abgelehnt heißt abgelehnt");
+
+        service.retry(1L);
+        assertEquals(IngredientAiRequest.REVIEW, store.get(1L).getStatus(), "erneuter Versuch wartet wieder auf Freigabe");
+        verify(openAiClient, times(2)).completeJson(anyString(), any());
+    }
+
+    @Test
+    void approvalOfAnUnknownCodeFails() throws Exception {
+        when(openAiClient.completeJson(anyString(), any())).thenReturn(json(GARLIC));
+        as(com.recipebook.model.Role.USER, 5L,
+            () -> service.enqueueForIngredients(List.of(ingredient("2", "", "Knoblauchzehen"))));
+        when(referenceFoodRepository.existsById("G490100")).thenReturn(false);
+
+        assertEquals(IngredientAiRequest.FAILED, service.approve(1L).orElseThrow().getStatus());
+    }
+
+    @Test
+    void requestByAdminIsAppliedDirectly() throws Exception {
+        when(openAiClient.completeJson(anyString(), any())).thenReturn(json(GARLIC));
+
+        as(com.recipebook.model.Role.ADMIN, 1L,
+            () -> service.enqueueForIngredients(List.of(ingredient("2", "", "Knoblauchzehen"))));
+
+        assertFalse(store.get(1L).isNeedsReview());
+        assertEquals(IngredientAiRequest.DONE, store.get(1L).getStatus());
+        assertTrue(committed().stream().noneMatch(org.springframework.transaction.TransactionStatus::isRollbackOnly));
+    }
+
+    @Test
+    void newRequestsCountAgainstTheDailyQuota() throws Exception {
+        when(openAiClient.completeJson(anyString(), any())).thenReturn(json(GARLIC));
+        java.util.concurrent.atomic.AtomicInteger used = new java.util.concurrent.atomic.AtomicInteger();
+        service.setAiQuota(new AiQuotaService(new AiQuotaService.UsageStore() {
+            public boolean tryIncrement(String key, java.time.LocalDate day, String kind, int limit) {
+                return used.incrementAndGet() <= 1;
+            }
+            public void deleteBefore(java.time.LocalDate day) { }
+        }, java.time.Clock.systemUTC()));
+
+        int created = as(com.recipebook.model.Role.USER, 5L, () -> service.enqueueForIngredients(List.of(
+            ingredient("2", "", "Knoblauchzehen"), ingredient("1", "Stück", "Drachenfrucht"),
+            ingredient("1", "Stück", "Sternfrucht"))));
+
+        assertEquals(1, created, "nur so viele neue Anfragen, wie das Kontingent hergibt");
+        assertEquals(2, used.get(), "nach dem ersten Nein wird nicht weiter gezählt");
+        // Schon vorhandene Anfragen kosten nichts
+        as(com.recipebook.model.Role.USER, 5L,
+            () -> service.enqueueForIngredients(List.of(ingredient("2", "", "Knoblauchzehen"))));
+        assertEquals(2, used.get());
     }
 }

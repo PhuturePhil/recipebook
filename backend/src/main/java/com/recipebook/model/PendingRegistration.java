@@ -36,7 +36,7 @@ public class PendingRegistration {
 
     public PendingRegistration(String email, String vorname, String nachname, String passwordHash, String tokenHash,
             LocalDateTime expiresAt) {
-        this.email = email;
+        this.email = Emails.normalize(email);
         this.vorname = vorname;
         this.nachname = nachname;
         this.passwordHash = passwordHash;

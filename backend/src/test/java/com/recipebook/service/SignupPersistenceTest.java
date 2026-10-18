@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verify;
 /** Registrierung bis zum fertigen Konto gegen echte Abfragen (H2). */
 @DataJpaTest(properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop",
         "app.url=https://pastoors.cloud"})
-@Import({SignupService.class, SignupPersistenceTest.Encoder.class})
+@Import({SignupService.class, SignupPersistenceTest.Encoder.class, com.recipebook.security.ConfirmationMailLimiter.class})
 class SignupPersistenceTest {
 
     @TestConfiguration
@@ -63,12 +63,13 @@ class SignupPersistenceTest {
         assertTrue(signupService.isAwaitingVerification("lena@test.de", "geheim123"));
         assertFalse(signupService.isAwaitingVerification("lena@test.de", "falsch123"));
 
-        String email = signupService.verify(tokenFromMail("Lena@Test.de"));
+        String email = signupService.verify(tokenFromMail("lena@test.de"));
         entityManager.flush();
 
-        assertEquals("Lena@Test.de", email);
-        var user = userRepository.findByEmail("Lena@Test.de").orElseThrow();
+        assertEquals("lena@test.de", email);
+        var user = userRepository.findByEmail("lena@test.de").orElseThrow();
         assertEquals("Lena", user.getVorname());
+        assertTrue(user.isEmailVerified(), "per Link bestätigt");
         assertTrue(passwordEncoder.matches("geheim123", user.getPassword()));
         assertEquals(0, pendingRepository.count());
         assertFalse(signupService.isAwaitingVerification("lena@test.de", "geheim123"));

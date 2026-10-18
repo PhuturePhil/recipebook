@@ -1,7 +1,9 @@
 package com.recipebook.controller;
 
+import com.recipebook.config.AuthRateLimitFilter;
 import com.recipebook.dto.SignupRequest;
 import com.recipebook.service.SignupService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,8 +25,9 @@ public class SignupController {
 
     // Immer 202 ohne Inhalt – egal, ob die Adresse neu ist oder schon ein Konto hat
     @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@RequestBody SignupRequest request) {
-        signupService.signup(request.getVorname(), request.getNachname(), request.getEmail(), request.getPassword());
+    public ResponseEntity<Void> signup(@RequestBody SignupRequest request, HttpServletRequest http) {
+        signupService.signup(request.getVorname(), request.getNachname(), request.getEmail(), request.getPassword(),
+                AuthRateLimitFilter.clientIp(http));
         return ResponseEntity.accepted().build();
     }
 

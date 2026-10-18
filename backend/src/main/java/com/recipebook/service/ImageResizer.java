@@ -72,6 +72,8 @@ public final class ImageResizer {
             ImageReader reader = readers.next();
             try {
                 reader.setInput(in);
+                // Abmessungen aus dem Dateikopf prüfen, bevor dekodiert wird (Schutz vor Pixelbomben)
+                ImageInspector.requireDecodable(reader.getWidth(0), reader.getHeight(0));
                 return new Decoded(reader.read(0), reader.getFormatName());
             } finally {
                 reader.dispose();

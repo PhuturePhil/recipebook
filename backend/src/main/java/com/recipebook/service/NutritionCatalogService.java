@@ -28,6 +28,11 @@ import com.recipebook.repository.NutritionIngredientLegacyLinkRepository;
 import com.recipebook.repository.NutritionIngredientRepository;
 import com.recipebook.repository.ReferenceFoodRepository;
 import com.recipebook.repository.UnitConversionRepository;
+import com.recipebook.repository.UserRepository;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +52,7 @@ import java.util.stream.Collectors;
 public class NutritionCatalogService {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final NutritionIngredientRepository ingredientRepository;
     private final NutritionIngredientAliasRepository aliasRepository;
@@ -70,6 +76,13 @@ public class NutritionCatalogService {
         this.referenceFoodRepository = referenceFoodRepository;
         this.aiRequestRepository = aiRequestRepository;
         this.referenceService = referenceService;
+    }
+
+    private UserRepository userRepository;
+
+    @Autowired
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -251,14 +264,75 @@ public class NutritionCatalogService {
 
     @Transactional(readOnly = true)
     public List<IngredientAiRequestDto> aiRequests() {
-        return aiRequestRepository.findAllByOrderByIdDesc().stream().map(NutritionCatalogService::toDto).toList();
+        List<IngredientAiRequest> requests = aiRequestRepository.findAllByOrderByIdDesc();
+        Map<Long, String> names = new HashMap<>();
+        if (userRepository != null) {
+            List<Long> ids = requests.stream().map(IngredientAiRequest::getRequestedBy)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+            userRepository.findAllById(ids).forEach(u -> names.put(u.getId(), com.recipebook.model.UserNames.fullName(u)));
+        }
+        return requests.stream().map(r -> toDto(r, names.get(r.getRequestedBy()), blsName(r))).toList();
     }
 
     public static IngredientAiRequestDto toDto(IngredientAiRequest r) {
+        return toDto(r, null, null);
+    }
+
+    static IngredientAiRequestDto toDto(IngredientAiRequest r, String requestedBy, String blsName) {
         return new IngredientAiRequestDto(r.getId(), r.getKind(), r.getIngredientName(), r.getUnit(),
             r.getIngredientId(), r.getStatus(), r.getAttempts(),
             r.getRequestedAt() == null ? null : ISO.format(r.getRequestedAt()),
-            r.getLastAttemptAt() == null ? null : ISO.format(r.getLastAttemptAt()), r.getError());
+            r.getLastAttemptAt() == null ? null : ISO.format(r.getLastAttemptAt()), r.getError(),
+            r.isNeedsReview(), requestedBy, r.getReviewedAt() == null ? null : ISO.format(r.getReviewedAt()),
+            proposal(r, blsName));
+    }
+
+    private String blsName(IngredientAiRequest r) {
+        if (!IngredientAiRequest.REVIEW.equals(r.getStatus())) return null;
+        JsonNode json = parse(r.getResultJson());
+        String code = json == null ? null : json.path("bls_code").asText(null);
+        return code == null ? null : referenceFoodRepository.findById(code).map(f -> f.getNameDe()).orElse(null);
+    }
+
+    /** Lesbare Kurzfassung des KI-Ergebnisses für die Freigabe. */
+    static String proposal(IngredientAiRequest r, String blsName) {
+        JsonNode json = parse(r.getResultJson());
+        if (json == null) return null;
+        if (IngredientAiRequest.UNIT_WEIGHT.equals(r.getKind())) {
+            JsonNode g = json.path("grams_per_unit");
+            return g.isNumber() ? "1 " + r.getUnit() + " ≈ " + fmt(g.asDouble()) + " g" : null;
+        }
+        StringBuilder text = new StringBuilder();
+        String canonical = json.path("canonical_name").asText("");
+        if (!canonical.isBlank()) text.append("„").append(canonical).append("“");
+        String code = json.path("bls_code").isTextual() ? json.path("bls_code").asText() : null;
+        JsonNode est = json.path("estimate_per_100g");
+        if (code != null && !code.isBlank() && !"null".equalsIgnoreCase(code)) {
+            text.append(text.isEmpty() ? "" : " → ").append("BLS ").append(code);
+            if (blsName != null) text.append(" (").append(blsName).append(")");
+        } else if (est.isObject()) {
+            text.append(text.isEmpty() ? "" : " → ").append("Schätzung pro 100 g: ")
+                .append(fmt(est.path("kcal").asDouble())).append(" kcal, ")
+                .append(fmt(est.path("protein").asDouble())).append(" g Eiweiß, ")
+                .append(fmt(est.path("fat").asDouble())).append(" g Fett, ")
+                .append(fmt(est.path("carbs").asDouble())).append(" g KH");
+        }
+        JsonNode piece = json.path("piece_weight_g");
+        if (piece.isNumber() && piece.asDouble() > 0) text.append("; 1 Stück ≈ ").append(fmt(piece.asDouble())).append(" g");
+        return text.isEmpty() ? null : text.toString();
+    }
+
+    private static JsonNode parse(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return JSON.readTree(json);
+        } catch (JacksonException e) {
+            return null;
+        }
+    }
+
+    private static String fmt(double v) {
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.valueOf(Math.round(v * 10) / 10.0).replace('.', ',');
     }
 
     private void apply(NutritionIngredient entity, NutritionIngredientRequest r, boolean creating) {

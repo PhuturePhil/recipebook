@@ -31,6 +31,7 @@ public class DataLoader {
                 admin.setEmail("philipp.pastoors@mail.de");
                 admin.setPassword(passwordEncoder.encode(adminPassword));
                 admin.setRole(Role.ADMIN);
+                admin.setEmailVerified(true);
                 userRepository.save(admin);
                 
                 System.out.println("Admin-Benutzer erstellt: philipp.pastoors@mail.de");

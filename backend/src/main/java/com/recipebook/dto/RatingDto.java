@@ -16,6 +16,11 @@ public record RatingDto(
     boolean own
 ) {
     public static RatingDto of(RecipeRating rating, Long currentUserId) {
+        return of(rating, currentUserId, true);
+    }
+
+    /** fullName: nur für sich selbst und Mitglieder einer gemeinsamen Familie, sonst nur der Vorname (N7b). */
+    public static RatingDto of(RecipeRating rating, Long currentUserId, boolean fullName) {
         Long userId = rating.getUser() != null ? rating.getUser().getId() : null;
         return new RatingDto(
             rating.getId(),
@@ -23,7 +28,7 @@ public record RatingDto(
             rating.getComment(),
             rating.getCreatedAt(),
             userId,
-            UserNames.fullName(rating.getUser()),
+            fullName ? UserNames.fullName(rating.getUser()) : UserNames.firstName(rating.getUser()),
             userId != null && Objects.equals(userId, currentUserId)
         );
     }

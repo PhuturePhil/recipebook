@@ -114,7 +114,8 @@ const oidcErrors = {
   unavailable: 'Die Anmeldung über pastoors.cloud ist gerade nicht verfügbar.',
   missing_email: 'Für dein pastoors.cloud-Konto ist keine E-Mail-Adresse hinterlegt.',
   email_not_verified: 'Die E-Mail-Adresse deines pastoors.cloud-Kontos ist nicht bestätigt.',
-  account_conflict: 'Dieses Rezepte-Konto ist bereits mit einem anderen pastoors.cloud-Login verknüpft.'
+  account_conflict: 'Dieses Rezepte-Konto ist bereits mit einem anderen pastoors.cloud-Login verknüpft.',
+  email_unconfirmed: 'Die Adresse deines Rezepte-Kontos ist noch nicht bestätigt. Setze dein Passwort einmal über „Passwort vergessen“ neu – danach klappt die Anmeldung über pastoors.cloud.'
 }
 
 const step = ref('email')

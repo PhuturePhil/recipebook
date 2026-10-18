@@ -91,19 +91,21 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
       nativeQuery = true)
   List<RecipeSummaryProjection> findAllSummaries();
 
+  // N3: Vorschläge und Schreibweisen-Angleich nur aus Rezepten, die der Nutzer sehen darf – sonst verraten sie
+  // Quellen/Autoren aus fremden privaten Rezepten
   @Query("SELECT new com.recipebook.dto.SourceAuthorDto(r.source, r.author) " +
-      "FROM Recipe r WHERE r.source IS NOT NULL AND r.source <> '' " +
+      "FROM Recipe r WHERE r.source IS NOT NULL AND r.source <> '' AND " + VISIBLE_TO_USER + " " +
       "GROUP BY r.source, r.author ORDER BY r.source")
-  List<SourceAuthorDto> findDistinctSourceAuthorPairs();
+  List<SourceAuthorDto> findDistinctSourceAuthorPairs(@Param("userId") Long userId);
 
   // Häufigste Schreibweise zuerst, damit beim Angleichen die verbreitete Variante gewinnt
-  @Query("SELECT r.source FROM Recipe r WHERE r.source IS NOT NULL AND r.id <> :excludeId " +
+  @Query("SELECT r.source FROM Recipe r WHERE r.source IS NOT NULL AND r.id <> :excludeId AND " + VISIBLE_TO_USER + " " +
       "GROUP BY r.source ORDER BY COUNT(r) DESC, r.source")
-  List<String> findSourcesExcept(@Param("excludeId") Long excludeId);
+  List<String> findSourcesExcept(@Param("excludeId") Long excludeId, @Param("userId") Long userId);
 
-  @Query("SELECT r.author FROM Recipe r WHERE r.author IS NOT NULL AND r.id <> :excludeId " +
+  @Query("SELECT r.author FROM Recipe r WHERE r.author IS NOT NULL AND r.id <> :excludeId AND " + VISIBLE_TO_USER + " " +
       "GROUP BY r.author ORDER BY COUNT(r) DESC, r.author")
-  List<String> findAuthorsExcept(@Param("excludeId") Long excludeId);
+  List<String> findAuthorsExcept(@Param("excludeId") Long excludeId, @Param("userId") Long userId);
 
   @Query("SELECT r.createdAt FROM Recipe r WHERE r.id = :recipeId")
   Optional<LocalDateTime> findCreatedAt(@Param("recipeId") Long recipeId);
@@ -128,8 +130,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
   @Query(value = "SELECT step FROM recipe_instructions WHERE recipe_id = :recipeId ORDER BY sort_order", nativeQuery = true)
   List<String> findSteps(@Param("recipeId") Long recipeId);
 
-  @Query(value = "SELECT DISTINCT tag FROM recipe_tags", nativeQuery = true)
-  List<String> findDistinctTags();
+  @Query("SELECT DISTINCT t FROM Recipe r JOIN r.tags t WHERE " + VISIBLE_TO_USER)
+  List<String> findDistinctTags(@Param("userId") Long userId);
 
   @Query(value = "SELECT r.id FROM recipes r WHERE NOT EXISTS "
       + "(SELECT 1 FROM recipe_tags t WHERE t.recipe_id = r.id) ORDER BY r.id", nativeQuery = true)

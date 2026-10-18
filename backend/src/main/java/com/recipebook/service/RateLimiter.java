@@ -18,7 +18,7 @@ public class RateLimiter {
         this(Clock.systemUTC());
     }
 
-    RateLimiter(Clock clock) {
+    public RateLimiter(Clock clock) {
         this.clock = clock;
     }
 

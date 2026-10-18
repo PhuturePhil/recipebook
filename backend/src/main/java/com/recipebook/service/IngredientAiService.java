@@ -29,6 +29,7 @@ import com.recipebook.repository.ReferenceFoodRepository;
 import com.recipebook.repository.UnitConversionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -36,6 +37,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -52,6 +54,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Jede Anfrage existiert pro Zutat bzw. Zutat+Einheit genau einmal (Unique-Key in ingredient_ai_request).
  * Fehlschläge werden mit Zeitstempel gespeichert und nicht automatisch wiederholt; nur ein Admin kann
  * einen erneuten Versuch auslösen. Aufrufe laufen asynchron und außerhalb von DB-Transaktionen.
+ * Lösen Nicht-Admins eine Anfrage aus (neues Rezept, Übersetzung, Nährwertabruf), wird das KI-Ergebnis nur geprüft
+ * und wartet als REVIEW auf die Freigabe eines Admins (Tab „KI-Anfragen“); erst dann ändert es den gemeinsamen Katalog.
+ * Jede neu angelegte Anfrage zählt aufs KI-Tageskontingent des auslösenden Kontos.
  */
 @Service
 public class IngredientAiService {
@@ -116,6 +121,13 @@ public class IngredientAiService {
         this.executor = executor;
     }
 
+    private AiQuotaService aiQuota = AiQuotaService.unlimited();
+
+    @Autowired
+    public void setAiQuota(AiQuotaService aiQuota) {
+        this.aiQuota = aiQuota;
+    }
+
     @EventListener(ApplicationReadyEvent.class)
     public void failInterruptedRequests() {
         int n = requestRepository.failRunning("Abgebrochen durch Neustart – erneuter Versuch nur durch Admin");
@@ -136,8 +148,13 @@ public class IngredientAiService {
     }
 
     int enqueue(List<IngredientLine> lines) {
+        return enqueue(lines, AiRequester.current());
+    }
+
+    int enqueue(List<IngredientLine> lines, AiRequester requester) {
         if (!openAiClient.isConfigured()) return 0;
         NutritionReference ref = referenceService.reference();
+        boolean quotaLeft = true;
         int created = 0;
         Set<String> seen = new HashSet<>();
         for (IngredientLine line : lines) {
@@ -151,13 +168,18 @@ public class IngredientAiService {
                     ? IngredientNameNormalizer.key(item.ingredientName()) : AiRequestState.nameKey(name);
                 String displayName = item.status() == IngredientStatus.NO_NUTRIENT_DATA ? item.ingredientName() : name;
                 if (key.isBlank() || !seen.add("N" + key)) continue;
+                if (requestRepository.existsByKindAndRequestKey(IngredientAiRequest.NAME_MATCH, key)) continue;
+                if (!quotaLeft || !(quotaLeft = aiQuota.tryConsume(requester, AiQuotaService.Kind.AUTO))) continue;
                 created += requestRepository.insertIfAbsent(IngredientAiRequest.NAME_MATCH, key, displayName, null,
-                    item.ingredientId());
+                    item.ingredientId(), requester.needsReview(), requester.userId());
             } else if (item.status() == IngredientStatus.NO_CONVERSION) {
                 String key = AiRequestState.unitKey(item.ingredientId(), item.unit());
                 if (!seen.add("U" + key)) continue;
+                if (requestRepository.existsByKindAndRequestKey(IngredientAiRequest.UNIT_WEIGHT, key)) continue;
+                if (!quotaLeft || !(quotaLeft = aiQuota.tryConsume(requester, AiQuotaService.Kind.AUTO))) continue;
                 created += requestRepository.insertIfAbsent(IngredientAiRequest.UNIT_WEIGHT, key,
-                    item.ingredientName(), item.unit(), item.ingredientId());
+                    item.ingredientName(), item.unit(), item.ingredientId(), requester.needsReview(),
+                    requester.userId());
             }
         }
         if (created > 0) {
@@ -170,13 +192,53 @@ public class IngredientAiService {
     public Optional<IngredientAiRequest> retry(Long id) {
         Optional<IngredientAiRequest> request = requestRepository.findById(id);
         request.ifPresent(r -> {
-            if (!IngredientAiRequest.FAILED.equals(r.getStatus())) return;
+            if (!IngredientAiRequest.FAILED.equals(r.getStatus())
+                && !IngredientAiRequest.REJECTED.equals(r.getStatus())) return;
             r.setStatus(IngredientAiRequest.PENDING);
+            r.setReviewedAt(null);
             requestRepository.save(r);
             referenceService.invalidate();
             triggerProcessing();
         });
         return request;
+    }
+
+    /** Admin übernimmt einen geprüften KI-Vorschlag in den gemeinsamen Katalog. */
+    public Optional<IngredientAiRequest> approve(Long id) {
+        Optional<IngredientAiRequest> request = requestRepository.findById(id);
+        request.ifPresent(r -> {
+            if (!IngredientAiRequest.REVIEW.equals(r.getStatus())) return;
+            try {
+                JsonNode result = objectMapper.readTree(r.getResultJson());
+                transactionTemplate.executeWithoutResult(s -> apply(r, result, null));
+                review(r, IngredientAiRequest.DONE, null);
+                log.info("KI-Vorschlag {} („{}“) freigegeben", r.getId(), r.getIngredientName());
+            } catch (IllegalArgumentException | tools.jackson.core.JacksonException e) {
+                review(r, IngredientAiRequest.FAILED, "Freigabe nicht möglich: " + e.getMessage());
+            }
+            referenceService.invalidate();
+        });
+        return request.flatMap(r -> requestRepository.findById(r.getId()));
+    }
+
+    /** Admin verwirft einen KI-Vorschlag; der Katalog bleibt unverändert, ein erneuter Versuch ist möglich. */
+    public Optional<IngredientAiRequest> reject(Long id) {
+        Optional<IngredientAiRequest> request = requestRepository.findById(id);
+        request.ifPresent(r -> {
+            if (!IngredientAiRequest.REVIEW.equals(r.getStatus())) return;
+            review(r, IngredientAiRequest.REJECTED, null);
+            referenceService.invalidate();
+        });
+        return request.flatMap(r -> requestRepository.findById(r.getId()));
+    }
+
+    private void review(IngredientAiRequest request, String status, String error) {
+        transactionTemplate.executeWithoutResult(s -> requestRepository.findById(request.getId()).ifPresent(r -> {
+            r.setStatus(status);
+            r.setError(error);
+            r.setReviewedAt(LocalDateTime.now());
+            requestRepository.save(r);
+        }));
     }
 
     public void triggerProcessing() {
@@ -203,19 +265,18 @@ public class IngredientAiService {
             if (IngredientAiRequest.NAME_MATCH.equals(request.getKind())) {
                 List<ReferenceFoodRepository.NameView> candidates = candidates(request.getIngredientName());
                 result = openAiClient.completeJson(NAME_PROMPT, namePayload(request.getIngredientName(), candidates));
-                JsonNode validated = result;
                 Set<String> allowed = new HashSet<>();
                 candidates.forEach(c -> allowed.add(c.getCode()));
-                transactionTemplate.executeWithoutResult(s -> applyNameMatch(request, validated, allowed));
+                applyOrValidate(request, result, allowed);
             } else {
                 ObjectNode payload = objectMapper.createObjectNode();
                 payload.put("ingredient", request.getIngredientName());
                 payload.put("unit", request.getUnit());
                 result = openAiClient.completeJson(UNIT_PROMPT, payload);
-                JsonNode validated = result;
-                transactionTemplate.executeWithoutResult(s -> applyUnitWeight(request, validated));
+                applyOrValidate(request, result, null);
             }
-            finish(request.getId(), IngredientAiRequest.DONE, null, result.toString());
+            finish(request.getId(), request.isNeedsReview() ? IngredientAiRequest.REVIEW : IngredientAiRequest.DONE,
+                null, result.toString());
         } catch (OpenAiClient.AiCallException | IllegalArgumentException e) {
             log.warn("KI-Anfrage {} ({} „{}“) fehlgeschlagen: {}", request.getId(), request.getKind(),
                 request.getIngredientName(), e.getMessage());
@@ -223,6 +284,22 @@ public class IngredientAiService {
         } catch (RuntimeException e) {
             log.error("KI-Anfrage {} unerwartet fehlgeschlagen", request.getId(), e);
             finish(request.getId(), IngredientAiRequest.FAILED, "Interner Fehler: " + e.getMessage(), null);
+        }
+    }
+
+    // Zur Freigabe: einmal probehalber anwenden und zurückrollen – ein unbrauchbares Ergebnis scheitert gleich hier
+    private void applyOrValidate(IngredientAiRequest request, JsonNode result, Set<String> allowedCodes) {
+        transactionTemplate.executeWithoutResult(s -> {
+            apply(request, result, allowedCodes);
+            if (request.isNeedsReview()) s.setRollbackOnly();
+        });
+    }
+
+    private void apply(IngredientAiRequest request, JsonNode result, Set<String> allowedCodes) {
+        if (IngredientAiRequest.NAME_MATCH.equals(request.getKind())) {
+            applyNameMatch(request, result, allowedCodes);
+        } else {
+            applyUnitWeight(request, result);
         }
     }
 
@@ -237,7 +314,9 @@ public class IngredientAiService {
 
     void applyNameMatch(IngredientAiRequest request, JsonNode json, Set<String> allowedCodes) {
         String code = text(json, "bls_code");
-        if (code != null && (!allowedCodes.contains(code) || !referenceFoodRepository.existsById(code))) {
+        // allowedCodes null: Freigabe eines bereits geprüften Vorschlags, der Code muss nur noch existieren
+        if (code != null && ((allowedCodes != null && !allowedCodes.contains(code))
+                || !referenceFoodRepository.existsById(code))) {
             throw new IllegalArgumentException("KI hat unbekannten BLS-Code geliefert: " + code);
         }
         String canonical = Optional.ofNullable(text(json, "canonical_name")).orElse(request.getIngredientName()).trim();

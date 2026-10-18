@@ -10,6 +10,10 @@ public record IngredientAiRequestDto(
     Integer attempts,
     String requestedAt,
     String lastAttemptAt,
-    String error
+    String error,
+    boolean needsReview,
+    String requestedBy,
+    String reviewedAt,
+    String proposal
 ) {
 }

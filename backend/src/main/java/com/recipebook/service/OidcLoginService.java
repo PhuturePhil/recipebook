@@ -91,7 +91,16 @@ public class OidcLoginService {
                 throw new OidcLoginException("account_conflict",
                         "Dieses Konto ist bereits mit einem anderen pastoors.cloud-Login verknuepft.");
             }
+            // M3: Verknüpft wird nur ein Konto, dessen Adresse bestätigt ist – sonst könnte jemand ein Konto auf eine
+            // fremde Adresse vorab anlegen und später über deren pastoors.cloud-Login mitbenutzen
+            if (!user.isEmailVerified()) {
+                throw new OidcLoginException("email_unconfirmed",
+                        "Die E-Mail-Adresse dieses Kontos ist noch nicht bestaetigt.");
+            }
             user.setOidcSubject(identity.subject());
+            // Erstmalige Verknüpfung: alle bisherigen Anmeldungen des Kontos enden
+            user.revokeTokens();
+            user.setMustChangePassword(false);
             if (isBlank(user.getVorname())) {
                 user.setVorname(firstName(identity));
             }
@@ -109,6 +118,7 @@ public class OidcLoginService {
         user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
         user.setMustChangePassword(false);
         user.setOidcSubject(identity.subject());
+        user.setEmailVerified(true);
         return userRepository.save(user);
     }
 

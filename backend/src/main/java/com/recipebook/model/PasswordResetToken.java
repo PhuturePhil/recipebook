@@ -11,8 +11,9 @@ public class PasswordResetToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true)
-    private String token;
+    // Nur der SHA-256-Hash des Links, der Link selbst steht nur in der Mail
+    @Column(name = "token_hash", nullable = false, unique = true)
+    private String tokenHash;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -26,8 +27,8 @@ public class PasswordResetToken {
     
     public PasswordResetToken() {}
     
-    public PasswordResetToken(String token, User user, LocalDateTime expiresAt) {
-        this.token = token;
+    public PasswordResetToken(String tokenHash, User user, LocalDateTime expiresAt) {
+        this.tokenHash = tokenHash;
         this.user = user;
         this.expiresAt = expiresAt;
     }
@@ -44,12 +45,12 @@ public class PasswordResetToken {
         this.id = id;
     }
     
-    public String getToken() {
-        return token;
+    public String getTokenHash() {
+        return tokenHash;
     }
     
-    public void setToken(String token) {
-        this.token = token;
+    public void setTokenHash(String tokenHash) {
+        this.tokenHash = tokenHash;
     }
     
     public User getUser() {

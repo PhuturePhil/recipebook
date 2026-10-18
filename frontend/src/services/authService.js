@@ -101,6 +101,21 @@ class AuthService {
     this.removeToken()
   }
 
+  // Beendet serverseitig alle Anmeldungen des Kontos; lokal abgemeldet wird in jedem Fall
+  async logoutEverywhere() {
+    const token = this.getToken()
+    this.removeToken()
+    if (!token) return
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+    } catch (error) {
+      console.error('Logout request failed:', error)
+    }
+  }
+
   async getCurrentUser() {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -273,6 +288,29 @@ class AuthService {
     if (!response.ok) {
       throw new Error(await parseError(response, 'Die Registrierung hat nicht geklappt. Bitte versuche es noch einmal.'))
     }
+  }
+
+  async cancelEmailChange() {
+    const response = await fetch(`${API_BASE_URL}/auth/me/email-change`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${this.getToken()}` }
+    })
+    if (!response.ok) {
+      throw new Error(await parseError(response, 'Die Änderung konnte nicht verworfen werden.'))
+    }
+  }
+
+  // Link aus der Mail an die neue Adresse; danach sind alle Anmeldungen des Kontos beendet
+  async confirmEmail(token) {
+    const response = await fetch(`${API_BASE_URL}/auth/confirm-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    })
+    if (!response.ok) {
+      throw new Error(await parseError(response, 'Der Bestätigungslink ist ungültig oder abgelaufen.'))
+    }
+    return (await response.json()).email
   }
 
   async verifyEmail(token) {

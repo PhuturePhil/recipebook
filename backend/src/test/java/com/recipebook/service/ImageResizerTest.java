@@ -79,4 +79,12 @@ class ImageResizerTest {
         Color top = new Color(result.getRGB(600, 40));
         assertTrue(top.getGreen() > 200 && top.getRed() < 60, top.toString());
     }
+
+    @Test
+    void pixelBombIsRejectedBeforeDecoding() {
+        byte[] bomb = com.recipebook.testutil.TestImages.pngHeader(30_000, 30_000);
+        IOException ex = assertThrows(IOException.class, () -> ImageResizer.toCoverJpeg(bomb, 1200, 630, 300_000));
+        assertTrue(ex.getMessage().contains("zu groß"), ex.getMessage());
+        assertThrows(IOException.class, () -> ImageResizer.toJpegDataUrl(bomb));
+    }
 }

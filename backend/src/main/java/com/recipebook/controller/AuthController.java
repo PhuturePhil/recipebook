@@ -3,7 +3,9 @@ package com.recipebook.controller;
 import com.recipebook.dto.*;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.User;
+import com.recipebook.config.AuthRateLimitFilter;
 import com.recipebook.service.AuthService;
+import com.recipebook.service.EmailChangeService;
 import com.recipebook.service.OidcLoginService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +29,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final OidcLoginService oidcLoginService;
+    private final EmailChangeService emailChangeService;
 
     @Value("${app.oidc.enabled:false}")
     private boolean oidcEnabled;
@@ -32,9 +37,11 @@ public class AuthController {
     @Value("${app.url}")
     private String appUrl;
 
-    public AuthController(AuthService authService, OidcLoginService oidcLoginService) {
+    public AuthController(AuthService authService, OidcLoginService oidcLoginService,
+            EmailChangeService emailChangeService) {
         this.authService = authService;
         this.oidcLoginService = oidcLoginService;
+        this.emailChangeService = emailChangeService;
     }
 
     @PostMapping("/login")
@@ -98,17 +105,46 @@ public class AuthController {
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(toUserResponse(user));
+        UserResponse response = toUserResponse(user);
+        response.setPendingEmail(authService.pendingEmail(user.getId()));
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/me")
     public ResponseEntity<UserResponse> updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody UpdateProfileRequest request) {
-        AuthService.ProfileUpdateResult result = authService.updateProfileAndReissueToken(userDetails.getId(), request);
+            @RequestBody UpdateProfileRequest request,
+            HttpServletRequest http) {
+        AuthService.ProfileUpdateResult result = authService.updateProfileAndReissueToken(
+                userDetails.getId(), request, AuthRateLimitFilter.clientIp(http));
+        UserResponse response = toUserResponse(result.user());
+        response.setPendingEmail(result.pendingEmail());
         return ResponseEntity.ok()
                 .header(REFRESHED_TOKEN_HEADER, result.token())
-                .body(toUserResponse(result.user()));
+                .body(response);
+    }
+
+    /** Offene E-Mail-Änderung verwerfen. */
+    @DeleteMapping("/me/email-change")
+    public ResponseEntity<Void> cancelEmailChange(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        emailChangeService.cancel(userDetails.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Link aus der Bestätigungsmail; danach meldet man sich mit der neuen Adresse an. */
+    @PostMapping("/confirm-email")
+    public ResponseEntity<Map<String, String>> confirmEmail(@RequestBody(required = false) Map<String, String> request) {
+        String email = emailChangeService.confirm(request == null ? null : request.get("token"));
+        return ResponseEntity.ok(Map.of("email", email));
+    }
+
+    /** Abmelden beendet serverseitig alle Anmeldungen des Kontos (Token-Version wie beim Passwortwechsel). */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails != null) {
+            authService.logout(userDetails.getId());
+        }
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/users/{id}")
@@ -161,7 +197,7 @@ public class AuthController {
     }
 
     private UserResponse toUserResponse(User user) {
-        return new UserResponse(
+        UserResponse response = new UserResponse(
                 user.getId(),
                 user.getVorname(),
                 user.getNachname(),
@@ -170,6 +206,9 @@ public class AuthController {
                 user.getCreatedAt(),
                 user.isMustChangePassword()
         );
+        response.setSsoLinked(user.getOidcSubject() != null);
+        response.setSsoOnly(authService.isSsoOnly(user));
+        return response;
     }
 
     public static class LoginResponse {

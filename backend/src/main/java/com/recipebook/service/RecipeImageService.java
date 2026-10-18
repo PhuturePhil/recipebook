@@ -7,6 +7,7 @@ import tools.jackson.databind.node.ObjectNode;
 import io.netty.channel.ChannelOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
@@ -79,9 +80,18 @@ public class RecipeImageService {
             .build();
     }
 
+    private AiQuotaService aiQuota = AiQuotaService.unlimited();
+
+    @Autowired
+    public void setAiQuota(AiQuotaService aiQuota) {
+        this.aiQuota = aiQuota;
+    }
+
     public Optional<RecipeImage> findImage(String title, List<String> ingredients) {
         if (title == null || title.isBlank()) return Optional.empty();
         if (!unsplashService.isConfigured() && !pexelsService.isConfigured()) return Optional.empty();
+        // Suchbegriffe und Bildauswahl per KI zählen zusammen als ein Aufruf aufs Tageskontingent
+        if (!aiQuota.tryConsume(AiQuotaService.Kind.AUTO)) return Optional.empty();
         try {
             List<String> queries = searchQueries(title, ingredients);
             Optional<RecipeImage> image = findWith(unsplashService::search, queries, title, ingredients, true);

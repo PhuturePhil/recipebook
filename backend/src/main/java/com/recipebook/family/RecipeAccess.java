@@ -58,6 +58,17 @@ public class RecipeAccess {
         return new HashSet<>(recipeRepository.findIdsVisibleTo(userId == null ? GUEST : userId));
     }
 
+    /**
+     * N7b: Wessen vollen Namen der Betrachter sehen darf – nur von sich selbst und von Mitgliedern einer gemeinsamen
+     * Familie. Alle anderen (Gäste und angemeldete Fremde bei öffentlichen Rezepten) sehen nur den Vornamen.
+     */
+    public Set<Long> fullNameVisibleUserIds(Long viewerId) {
+        if (viewerId == null || viewerId == GUEST) return Set.of();
+        Set<Long> ids = new HashSet<>(memberRepository.findFamilyPeerIds(viewerId));
+        ids.add(viewerId);
+        return ids;
+    }
+
     public static ResponseStatusException notFound() {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, NOT_FOUND);
     }
@@ -93,7 +104,8 @@ public class RecipeAccess {
         recipe.setFamilies(families);
         recipe.setFamilyIds(families.stream().map(FamilyRef::id).toList());
         recipe.setVisibility(Visibility.of(recipe.isPublicVisible(), !families.isEmpty()).name());
-        recipe.setGuestView(guest);
+        Long ownerId = recipe.getUser() != null ? recipe.getUser().getId() : null;
+        recipe.setGuestView(guest || ownerId == null || !fullNameVisibleUserIds(viewerId).contains(ownerId));
         return recipe;
     }
 

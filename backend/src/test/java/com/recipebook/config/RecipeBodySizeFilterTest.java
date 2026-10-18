@@ -34,4 +34,13 @@ class RecipeBodySizeFilterTest {
         assertEquals(200, send("PUT", "/api/recipes/12", (int) RecipeBodySizeFilter.MAX_BYTES).getStatus());
         assertEquals(200, send("POST", "/api/ingredient-ai/parse", (int) RecipeBodySizeFilter.MAX_BYTES + 1).getStatus());
     }
+
+    @Test
+    void scansMayBeUpToEightMegabytes() throws Exception {
+        assertEquals(200, send("POST", "/api/recipes/scan", (int) RecipeBodySizeFilter.MAX_SCAN_BYTES).getStatus());
+        MockHttpServletResponse tooBig = send("POST", "/api/recipes/scan", (int) RecipeBodySizeFilter.MAX_SCAN_BYTES + 1);
+        assertEquals(413, tooBig.getStatus());
+        assertTrue(tooBig.getContentAsString().contains("8 MB"));
+        assertEquals(8L * 1024 * 1024, RecipeBodySizeFilter.MAX_SCAN_BYTES);
+    }
 }

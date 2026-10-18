@@ -15,15 +15,19 @@ public interface IngredientAiRequestRepository extends JpaRepository<IngredientA
 
     List<IngredientAiRequest> findAllByOrderByIdDesc();
 
+    boolean existsByKindAndRequestKey(String kind, String requestKey);
+
     @Modifying
     @Transactional
     @Query(value = """
-        INSERT INTO ingredient_ai_request (kind, request_key, ingredient_name, unit, ingredient_id, status)
-        VALUES (:kind, :key, :name, :unit, :ingredientId, 'PENDING')
+        INSERT INTO ingredient_ai_request (kind, request_key, ingredient_name, unit, ingredient_id, status,
+            needs_review, requested_by)
+        VALUES (:kind, :key, :name, :unit, :ingredientId, 'PENDING', :needsReview, :requestedBy)
         ON CONFLICT (kind, request_key) DO NOTHING
         """, nativeQuery = true)
     int insertIfAbsent(@Param("kind") String kind, @Param("key") String key, @Param("name") String name,
-        @Param("unit") String unit, @Param("ingredientId") Long ingredientId);
+        @Param("unit") String unit, @Param("ingredientId") Long ingredientId,
+        @Param("needsReview") boolean needsReview, @Param("requestedBy") Long requestedBy);
 
     @Modifying
     @Transactional

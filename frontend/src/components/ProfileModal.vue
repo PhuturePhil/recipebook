@@ -41,11 +41,23 @@
             v-model="form.email"
             type="email"
             required
+            :readonly="user?.ssoLinked"
+            :aria-describedby="user?.ssoLinked ? 'profile-email-hint' : undefined"
             placeholder="E-Mail"
           />
+          <p v-if="user?.ssoLinked" id="profile-email-hint" class="field-hint">
+            Deine E-Mail-Adresse verwaltest du bei pastoors.cloud.
+          </p>
         </div>
 
-        <div class="form-group">
+        <div v-if="pendingEmail" class="info-message pending-email" role="status">
+          <p>{{ pendingEmailText(pendingEmail) }}</p>
+          <button type="button" class="link-button" :disabled="loading" @click="cancelPending">
+            Änderung verwerfen
+          </button>
+        </div>
+
+        <div v-if="!user?.ssoOnly" class="form-group">
           <label for="profile-password">
             {{ user?.mustChangePassword ? 'Neues Passwort (Pflicht)' : 'Neues Passwort (optional)' }}
           </label>
@@ -55,8 +67,27 @@
             type="password"
             :required="user?.mustChangePassword"
             minlength="8"
+            autocomplete="new-password"
             placeholder="Leer lassen zum Beibehalten"
           />
+        </div>
+        <p v-else class="field-hint field-hint--alone">Dein Passwort verwaltest du bei pastoors.cloud.</p>
+
+        <div v-if="askCurrentPassword" class="form-group">
+          <label for="profile-current-password">
+            {{ user?.mustChangePassword ? 'Bisheriges Passwort (aus der Einladung)' : 'Aktuelles Passwort' }}
+          </label>
+          <input
+            id="profile-current-password"
+            v-model="form.currentPassword"
+            type="password"
+            required
+            autocomplete="current-password"
+            aria-describedby="profile-current-password-hint"
+          />
+          <p id="profile-current-password-hint" class="field-hint">
+            Zur Sicherheit: Neue E-Mail-Adresse und neues Passwort nur mit deinem aktuellen Passwort.
+          </p>
         </div>
 
         <div v-if="error" class="error-message">{{ error }}</div>
@@ -77,6 +108,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
+import { emailChanged, needsCurrentPassword, profilePayload, pendingEmailText } from '@/utils/profileChange'
 
 const emit = defineEmits(['close'])
 
@@ -91,8 +123,12 @@ const form = ref({
   vorname: '',
   nachname: '',
   email: '',
-  password: ''
+  password: '',
+  currentPassword: ''
 })
+
+const askCurrentPassword = computed(() => needsCurrentPassword(user.value, form.value))
+const pendingEmail = computed(() => user.value?.pendingEmail || null)
 
 const loading = ref(false)
 const error = ref(null)
@@ -114,20 +150,30 @@ async function handleSubmit() {
   loading.value = true
 
   try {
-    const payload = {
-      vorname: form.value.vorname || undefined,
-      nachname: form.value.nachname || undefined,
-      email: form.value.email || undefined
+    const requestedNewEmail = emailChanged(user.value, form.value.email) && !user.value?.ssoLinked
+    await authStore.updateProfile(profilePayload(user.value, form.value))
+    form.value.password = ''
+    form.value.currentPassword = ''
+    if (requestedNewEmail) {
+      // Neue Adresse gilt erst nach dem Link – Dialog bleibt offen und zeigt den Hinweis
+      form.value.email = user.value?.email || ''
+      return
     }
-
-    if (form.value.password) {
-      payload.password = form.value.password
-    }
-
-    await authStore.updateProfile(payload)
     emit('close')
   } catch (err) {
     error.value = err.message || 'Fehler beim Speichern. Bitte versuche es erneut.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function cancelPending() {
+  error.value = null
+  loading.value = true
+  try {
+    await authStore.cancelEmailChange()
+  } catch (err) {
+    error.value = err.message
   } finally {
     loading.value = false
   }
@@ -189,6 +235,35 @@ async function handleSubmit() {
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 4px;
   font-size: 1rem;
+}
+
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #4a5568);
+}
+
+.field-hint--alone {
+  margin-bottom: 14px;
+}
+
+.form-group input[readonly] {
+  background: var(--color-bg-secondary, #f1f5f9);
+  color: var(--color-text-secondary, #4a5568);
+}
+
+.pending-email p {
+  margin: 0 0 6px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .error-message {

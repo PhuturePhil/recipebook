@@ -12,8 +12,10 @@ public class IngredientAiRequest {
     public static final String UNIT_WEIGHT = "UNIT_WEIGHT";
     public static final String PENDING = "PENDING";
     public static final String RUNNING = "RUNNING";
+    public static final String REVIEW = "REVIEW";
     public static final String DONE = "DONE";
     public static final String FAILED = "FAILED";
+    public static final String REJECTED = "REJECTED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,6 +54,16 @@ public class IngredientAiRequest {
     @Column(name = "result_json", columnDefinition = "TEXT")
     private String resultJson;
 
+    // M6: von einem Nicht-Admin ausgelöst – das Ergebnis kommt erst nach Admin-Freigabe in den Katalog
+    @Column(name = "needs_review", nullable = false)
+    private boolean needsReview = false;
+
+    @Column(name = "requested_by")
+    private Long requestedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getKind() { return kind; }
@@ -75,4 +87,10 @@ public class IngredientAiRequest {
     public void setError(String error) { this.error = error; }
     public String getResultJson() { return resultJson; }
     public void setResultJson(String resultJson) { this.resultJson = resultJson; }
+    public boolean isNeedsReview() { return needsReview; }
+    public void setNeedsReview(boolean needsReview) { this.needsReview = needsReview; }
+    public Long getRequestedBy() { return requestedBy; }
+    public void setRequestedBy(Long requestedBy) { this.requestedBy = requestedBy; }
+    public LocalDateTime getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
 }

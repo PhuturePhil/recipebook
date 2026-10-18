@@ -75,9 +75,9 @@ function openAllNews() {
   router.push('/changelog')
 }
 
-function logout() {
+async function logout() {
   flushNow()
-  authStore.logout()
+  await authStore.logoutEverywhere()
   router.push('/login')
 }
 

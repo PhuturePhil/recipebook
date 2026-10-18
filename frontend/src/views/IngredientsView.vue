@@ -98,8 +98,10 @@
     <section v-if="tab === 'ai' && isAdmin">
       <p class="hint">
         Die KI wird pro Zutat bzw. Zutat+Einheit höchstens einmal gefragt. Fehlgeschlagene Anfragen werden nicht
-        automatisch wiederholt – nur hier per Hand.
+        automatisch wiederholt – nur hier per Hand. Vorschläge, die andere Nutzer auslösen, kommen erst nach deiner
+        Freigabe in den Katalog; bis dahin gilt die Zutat als ausstehend.
       </p>
+      <p v-if="reviewHint" class="hint hint--review" role="status">{{ reviewHint }}</p>
       <button class="btn-secondary add-btn" :disabled="saving" @click="resolveUnknown">Unbekannte Zutaten jetzt zuordnen</button>
       <p v-if="aiMessage" class="hint">{{ aiMessage }}</p>
       <div class="table-scroll">
@@ -116,14 +118,26 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in aiRequests" :key="r.id">
-              <td>{{ r.ingredientName }}<span v-if="r.unit" class="sub">Einheit: {{ r.unit }}</span></td>
+            <tr v-for="r in sortedAiRequests" :key="r.id" :class="{ 'row--review': awaitsReview(r) }">
+              <td>
+                {{ r.ingredientName }}<span v-if="r.unit" class="sub">Einheit: {{ r.unit }}</span>
+                <span v-if="r.requestedBy" class="sub">ausgelöst von {{ r.requestedBy }}</span>
+              </td>
               <td>{{ r.kind === 'NAME_MATCH' ? 'BLS-Zuordnung' : 'Gewicht je Einheit' }}</td>
-              <td><span :class="['status', `status--${r.status.toLowerCase()}`]">{{ AI_STATUS[r.status] }}</span></td>
+              <td>
+                <span :class="['status', `status--${r.status.toLowerCase()}`]">{{ aiStatusLabel(r.status) }}</span>
+                <span v-if="r.proposal" class="sub proposal">Vorschlag: {{ r.proposal }}</span>
+              </td>
               <td class="num">{{ r.attempts }}</td>
               <td>{{ fmtDate(r.lastAttemptAt) }}</td>
               <td class="sub">{{ r.error }}</td>
-              <td><button v-if="r.status === 'FAILED'" class="btn-edit" @click="retry(r)">Erneut versuchen</button></td>
+              <td class="ai-actions">
+                <template v-if="awaitsReview(r)">
+                  <button class="btn-edit btn-approve" :disabled="saving" @click="approve(r)">Freigeben</button>
+                  <button class="btn-edit btn-reject" :disabled="saving" @click="reject(r)">Ablehnen</button>
+                </template>
+                <button v-else-if="canRetry(r)" class="btn-edit" :disabled="saving" @click="retry(r)">Erneut versuchen</button>
+              </td>
             </tr>
             <tr v-if="!aiRequests.length"><td colspan="7" class="sub">Keine Anfragen.</td></tr>
           </tbody>
@@ -261,6 +275,7 @@ import { ingredientCatalogService, INGREDIENT_CLASSES, classLabel } from '@/serv
 import { SOURCE_LABELS } from '@/services/nutritionService'
 import IngredientForm from '@/components/IngredientForm.vue'
 import { usePageVisit } from '@/composables/usePageVisit'
+import { aiStatusLabel, awaitsReview, canRetry, sortAiRequests, reviewSummary } from '@/utils/aiRequests'
 
 usePageVisit('zutaten')
 
@@ -279,7 +294,6 @@ const VALUE_ROWS = [
   { key: 'salt', label: 'Salz', unit: 'g' },
 ]
 
-const AI_STATUS = { PENDING: 'wartet', RUNNING: 'läuft', DONE: 'erledigt', FAILED: 'fehlgeschlagen' }
 
 const tab = ref('ingredients')
 const entries = ref([])
@@ -554,6 +568,35 @@ async function removeConversion(c) {
   }
 }
 
+const sortedAiRequests = computed(() => sortAiRequests(aiRequests.value))
+const reviewHint = computed(() => reviewSummary(aiRequests.value))
+
+async function approve(r) {
+  saving.value = true
+  try {
+    await ingredientCatalogService.approveAiRequest(r.id)
+    aiRequests.value = await ingredientCatalogService.getAiRequests()
+    await load()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    saving.value = false
+  }
+}
+
+async function reject(r) {
+  if (!confirm(`KI-Vorschlag für „${r.ingredientName}“ ablehnen? Die Zutat bleibt dann ohne Nährwerte.`)) return
+  saving.value = true
+  try {
+    await ingredientCatalogService.rejectAiRequest(r.id)
+    aiRequests.value = await ingredientCatalogService.getAiRequests()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    saving.value = false
+  }
+}
+
 async function retry(r) {
   try {
     await ingredientCatalogService.retryAiRequest(r.id)
@@ -795,10 +838,33 @@ async function resolveUnknown() {
   font-weight: 600;
 }
 
-.status--failed { color: var(--neg); }
+.status--failed,
+.status--rejected { color: var(--neg); }
 .status--done { color: var(--pos); }
 .status--pending,
-.status--running { color: var(--warn-text); }
+.status--running,
+.status--review { color: var(--warn-text); }
+
+.row--review { background: var(--warn-bg); }
+
+.proposal {
+  display: block;
+  margin-top: 4px;
+  max-width: 28rem;
+}
+
+.ai-actions {
+  white-space: nowrap;
+}
+
+.ai-actions .btn-edit + .btn-edit {
+  margin-left: 6px;
+}
+
+.hint--review {
+  font-weight: 600;
+  color: var(--warn-text);
+}
 
 .modal-overlay {
   position: fixed;

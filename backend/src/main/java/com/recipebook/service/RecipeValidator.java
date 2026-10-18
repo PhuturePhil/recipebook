@@ -21,6 +21,10 @@ public final class RecipeValidator {
     public static final int MAX_INGREDIENTS = 150;
     public static final int MAX_INSTRUCTIONS = 100;
     static final int MAX_TEXT = 255;
+    // Großzügig über dem Bestand (längste Beschreibung ~1.000, längster Schritt ~900 Zeichen), begrenzt aber die
+    // Textmenge, die Übersetzung und Tagging an die KI schicken
+    public static final int MAX_DESCRIPTION = 5000;
+    public static final int MAX_STEP = 2000;
 
     private RecipeValidator() {
     }
@@ -80,8 +84,21 @@ public final class RecipeValidator {
 
         validateIngredients(recipe, errors);
 
+        if (recipe.getDescription() != null && recipe.getDescription().length() > MAX_DESCRIPTION) {
+            errors.add(error("description", "Die Beschreibung darf höchstens " + MAX_DESCRIPTION + " Zeichen lang sein."));
+        }
         if (recipe.getInstructions() != null && recipe.getInstructions().size() > MAX_INSTRUCTIONS) {
             errors.add(error("instructions", "Ein Rezept kann höchstens " + MAX_INSTRUCTIONS + " Arbeitsschritte haben."));
+        }
+        if (recipe.getInstructions() != null) {
+            for (int i = 0; i < recipe.getInstructions().size(); i++) {
+                String step = recipe.getInstructions().get(i);
+                if (step != null && step.length() > MAX_STEP) {
+                    errors.add(error("instructions", "Schritt " + (i + 1) + " darf höchstens " + MAX_STEP
+                        + " Zeichen lang sein."));
+                    break;
+                }
+            }
         }
 
         if (!errors.isEmpty()) {

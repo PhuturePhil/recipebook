@@ -95,7 +95,7 @@ public class Recipe {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private List<FamilyRef> families;
 
-    // Gäste sehen vom Ersteller nur den Vornamen
+    // Gäste und Fremde ohne gemeinsame Familie sehen vom Ersteller nur den Vornamen (RecipeAccess.decorate)
     @Transient
     @JsonIgnore
     private boolean guestView;

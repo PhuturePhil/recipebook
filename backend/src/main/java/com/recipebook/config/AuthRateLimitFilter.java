@@ -35,6 +35,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             "/api/auth/register-with-invite",
             "/api/auth/signup",
             "/api/auth/verify-email",
+            "/api/auth/confirm-email",
             "/api/auth/oidc/exchange"
     );
 

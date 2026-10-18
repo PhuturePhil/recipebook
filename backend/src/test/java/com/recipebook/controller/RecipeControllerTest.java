@@ -279,12 +279,12 @@ class RecipeControllerTest {
     }
 
     @Test
-    void getImage_shouldRedirectToExternalImage() throws Exception {
+    void getImage_neverRedirectsToExternalAddresses() throws Exception {
         when(recipeService.findImageUrl(8L)).thenReturn(Optional.of("https://images.unsplash.com/photo-1"));
 
         mockMvc.perform(get("/api/recipes/8/image").with(user(principal(5, Role.USER))))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", "https://images.unsplash.com/photo-1"));
+                .andExpect(status().isNotFound())
+                .andExpect(header().doesNotExist("Location"));
     }
 
     @Test

@@ -70,6 +70,10 @@ class IngredientCatalogControllerTest {
             .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/ingredient-catalog/ai-requests/1/retry")).andExpect(status().isForbidden());
         mockMvc.perform(post("/api/ingredient-catalog/ai-requests/resolve-unknown")).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/ingredient-catalog/ai-requests/1/approve")).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/ingredient-catalog/ai-requests/1/reject")).andExpect(status().isForbidden());
+        verify(aiService, never()).approve(any());
+        verify(aiService, never()).reject(any());
         verify(catalogService, never()).update(any(), any());
         verify(aiService, never()).retry(any());
         verify(aiService, never()).enqueueAllUnresolved();
@@ -120,5 +124,34 @@ class IngredientCatalogControllerTest {
 
         verify(suggestionService).recognize(argThat(lines -> lines.size() == 2
             && "Zwiebeln".equals(lines.get(0).name()) && "St".equals(lines.get(0).unit())));
+    }
+
+    private static com.recipebook.model.IngredientAiRequest aiRequest(long id, String status) {
+        com.recipebook.model.IngredientAiRequest r = new com.recipebook.model.IngredientAiRequest();
+        r.setId(id);
+        r.setKind(com.recipebook.model.IngredientAiRequest.NAME_MATCH);
+        r.setStatus(status);
+        return r;
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminsApproveOrRejectAiProposals() throws Exception {
+        when(aiService.approve(4L)).thenReturn(java.util.Optional.of(aiRequest(4, "DONE")));
+        when(aiService.reject(5L)).thenReturn(java.util.Optional.of(aiRequest(5, "REJECTED")));
+
+        mockMvc.perform(post("/api/ingredient-catalog/ai-requests/4/approve"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DONE"));
+        mockMvc.perform(post("/api/ingredient-catalog/ai-requests/5/reject"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("REJECTED"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void approvingUnknownRequestIsNotFound() throws Exception {
+        when(aiService.approve(9L)).thenReturn(java.util.Optional.empty());
+        mockMvc.perform(post("/api/ingredient-catalog/ai-requests/9/approve")).andExpect(status().isNotFound());
     }
 }

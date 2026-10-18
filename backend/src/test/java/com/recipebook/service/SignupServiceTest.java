@@ -42,7 +42,8 @@ class SignupServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SignupService(userRepository, pendingRepository, passwordEncoder, mailService, new RateLimiter());
+        service = new SignupService(userRepository, pendingRepository, passwordEncoder, mailService,
+                new com.recipebook.security.ConfirmationMailLimiter(new RateLimiter(), mailService, java.time.Clock.systemUTC()));
         ReflectionTestUtils.setField(service, "appUrl", "https://pastoors.cloud");
     }
 
@@ -88,7 +89,7 @@ class SignupServiceTest {
 
         assertDoesNotThrow(() -> service.signup("Mallory", "X", "anna@test.de", "geheim123"));
 
-        String text = sentMailText("Anna@Test.de");
+        String text = sentMailText("anna@test.de");
         assertTrue(text.contains("schon ein Konto"));
         assertTrue(text.contains("https://pastoors.cloud/login"));
         assertFalse(LINK.matcher(text).find());

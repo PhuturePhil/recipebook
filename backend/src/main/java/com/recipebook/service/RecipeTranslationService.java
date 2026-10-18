@@ -97,6 +97,13 @@ public class RecipeTranslationService {
         this.clock = clock;
     }
 
+    private AiQuotaService aiQuota = AiQuotaService.unlimited();
+
+    @Autowired
+    public void setAiQuota(AiQuotaService aiQuota) {
+        this.aiQuota = aiQuota;
+    }
+
     /**
      * Rezept in der Zielsprache. Nur Englisch → Deutsch wird übersetzt; alles andere liefert das Original.
      */
@@ -113,6 +120,10 @@ public class RecipeTranslationService {
             if (fresh.isPresent()) return fresh.get();
             Instant failed = lastFailure.get(recipe.getId());
             if (failed != null && failed.plus(RETRY_AFTER_FAILURE).isAfter(clock.instant())) {
+                return TranslatedRecipe.original(recipe, TranslatedRecipe.UNAVAILABLE);
+            }
+            // Kontingent aufgebraucht: Original zeigen, ein späterer Abruf übersetzt
+            if (!aiQuota.tryConsume(AiQuotaService.Kind.AUTO)) {
                 return TranslatedRecipe.original(recipe, TranslatedRecipe.UNAVAILABLE);
             }
             return generate(recipe, language, hash);

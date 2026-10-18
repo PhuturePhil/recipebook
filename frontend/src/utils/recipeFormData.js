@@ -134,6 +134,12 @@ export const formSnapshot = (formData) => JSON.stringify(cleanRecipeData(formDat
 
 export const MAX_SERVINGS = 100
 export const MAX_PREP_TIME_MINUTES = 10080
+// Wie im Backend (RecipeValidator)
+export const MAX_DESCRIPTION = 5000
+export const MAX_STEP = 2000
+
+// Index des ersten zu langen Arbeitsschritts, sonst -1
+export const tooLongStep = (instructions) => (instructions ?? []).findIndex((step) => (step ?? '').length > MAX_STEP)
 
 const isEmptyNumber = (value) => value === null || value === undefined || String(value).trim() === ''
 const wholeNumberIn = (value, min, max) => Number.isInteger(Number(value)) && Number(value) >= min && Number(value) <= max
@@ -143,6 +149,9 @@ const wholeNumberIn = (value, min, max) => Number.isInteger(Number(value)) && Nu
 export function validateRecipeForm(formData) {
   const errors = {}
   if (blank(formData.title)) errors.title = 'Bitte einen Titel eingeben.'
+  if ((formData.description ?? '').length > MAX_DESCRIPTION) {
+    errors.description = 'Die Beschreibung darf höchstens 5.000 Zeichen lang sein.'
+  }
 
   const from = formData.baseServings
   if (isEmptyNumber(from)) errors.baseServings = 'Bitte die Personenanzahl eingeben.'
@@ -168,12 +177,14 @@ export function validateRecipeForm(formData) {
 
   if (!(formData.instructions ?? []).some((step) => !blank(step))) {
     errors.instructions = 'Mindestens einen Arbeitsschritt angeben.'
+  } else if (tooLongStep(formData.instructions) >= 0) {
+    errors.instructions = `Schritt ${tooLongStep(formData.instructions) + 1} darf höchstens 2.000 Zeichen lang sein.`
   }
   return errors
 }
 
 // Order of the fields on the page, for jumping to the first error
-export const ERROR_ORDER = ['title', 'baseServings', 'servingsTo', 'prepTimeMinutes', 'sourceUrl', 'ingredients', 'instructions']
+export const ERROR_ORDER = ['title', 'description', 'baseServings', 'servingsTo', 'prepTimeMinutes', 'sourceUrl', 'ingredients', 'instructions']
 
 export const firstError = (errors) => ERROR_ORDER.find((field) => errors[field]) ?? null
 

@@ -272,6 +272,19 @@ class NutritionCalculatorTest {
     }
 
     @Test
+    void aiProposalsAwaitingReviewOrRejectedCountAsPending() {
+        NutritionReference ref = reference(Map.of(
+                "einhornstaub", new AiRequestState(1L, "REVIEW", null, null),
+                "drachenei", new AiRequestState(2L, "REJECTED", null, null)), Map.of());
+        RecipeNutrition n = NutritionCalculator.calculate(List.of(
+            line("3", "g", "Einhornstaub"), line("1", "Stück", "Drachenei")), 1, ref);
+        assertEquals("REVIEW", n.items().get(0).aiStatus());
+        assertTrue(n.items().get(0).reason().contains("wartet auf Freigabe durch einen Admin"));
+        assertEquals("REJECTED", n.items().get(1).aiStatus());
+        assertTrue(n.items().get(1).reason().contains("abgelehnt"));
+    }
+
+    @Test
     void matchingUsesAliasesCommaPartsAlternativesAndStems() {
         NutritionReference ref = reference();
         assertEquals(3L, ref.match("Zwiebel, fein gewürfelt").orElseThrow().id());

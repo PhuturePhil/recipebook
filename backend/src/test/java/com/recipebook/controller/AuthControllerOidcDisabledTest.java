@@ -28,6 +28,9 @@ class AuthControllerOidcDisabledTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private com.recipebook.service.EmailChangeService emailChangeService;
+
+    @MockitoBean
     private AuthService authService;
 
     @MockitoBean

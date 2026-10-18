@@ -12,6 +12,15 @@ public record AiRequestState(Long id, String status, LocalDateTime lastAttemptAt
         return "PENDING".equals(status) || "RUNNING".equals(status);
     }
 
+    /** KI-Vorschlag eines Nicht-Admins, wartet auf Freigabe; bis dahin gilt die Zutat als ausstehend. */
+    public boolean isInReview() {
+        return "REVIEW".equals(status);
+    }
+
+    public boolean isRejected() {
+        return "REJECTED".equals(status);
+    }
+
     public static String nameKey(String ingredientName) {
         return IngredientNameNormalizer.key(ingredientName);
     }

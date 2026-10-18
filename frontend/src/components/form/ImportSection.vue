@@ -1,7 +1,7 @@
 <template>
   <section class="import-section" aria-labelledby="import-title">
     <h2 id="import-title" class="import-title">Rezept aus Foto importieren</h2>
-    <p class="import-hint">Eine oder mehrere Fotos vom Rezept auswählen, dann analysieren lassen.</p>
+    <p class="import-hint">Bis zu {{ MAX_SCAN_IMAGES }} Fotos vom Rezept auswählen, dann analysieren lassen.</p>
     <input
       id="scan-upload"
       type="file"
@@ -10,7 +10,7 @@
       class="visually-hidden"
       @change="onFiles"
     />
-    <label for="scan-upload" class="btn-scan">
+    <label v-if="images.length < MAX_SCAN_IMAGES" for="scan-upload" class="btn-scan">
       {{ images.length > 0 ? 'Weitere Bilder hinzufügen' : 'Rezeptfotos auswählen' }}
     </label>
     <div v-if="images.length > 0" class="selected-images">
@@ -38,6 +38,7 @@
 
 <script setup>
 import AppIcon from '@/components/shell/AppIcon.vue'
+import { MAX_SCAN_IMAGES } from '@/utils/scanImages'
 
 defineProps({
   images: { type: Array, required: true },

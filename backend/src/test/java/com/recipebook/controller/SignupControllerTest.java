@@ -47,13 +47,13 @@ class SignupControllerTest {
                 .andExpect(status().isAccepted())
                 .andExpect(content().string(""));
 
-        verify(signupService).signup("Lena", "Muster", "lena@test.de", "geheim123");
+        verify(signupService).signup("Lena", "Muster", "lena@test.de", "geheim123", "198.51.100.40");
     }
 
     @Test
     void signup_showsValidationMessages() throws Exception {
         doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bitte gib eine gültige E-Mail-Adresse an."))
-                .when(signupService).signup(any(), any(), any(), any());
+                .when(signupService).signup(any(), any(), any(), any(), any());
 
         mockMvc.perform(post("/api/auth/signup").header("X-Forwarded-For", "198.51.100.41")
                         .contentType(MediaType.APPLICATION_JSON).content(BODY))

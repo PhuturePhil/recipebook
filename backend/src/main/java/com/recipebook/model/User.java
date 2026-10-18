@@ -38,13 +38,17 @@ public class User {
 
     @Column(nullable = false)
     private int tokenVersion = 0;
+
+    // Adresse per Mail-Link bestätigt (oder von einem Admin bzw. pastoors.cloud angelegt); Voraussetzung fürs SSO-Verknüpfen
+    @Column(nullable = false)
+    private boolean emailVerified = false;
     
     public User() {}
     
     public User(String vorname, String nachname, String email, String password, Role role) {
         this.vorname = vorname;
         this.nachname = nachname;
-        this.email = email;
+        this.email = Emails.normalize(email);
         this.password = password;
         this.role = role;
     }
@@ -78,7 +82,7 @@ public class User {
     }
     
     public void setEmail(String email) {
-        this.email = email;
+        this.email = Emails.normalize(email);
     }
     
     public String getPassword() {
@@ -127,5 +131,18 @@ public class User {
 
     public void setTokenVersion(int tokenVersion) {
         this.tokenVersion = tokenVersion;
+    }
+
+    /** Beendet alle Anmeldungen des Kontos auf allen Geräten (Abmelden, Passwortwechsel, SSO-Verknüpfung). */
+    public void revokeTokens() {
+        this.tokenVersion++;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 }

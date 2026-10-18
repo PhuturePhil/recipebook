@@ -11,6 +11,10 @@ public class UserResponse {
     private Role role;
     private LocalDateTime createdAt;
     private boolean mustChangePassword;
+    private boolean ssoLinked;
+    // Anmeldung nur über pastoors.cloud: Passwort und Adresse werden dort verwaltet
+    private boolean ssoOnly;
+    private String pendingEmail;
 
     public UserResponse(Long id, String vorname, String nachname, String email, Role role,
                         LocalDateTime createdAt, boolean mustChangePassword) {
@@ -77,5 +81,29 @@ public class UserResponse {
 
     public void setMustChangePassword(boolean mustChangePassword) {
         this.mustChangePassword = mustChangePassword;
+    }
+
+    public boolean isSsoLinked() {
+        return ssoLinked;
+    }
+
+    public void setSsoLinked(boolean ssoLinked) {
+        this.ssoLinked = ssoLinked;
+    }
+
+    public boolean isSsoOnly() {
+        return ssoOnly;
+    }
+
+    public void setSsoOnly(boolean ssoOnly) {
+        this.ssoOnly = ssoOnly;
+    }
+
+    public String getPendingEmail() {
+        return pendingEmail;
+    }
+
+    public void setPendingEmail(String pendingEmail) {
+        this.pendingEmail = pendingEmail;
     }
 }

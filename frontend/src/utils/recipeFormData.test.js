@@ -21,7 +21,10 @@ import {
   moveSection,
   ingredientsWithoutName,
   validateRecipeForm,
-  firstError
+  firstError,
+  tooLongStep,
+  MAX_DESCRIPTION,
+  MAX_STEP
 } from './recipeFormData.js'
 import { ingredientSection, ingredientsToSections } from './ingredientGroups.js'
 
@@ -274,4 +277,16 @@ test('group cards reorder among themselves, "no group" stays on top', () => {
   assert.equal(moveSection(sections, 1, -1), -1)
   assert.equal(moveSection(sections, 2, 1), -1)
   assert.equal(moveSection(sections, 0, 1), -1)
+})
+
+test('Beschreibung und Arbeitsschritte haben dieselben Längengrenzen wie der Server', () => {
+  assert.equal(validateRecipeForm(validForm({ description: 'a'.repeat(MAX_DESCRIPTION) })).description, undefined)
+  assert.equal(validateRecipeForm(validForm({ description: 'a'.repeat(MAX_DESCRIPTION + 1) })).description,
+    'Die Beschreibung darf höchstens 5.000 Zeichen lang sein.')
+  assert.equal(validateRecipeForm(validForm({ instructions: ['kurz', 'b'.repeat(MAX_STEP)] })).instructions, undefined)
+  assert.equal(validateRecipeForm(validForm({ instructions: ['kurz', 'b'.repeat(MAX_STEP + 1)] })).instructions,
+    'Schritt 2 darf höchstens 2.000 Zeichen lang sein.')
+  assert.equal(tooLongStep(['a', 'b'.repeat(MAX_STEP + 1)]), 1)
+  assert.equal(tooLongStep(undefined), -1)
+  assert.equal(firstError({ description: 'x', baseServings: 'y' }), 'description')
 })

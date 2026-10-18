@@ -168,6 +168,8 @@ public final class NutritionCalculator {
         if (ai.isEmpty()) return base;
         AiRequestState s = ai.get();
         if (s.isOpen()) return base + " – KI-Zuordnung läuft";
+        if (s.isInReview()) return base + " – KI-Vorschlag ausstehend, wartet auf Freigabe durch einen Admin";
+        if (s.isRejected()) return base + " – KI-Vorschlag abgelehnt (erneuter Versuch nur durch Admin)";
         if (s.isFailed()) {
             String when = s.lastAttemptAt() == null ? "" : " am " + DATE.format(s.lastAttemptAt());
             return base + " – KI-Zuordnung fehlgeschlagen" + when + " (erneuter Versuch nur durch Admin)";

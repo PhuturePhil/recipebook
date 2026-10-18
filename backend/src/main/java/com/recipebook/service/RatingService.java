@@ -42,16 +42,21 @@ public class RatingService {
         this.recipeAccess = recipeAccess;
     }
 
-    // Gäste (öffentliche Rezepte) sehen von den Bewertenden nur den Vornamen
+    // Gäste (öffentliche Rezepte) sehen von den Bewertenden nur den Vornamen, angemeldete Fremde ebenso; den vollen
+    // Namen gibt es nur innerhalb einer gemeinsamen Familie
     @Transactional(readOnly = true)
     public List<RatingDto> getRatings(Long recipeId, Long currentUserId) {
         requireVisible(recipeId, currentUserId);
         boolean guest = currentUserId == null || currentUserId == RecipeAccess.GUEST;
+        java.util.Set<Long> fullNames = recipeAccess.fullNameVisibleUserIds(currentUserId);
         return ratingRepository.findByRecipeIdWithUser(recipeId).stream()
-            .map(r -> guest ? RatingDto.forGuest(r) : RatingDto.of(r, currentUserId))
+            .map(r -> guest ? RatingDto.forGuest(r)
+                : RatingDto.of(r, currentUserId, r.getUser() != null && fullNames.contains(r.getUser().getId())))
             .toList();
     }
 
+    // Bewusst mehrere Bewertungen pro Nutzer und Rezept erlaubt (Entscheidung Philipp 18.10.2026, N4 im
+    // Sicherheitspaket): Wer spammt, wird gesperrt. Bei starkem Wachstum der Nutzerzahl neu bewerten.
     @Transactional
     public RatingDto addRating(Long recipeId, Long userId, RatingRequest request) {
         requireVisible(recipeId, userId);

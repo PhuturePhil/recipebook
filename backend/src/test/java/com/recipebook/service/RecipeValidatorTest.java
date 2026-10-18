@@ -278,4 +278,30 @@ class RecipeValidatorTest {
 
         assertEquals(1, r.getIngredients().size());
     }
+
+    @Test
+    void rejectsOverlongDescription() {
+        Recipe ok = recipe("Dal");
+        ok.setDescription("a".repeat(RecipeValidator.MAX_DESCRIPTION));
+        RecipeValidator.validate(ok);
+
+        Recipe r = recipe("Dal");
+        r.setDescription("a".repeat(RecipeValidator.MAX_DESCRIPTION + 1));
+        RecipeValidationException ex = invalid(r);
+        assertEquals(List.of("description"), fields(ex));
+        assertEquals("Die Beschreibung darf höchstens 5000 Zeichen lang sein.", ex.getMessage());
+    }
+
+    @Test
+    void rejectsOverlongStepAndNamesIt() {
+        Recipe ok = recipe("Dal");
+        ok.setInstructions(List.of("b".repeat(RecipeValidator.MAX_STEP)));
+        RecipeValidator.validate(ok);
+
+        Recipe r = recipe("Dal");
+        r.setInstructions(List.of("Schneiden", "b".repeat(RecipeValidator.MAX_STEP + 1)));
+        RecipeValidationException ex = invalid(r);
+        assertEquals(List.of("instructions"), fields(ex));
+        assertEquals("Schritt 2 darf höchstens 2000 Zeichen lang sein.", ex.getMessage());
+    }
 }

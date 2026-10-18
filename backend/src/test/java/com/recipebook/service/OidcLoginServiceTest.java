@@ -74,7 +74,7 @@ class OidcLoginServiceTest {
 
         User result = service.resolveUser(identity("sub-s", "hinzesilvia@web.de", "Silvia", "Hinze"));
 
-        assertEquals("Hinzesilvia@web.de", result.getEmail());
+        assertEquals("hinzesilvia@web.de", result.getEmail());
         assertEquals("sub-s", result.getOidcSubject());
     }
 
@@ -233,9 +233,60 @@ class OidcLoginServiceTest {
         return new OidcIdentity(subject, email, true, givenName, familyName, null);
     }
 
+    @Test
+    void resolveUser_unconfirmedAddress_isNotLinked() {
+        User fake = user(50L, "anna.pastoors@mail.de", "Fake", "Konto", Role.USER, "hash");
+        fake.setEmailVerified(false);
+        when(userRepository.findByOidcSubject("sub-anna")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("anna.pastoors@mail.de")).thenReturn(Optional.of(fake));
+
+        OidcLoginException ex = assertThrows(OidcLoginException.class,
+                () -> service.resolveUser(identity("sub-anna", "anna.pastoors@mail.de", "Anna", "Pastoors")));
+
+        assertEquals("email_unconfirmed", ex.getReason());
+        assertNull(fake.getOidcSubject());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void resolveUser_firstLink_endsAllExistingSessions() {
+        User anna = user(43L, "anna.pastoors@mail.de", "Anna", "Pastoors", Role.USER, "hash");
+        anna.setTokenVersion(4);
+        anna.setMustChangePassword(true);
+        when(userRepository.findByOidcSubject("sub-anna")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("anna.pastoors@mail.de")).thenReturn(Optional.of(anna));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User result = service.resolveUser(identity("sub-anna", "anna.pastoors@mail.de", "Anna", "Pastoors"));
+
+        assertEquals(5, result.getTokenVersion());
+        assertFalse(result.isMustChangePassword());
+    }
+
+    @Test
+    void resolveUser_alreadyLinked_keepsSessions() {
+        User philipp = user(1L, "philipp.pastoors@mail.de", "Philipp", "Pastoors", Role.ADMIN, "hash");
+        philipp.setOidcSubject("sub-p");
+        philipp.setTokenVersion(2);
+        when(userRepository.findByOidcSubject("sub-p")).thenReturn(Optional.of(philipp));
+
+        assertEquals(2, service.resolveUser(identity("sub-p", "philipp.pastoors@mail.de", "P", "P")).getTokenVersion());
+    }
+
+    @Test
+    void resolveUser_newSsoUser_isConfirmed() {
+        when(userRepository.findByOidcSubject("sub-n")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("neu@example.org")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(anyString())).thenReturn("hash");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertTrue(service.resolveUser(identity("sub-n", "neu@example.org", "N", "N")).isEmailVerified());
+    }
+
     private static User user(Long id, String email, String vorname, String nachname, Role role, String password) {
         User user = new User(vorname, nachname, email, password, role);
         user.setId(id);
+        user.setEmailVerified(true);
         return user;
     }
 

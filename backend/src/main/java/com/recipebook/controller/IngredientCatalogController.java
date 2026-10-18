@@ -124,6 +124,20 @@ public class IngredientCatalogController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Anfrage nicht gefunden."));
     }
 
+    @PostMapping("/ai-requests/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public IngredientAiRequestDto approve(@PathVariable Long id) {
+        return aiService.approve(id).map(NutritionCatalogService::toDto)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Anfrage nicht gefunden."));
+    }
+
+    @PostMapping("/ai-requests/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public IngredientAiRequestDto reject(@PathVariable Long id) {
+        return aiService.reject(id).map(NutritionCatalogService::toDto)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Anfrage nicht gefunden."));
+    }
+
     @PostMapping("/ai-requests/resolve-unknown")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Integer> resolveUnknown() {

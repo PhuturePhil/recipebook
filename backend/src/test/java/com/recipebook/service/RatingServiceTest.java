@@ -91,6 +91,7 @@ class RatingServiceTest {
                 rating(3, recipe, user(5, "Paco", "Pastoors"), 4),
                 rating(2, recipe, user(6, " Anna ", ""), 5),
                 rating(1, recipe, null, 2)));
+        when(recipeAccess.fullNameVisibleUserIds(5L)).thenReturn(java.util.Set.of(5L));
 
         List<RatingDto> result = ratingService.getRatings(7L, 5L);
 
@@ -102,6 +103,21 @@ class RatingServiceTest {
         assertNull(result.get(2).userId());
         assertNull(result.get(2).userName());
         assertFalse(result.get(2).own());
+    }
+
+    @Test
+    void getRatings_fullNameOnlyForOwnFamily() {
+        Recipe recipe = recipe(7);
+        when(ratingRepository.findByRecipeIdWithUser(7L)).thenReturn(List.of(
+                rating(2, recipe, user(6, "Anna", "Pastoors"), 5),
+                rating(1, recipe, user(8, "Fremder", "Mensch"), 3)));
+        when(recipeAccess.fullNameVisibleUserIds(5L)).thenReturn(java.util.Set.of(5L, 6L));
+
+        List<RatingDto> result = ratingService.getRatings(7L, 5L);
+
+        assertEquals("Anna Pastoors", result.get(0).userName());
+        assertEquals("Fremder", result.get(1).userName());
+        assertEquals(8L, result.get(1).userId());
     }
 
     @Test

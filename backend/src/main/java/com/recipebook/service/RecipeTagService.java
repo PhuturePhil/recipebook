@@ -4,6 +4,7 @@ import com.recipebook.repository.RecipeRepository;
 import com.recipebook.tagging.RecipeTags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -75,7 +76,17 @@ public class RecipeTagService {
         this.backfillOnStartup = backfillOnStartup;
     }
 
+    private AiQuotaService aiQuota = AiQuotaService.unlimited();
+
+    @Autowired
+    public void setAiQuota(AiQuotaService aiQuota) {
+        this.aiQuota = aiQuota;
+    }
+
+    // Aus einer Anfrage heraus: zählt aufs KI-Tageskontingent des Kontos (das nachträgliche Taggen nicht)
     public List<String> suggest(String title, List<String> ingredientNames, List<String> steps) {
+        if (!openAiClient.isConfigured() || title == null || title.isBlank()) return List.of();
+        if (!aiQuota.tryConsume(AiQuotaService.Kind.AUTO)) return List.of();
         return suggestWithUsage(title, ingredientNames, steps).tags();
     }
 

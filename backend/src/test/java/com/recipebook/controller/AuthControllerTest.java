@@ -23,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -49,6 +51,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private CustomUserDetailsService userDetailsService;
+
+    @MockitoBean
+    private com.recipebook.service.EmailChangeService emailChangeService;
 
     private static User account(long id, Role role) {
         User u = new User();
@@ -125,8 +130,8 @@ class AuthControllerTest {
     @Test
     void updateProfile_shouldReturnRefreshedToken() throws Exception {
         User me = account(3, Role.USER);
-        when(authService.updateProfileAndReissueToken(eq(3L), any()))
-                .thenReturn(new AuthService.ProfileUpdateResult(me, "fresh-token"));
+        when(authService.updateProfileAndReissueToken(eq(3L), any(), any()))
+                .thenReturn(new AuthService.ProfileUpdateResult(me, "fresh-token", null));
 
         mockMvc.perform(put("/api/auth/me")
                         .with(user(new CustomUserDetails(me)))
@@ -140,7 +145,7 @@ class AuthControllerTest {
     @Test
     void updateProfile_shouldShowPasswordRuleMessage() throws Exception {
         User me = account(3, Role.USER);
-        when(authService.updateProfileAndReissueToken(eq(3L), any()))
+        when(authService.updateProfileAndReissueToken(eq(3L), any(), any()))
                 .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Das Passwort muss mindestens 8 Zeichen lang sein."));
 
         mockMvc.perform(put("/api/auth/me")
@@ -182,5 +187,73 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/register-with-invite").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"familyCode\":\"famcode1234567890abc\",\"vorname\":\"Silvia\",\"email\":\"s@test.de\",\"password\":\"Geheim123!\"}"))
                 .andExpect(status().isOk());
+    }
+
+    // --- Sicherheitspaket 18.10.2026 ---
+
+    @Test
+    void logout_endsAllSessionsOnTheServer() throws Exception {
+        mockMvc.perform(post("/api/auth/logout").with(user(new CustomUserDetails(account(3, Role.USER)))))
+                .andExpect(status().isNoContent());
+
+        verify(authService).logout(3L);
+    }
+
+    @Test
+    void logout_withoutLoginIsRejected() throws Exception {
+        mockMvc.perform(post("/api/auth/logout")).andExpect(status().isForbidden());
+        verify(authService, never()).logout(any());
+    }
+
+    @Test
+    void confirmEmail_worksWithoutLogin() throws Exception {
+        when(emailChangeService.confirm("tok-123")).thenReturn("neu@test.de");
+
+        mockMvc.perform(post("/api/auth/confirm-email").header("X-Forwarded-For", "198.51.100.60")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"token\":\"tok-123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("neu@test.de"));
+    }
+
+    @Test
+    void confirmEmail_isRateLimitedLikeOtherPublicAuthEndpoints() throws Exception {
+        when(emailChangeService.confirm(any())).thenReturn("neu@test.de");
+        for (int i = 0; i < 10; i++) {
+            mockMvc.perform(post("/api/auth/confirm-email").header("X-Forwarded-For", "198.51.100.61")
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"token\":\"t\"}"));
+        }
+        mockMvc.perform(post("/api/auth/confirm-email").header("X-Forwarded-For", "198.51.100.61")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"token\":\"t\"}"))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void me_showsSsoLinkAndPendingAddress() throws Exception {
+        User me = account(3, Role.USER);
+        me.setOidcSubject("sub-3");
+        when(authService.getCurrentUser()).thenReturn(me);
+        when(authService.pendingEmail(3L)).thenReturn("neu@test.de");
+        when(authService.isSsoOnly(me)).thenReturn(true);
+
+        mockMvc.perform(get("/api/auth/me").with(user(new CustomUserDetails(me))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ssoLinked").value(true))
+                .andExpect(jsonPath("$.ssoOnly").value(true))
+                .andExpect(jsonPath("$.pendingEmail").value("neu@test.de"));
+    }
+
+    @Test
+    void updateProfile_passesTheClientIpForTheMailLimit() throws Exception {
+        User me = account(3, Role.USER);
+        when(authService.updateProfileAndReissueToken(eq(3L), any(), eq("203.0.113.9")))
+                .thenReturn(new AuthService.ProfileUpdateResult(me, "fresh-token", "neu@test.de"));
+
+        mockMvc.perform(put("/api/auth/me").header("X-Forwarded-For", "203.0.113.9")
+                        .with(user(new CustomUserDetails(me)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"neu@test.de\",\"currentPassword\":\"altesPasswort\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("user3@test.de"))
+                .andExpect(jsonPath("$.pendingEmail").value("neu@test.de"));
     }
 }

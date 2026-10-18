@@ -63,6 +63,7 @@ public class RecipeService {
         Set<Long> visible = recipeAccess.visibleIds(viewerId);
         boolean guest = viewerId == null || viewerId == RecipeAccess.GUEST;
         Map<Long, List<FamilyRef>> families = recipeAccess.familiesByRecipe(viewerId);
+        Set<Long> fullNames = recipeAccess.fullNameVisibleUserIds(viewerId);
         List<RecipeSummaryProjection> projections = recipeRepository.findAllSummaries().stream()
             .filter(p -> visible.contains(p.getId()))
             .toList();
@@ -83,7 +84,7 @@ public class RecipeService {
             dto.setSource(p.getSource());
             String firstName = p.getCreatedByFirstName() == null || p.getCreatedByFirstName().isBlank()
                 ? p.getCreatedBy() : p.getCreatedByFirstName().trim();
-            dto.setCreatedBy(guest ? firstName : p.getCreatedBy());
+            dto.setCreatedBy(p.getOwnerId() != null && fullNames.contains(p.getOwnerId()) ? p.getCreatedBy() : firstName);
             dto.setCreatedByFirstName(firstName);
             dto.setOwnerId(guest ? null : p.getOwnerId());
             List<FamilyRef> shared = families.getOrDefault(p.getId(), List.of());
@@ -121,16 +122,20 @@ public class RecipeService {
         return RecipeNutritionDto.of(nutritionService.calculate(recipe));
     }
 
-    // Grundauswahl plus alle schon vergebenen Tags, alphabetisch
-    public List<String> knownTags() {
+    // Grundauswahl plus die Tags der Rezepte, die der Nutzer sehen darf, alphabetisch
+    public List<String> knownTags(Long viewerId) {
         Map<String, String> tags = new java.util.TreeMap<>(java.text.Collator.getInstance(java.util.Locale.GERMAN));
         RecipeTags.VOCABULARY.forEach(t -> tags.put(t, t));
-        recipeRepository.findDistinctTags().forEach(t -> tags.putIfAbsent(t, t));
+        recipeRepository.findDistinctTags(viewer(viewerId)).forEach(t -> tags.putIfAbsent(t, t));
         return new ArrayList<>(tags.values());
     }
 
-    public List<SourceAuthorDto> findDistinctSourceAuthorPairs() {
-        return recipeRepository.findDistinctSourceAuthorPairs();
+    public List<SourceAuthorDto> findDistinctSourceAuthorPairs(Long viewerId) {
+        return recipeRepository.findDistinctSourceAuthorPairs(viewer(viewerId));
+    }
+
+    private static Long viewer(Long viewerId) {
+        return viewerId == null ? RecipeAccess.GUEST : viewerId;
     }
 
     public List<Recipe> findAll() {
@@ -168,7 +173,7 @@ public class RecipeService {
             }
         }
         applyLanguage(recipe);
-        applySource(recipe);
+        applySource(recipe, user != null ? user.getId() : RecipeAccess.GUEST);
         if (recipe.getImageCredit() == null) {
             recipe.setImageCredit(exists ? keptImageCredit(recipe) : ImageCredit.forUpload(recipe.getImageUrl()));
         }
@@ -254,12 +259,16 @@ public class RecipeService {
     }
 
     // Quelle/Autor übernehmen eine schon vorhandene Schreibweise; das Rezept selbst zählt nicht mit, damit Korrekturen möglich bleiben
-    void applySource(Recipe recipe) {
+    // Verglichen wird nur mit Rezepten, die der Bearbeitende sehen darf (N3)
+    void applySource(Recipe recipe, Long editorId) {
         Long self = recipe.getId() == null ? -1L : recipe.getId();
+        Long viewer = viewer(editorId);
         String source = RecipeSources.clean(recipe.getSource());
-        recipe.setSource(source == null ? null : RecipeSources.canonicalSource(source, recipeRepository.findSourcesExcept(self)));
+        recipe.setSource(source == null ? null
+            : RecipeSources.canonicalSource(source, recipeRepository.findSourcesExcept(self, viewer)));
         String author = RecipeSources.clean(recipe.getAuthor());
-        recipe.setAuthor(author == null ? null : RecipeSources.canonical(author, recipeRepository.findAuthorsExcept(self)));
+        recipe.setAuthor(author == null ? null
+            : RecipeSources.canonical(author, recipeRepository.findAuthorsExcept(self, viewer)));
         recipe.setPage(RecipeSources.clean(recipe.getPage()));
     }
 

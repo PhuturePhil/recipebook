@@ -65,6 +65,17 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
     },
 
+    // Abmelden per Menü: beendet auch die Anmeldungen auf anderen Geräten
+    async logoutEverywhere() {
+      await authService.logoutEverywhere()
+      this.logout()
+    },
+
+    async cancelEmailChange() {
+      await authService.cancelEmailChange()
+      if (this.user) this.user = { ...this.user, pendingEmail: null }
+    },
+
     // Restores the session from the stored token once per page load.
     init() {
       if (!initPromise) {

@@ -110,6 +110,8 @@ jobs:
                   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
                 volumes:
                   - postgres_data:/var/lib/postgresql/data
+                # Speichergrenzen für den 4-GB-Server (Sicherheitspaket N8)
+                mem_limit: 512m
                 healthcheck:
                   test: ["CMD-SHELL", "pg_isready -U postgres -d recipebook"]
                   interval: 30s
@@ -126,13 +128,15 @@ jobs:
                   - recipebook_default
                 expose:
                   - "8080"
+                # Heap fest auf 640 MB (Dockerfile), dazu Metaspace/Threads/Bildverarbeitung
+                mem_limit: 1200m
 
                 environment:
                   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/recipebook
                   SPRING_DATASOURCE_USERNAME: postgres
                   SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
                   JWT_SECRET: ${JWT_SECRET}
-                  JWT_EXPIRATION: ${JWT_EXPIRATION:-7776000000}
+                  JWT_EXPIRATION: ${JWT_EXPIRATION:-2592000000}
                   ADMIN_PASSWORD: ${ADMIN_PASSWORD}
                   APP_URL: https://pastoors.cloud
                   ALLOWED_ORIGIN: https://pastoors.cloud
@@ -173,6 +177,7 @@ jobs:
                   - "443"
                 volumes:
                   - /opt/ssl/pastoors.cloud:/etc/ssl/certs:ro
+                mem_limit: 128m
                 depends_on:
                   - backend
                 healthcheck:

@@ -8,7 +8,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.recipebook.service.RecipeImageTypes;
 
-import java.net.URI;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,9 +21,7 @@ final class ImageResponses {
 
     static ResponseEntity<byte[]> of(String imageUrl, CacheControl cache) {
         if (imageUrl == null || imageUrl.isBlank()) throw noImage();
-        if (imageUrl.startsWith("https://")) {
-            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(imageUrl)).build();
-        }
+        // Nur eingebettete Bilder; eine Weiterleitung auf fremde Adressen gibt es nicht (mehr)
         Matcher m = DATA_URL.matcher(imageUrl);
         // Nur Rasterbilder: ein SVG würde als Dokument unserer Domain Skripte ausführen können
         if (!m.matches() || !RecipeImageTypes.isAllowed(m.group(1))) throw noImage();

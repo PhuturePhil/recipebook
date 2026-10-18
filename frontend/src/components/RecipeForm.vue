@@ -54,10 +54,14 @@
         id="description"
         v-model="formData.description"
         rows="1"
+        :maxlength="MAX_DESCRIPTION"
         placeholder="Kurze Beschreibung eingeben"
+        :aria-invalid="errors.description ? 'true' : undefined"
+        :aria-describedby="errors.description ? 'description-error' : undefined"
         @input="autoResize"
         ref="descriptionRef"
       ></textarea>
+      <p v-if="errors.description" id="description-error" class="field-error" role="alert">{{ errors.description }}</p>
     </div>
 
     <div class="form-group">
@@ -397,6 +401,7 @@
             <textarea
               v-model="formData.instructions[index]"
               rows="1"
+              :maxlength="MAX_STEP"
               placeholder="Arbeitsschritt eingeben"
               :aria-label="`Arbeitsschritt ${index + 1}`"
               :required="isInstructionRequired(formData.instructions, index)"
@@ -473,6 +478,7 @@ import IngredientGroupCard from '@/components/form/IngredientGroupCard.vue'
 import GripIcon from '@/components/form/GripIcon.vue'
 import draggable from 'vuedraggable'
 import { resizeImageFile } from '@/utils/resizeImage'
+import { acceptScanFiles, splitDataUrl, scanTooLarge, scanErrorMessage, SCAN_IMAGE_EDGE, SCAN_JPEG_QUALITY, TOO_LARGE_ERROR } from '@/utils/scanImages'
 import {
   emptyIngredient,
   isBlankIngredient,
@@ -491,6 +497,9 @@ import {
   preventsImplicitSubmit,
   formSnapshot,
   validateRecipeForm,
+  tooLongStep,
+  MAX_DESCRIPTION,
+  MAX_STEP,
   firstError,
   ingredientsWithoutName,
   languageChoice,
@@ -921,12 +930,15 @@ onBeforeUnmount(() => {
 
 
 const addScanImages = async (files) => {
-  for (const file of files) {
-    const base64 = await readFileAsBase64(file)
+  const { accepted, notice } = acceptScanFiles(selectedImages.value.length, files)
+  scanError.value = notice
+  for (const file of accepted) {
+    // Verkleinert, damit bis zu 5 Handyfotos unter die 8-MB-Grenze passen
+    const image = splitDataUrl(await resizeImageFile(file, SCAN_IMAGE_EDGE, SCAN_JPEG_QUALITY))
+      || { imageData: await readFileAsBase64(file), mimeType: file.type || 'image/jpeg' }
     const previewUrl = URL.createObjectURL(file)
     selectedImages.value.push({
-      imageData: base64,
-      mimeType: file.type || 'image/jpeg',
+      ...image,
       fileName: file.name,
       previewUrl
     })
@@ -950,6 +962,10 @@ const handleScan = async () => {
     cancelLabel: 'Behalten',
     destructive: true
   })) return
+  if (scanTooLarge(selectedImages.value)) {
+    scanError.value = TOO_LARGE_ERROR
+    return
+  }
   scanning.value = true
   scanError.value = ''
   unrecognizedText.value = ''
@@ -985,8 +1001,8 @@ const handleScan = async () => {
     importedFromScan.value = true
     entry.value = 'form'
     await resizeAllTextareas()
-  } catch {
-    scanError.value = 'Das Rezeptbild konnte nicht analysiert werden. Bitte versuche es erneut.'
+  } catch (err) {
+    scanError.value = scanErrorMessage(err)
   } finally {
     scanning.value = false
     uiStore.hideLoading()
@@ -1213,7 +1229,11 @@ const errorTarget = (field) => {
     case 'prepTimeMinutes': return document.getElementById('prep-time')
     case 'sourceUrl': return sourceUrlRef.value
     case 'ingredients': return form?.querySelector('.ingredient-name[aria-invalid="true"]') ?? form?.querySelector('.ingredient-name')
-    case 'instructions': return form?.querySelector('.instruction-row textarea')
+    case 'description': return document.getElementById('description')
+    case 'instructions': {
+      const long = tooLongStep(formData.value.instructions)
+      return form?.querySelector(long >= 0 ? `.instruction-row[data-step="${long}"] textarea` : '.instruction-row textarea')
+    }
     default: return null
   }
 }

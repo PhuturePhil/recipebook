@@ -75,13 +75,13 @@ public class RecipeController {
     }
 
     @GetMapping("/sources")
-    public List<SourceAuthorDto> getSources() {
-        return recipeService.findDistinctSourceAuthorPairs();
+    public List<SourceAuthorDto> getSources(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return recipeService.findDistinctSourceAuthorPairs(RecipeAccess.viewerId(userDetails));
     }
 
     @GetMapping("/tags")
-    public List<String> getTags() {
-        return recipeService.knownTags();
+    public List<String> getTags(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return recipeService.knownTags(RecipeAccess.viewerId(userDetails));
     }
 
     @GetMapping("/units")

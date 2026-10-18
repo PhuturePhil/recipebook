@@ -48,8 +48,8 @@ function routeBlock(path) {
   return router.slice(start, router.indexOf('}', router.indexOf('meta', start)) + 1)
 }
 
-test('Registrierung, Bestätigung, Impressum und Datenschutz sind ohne Anmeldung erreichbar', () => {
-  for (const path of ['/registrieren', '/konto-bestaetigen', '/impressum', '/datenschutz']) {
+test('Registrierung, Bestätigungen, Impressum und Datenschutz sind ohne Anmeldung erreichbar', () => {
+  for (const path of ['/registrieren', '/konto-bestaetigen', '/email-bestaetigen', '/impressum', '/datenschutz']) {
     assert.match(routeBlock(path), /requiresAuth: false/, path)
   }
 })

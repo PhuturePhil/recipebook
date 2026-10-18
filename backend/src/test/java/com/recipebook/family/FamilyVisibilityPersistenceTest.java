@@ -411,4 +411,81 @@ class FamilyVisibilityPersistenceTest {
         assertTrue(familyRepository.existsById(shared));
         assertEquals(0, recipeFamilyRepository.countByFamilyId(shared));
     }
+
+    private Recipe sourced(User owner, String visibility, List<Long> familyIds, String source, String author, String tag) {
+        Recipe r = new Recipe();
+        r.setTitle("Quelle von " + owner.getVorname());
+        r.setIngredients(new ArrayList<>());
+        r.setInstructions(new ArrayList<>());
+        r.setVisibility(visibility);
+        r.setFamilyIds(familyIds);
+        r.setSource(source);
+        r.setAuthor(author);
+        r.setTags(new ArrayList<>(List.of(tag)));
+        Recipe saved = recipeService.save(r, owner);
+        flush();
+        return saved;
+    }
+
+    // N3: Quellen, Autoren und Tags privater Rezepte tauchen bei anderen nicht auf
+    @Test
+    void sourcesAndTags_onlyFromVisibleRecipes() {
+        Long fam = familyOf(anna, paco);
+        sourced(anna, "PRIVATE", null, "Omas Geheimheft", "Oma Hilde", "geheimtipp");
+        sourced(anna, "FAMILY", List.of(fam), "Familienordner", "Tante Gerda", "familientipp");
+        sourced(fremd, "PUBLIC", null, "Kochblog Fremd", "Fritz", "blogtipp");
+
+        List<String> annaSources = recipeService.findDistinctSourceAuthorPairs(anna.getId()).stream()
+            .map(p -> p.getSource()).toList();
+        List<String> pacoSources = recipeService.findDistinctSourceAuthorPairs(paco.getId()).stream()
+            .map(p -> p.getSource()).toList();
+        List<String> fremdSources = recipeService.findDistinctSourceAuthorPairs(fremd.getId()).stream()
+            .map(p -> p.getSource()).toList();
+        List<String> guestSources = recipeService.findDistinctSourceAuthorPairs(RecipeAccess.GUEST).stream()
+            .map(p -> p.getSource()).toList();
+
+        assertTrue(annaSources.containsAll(List.of("Omas Geheimheft", "Familienordner", "Kochblog Fremd")));
+        assertEquals(List.of("Familienordner", "Kochblog Fremd"), pacoSources);
+        assertEquals(List.of("Kochblog Fremd"), fremdSources);
+        assertEquals(List.of("Kochblog Fremd"), guestSources);
+
+        assertTrue(recipeService.knownTags(anna.getId()).contains("geheimtipp"));
+        assertTrue(recipeService.knownTags(paco.getId()).contains("familientipp"));
+        assertFalse(recipeService.knownTags(paco.getId()).contains("geheimtipp"));
+        assertFalse(recipeService.knownTags(fremd.getId()).contains("familientipp"));
+        assertFalse(recipeService.knownTags(null).contains("geheimtipp"));
+        assertTrue(recipeService.knownTags(null).contains("blogtipp"));
+    }
+
+    // N3: Der Schreibweisen-Angleich verrät keine Quellen aus fremden privaten Rezepten
+    @Test
+    void sourceSpelling_alignsOnlyWithVisibleRecipes() {
+        sourced(anna, "PRIVATE", null, "Omas Geheimheft", "Oma Hilde", "geheimtipp");
+
+        Recipe ownAgain = sourced(anna, "PRIVATE", null, "omas geheimheft", "oma hilde", "x");
+        Recipe fremdCopy = sourced(fremd, "PRIVATE", null, "omas geheimheft", "oma hilde", "x");
+
+        assertEquals("Omas Geheimheft", recipeRepository.findById(ownAgain.getId()).orElseThrow().getSource());
+        assertEquals("Oma Hilde", recipeRepository.findById(ownAgain.getId()).orElseThrow().getAuthor());
+        assertEquals("omas geheimheft", recipeRepository.findById(fremdCopy.getId()).orElseThrow().getSource());
+        assertEquals("oma hilde", recipeRepository.findById(fremdCopy.getId()).orElseThrow().getAuthor());
+    }
+
+    // N7b: voller Name nur in gemeinsamer Familie (und bei sich selbst), sonst nur der Vorname
+    @Test
+    void creatorName_fullOnlyWithinSharedFamily() {
+        familyOf(anna, paco);
+        Recipe r = recipe(anna, "PUBLIC", null);
+
+        // guestView = Detailansicht zeigt nur den Vornamen
+        assertFalse(access.decorate(recipeService.findById(r.getId()).orElseThrow(), paco.getId()).isGuestView());
+        assertFalse(access.decorate(recipeService.findById(r.getId()).orElseThrow(), anna.getId()).isGuestView());
+        assertTrue(access.decorate(recipeService.findById(r.getId()).orElseThrow(), fremd.getId()).isGuestView());
+        assertEquals("Anna", access.decorate(recipeService.findById(r.getId()).orElseThrow(), fremd.getId()).getCreatedBy());
+        assertEquals("Anna Pastoors", access.decorate(recipeService.findById(r.getId()).orElseThrow(), paco.getId()).getCreatedBy());
+        assertTrue(access.decorate(recipeService.findById(r.getId()).orElseThrow(), RecipeAccess.GUEST).isGuestView());
+        assertEquals(Set.of(paco.getId(), anna.getId()), access.fullNameVisibleUserIds(paco.getId()));
+        assertEquals(Set.of(fremd.getId()), access.fullNameVisibleUserIds(fremd.getId()));
+        assertEquals(Set.of(), access.fullNameVisibleUserIds(RecipeAccess.GUEST));
+    }
 }

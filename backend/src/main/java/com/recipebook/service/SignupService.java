@@ -5,6 +5,8 @@ import com.recipebook.model.Role;
 import com.recipebook.model.User;
 import com.recipebook.repository.PendingRegistrationRepository;
 import com.recipebook.repository.UserRepository;
+import com.recipebook.security.ConfirmationMailLimiter;
+import com.recipebook.security.SecureTokens;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -14,16 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -36,14 +32,12 @@ import java.util.regex.Pattern;
 public class SignupService {
 
     static final Duration LINK_VALIDITY = Duration.ofHours(24);
+    // Mail-Deckel (je Adresse, je IP, gesamt) liegen im ConfirmationMailLimiter, gemeinsam mit der E-Mail-Änderung
     static final int MAILS_PER_ADDRESS = 3;
-    static final Duration MAIL_WINDOW = Duration.ofMinutes(15);
-    static final int MAILS_TOTAL_PER_HOUR = 30;
     static final int MAX_OPEN_PER_ADDRESS = 5;
     static final int MAX_NAME_LENGTH = 100;
     static final int MAX_EMAIL_LENGTH = 254;
     static final int MAX_PASSWORD_BYTES = 72;
-    static final int TOKEN_BYTES = 32;
     static final String INVALID_LINK = "Der Bestätigungslink ist ungültig oder abgelaufen.";
     static final String AWAITING_VERIFICATION =
             "Bitte bestätige zuerst deine E-Mail-Adresse – den Link haben wir dir per E-Mail geschickt.";
@@ -54,29 +48,27 @@ public class SignupService {
     private final PendingRegistrationRepository pendingRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
-    private final RateLimiter rateLimiter;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final ConfirmationMailLimiter mailLimiter;
 
     @Value("${app.url:http://localhost:8080}")
     private String appUrl;
 
     @Autowired
     public SignupService(UserRepository userRepository, PendingRegistrationRepository pendingRepository,
-            PasswordEncoder passwordEncoder, MailService mailService) {
-        this(userRepository, pendingRepository, passwordEncoder, mailService, new RateLimiter());
-    }
-
-    SignupService(UserRepository userRepository, PendingRegistrationRepository pendingRepository,
-            PasswordEncoder passwordEncoder, MailService mailService, RateLimiter rateLimiter) {
+            PasswordEncoder passwordEncoder, MailService mailService, ConfirmationMailLimiter mailLimiter) {
         this.userRepository = userRepository;
         this.pendingRepository = pendingRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailService = mailService;
-        this.rateLimiter = rateLimiter;
+        this.mailLimiter = mailLimiter;
+    }
+
+    void signup(String vorname, String nachname, String email, String password) {
+        signup(vorname, nachname, email, password, null);
     }
 
     @Transactional
-    public void signup(String vorname, String nachname, String email, String password) {
+    public void signup(String vorname, String nachname, String email, String password, String clientIp) {
         String first = requireName(vorname, "Bitte gib deinen Vornamen an.");
         String last = requireName(nachname, "Bitte gib deinen Nachnamen an.");
         String address = requireEmail(email);
@@ -86,9 +78,7 @@ public class SignupService {
 
         LocalDateTime now = LocalDateTime.now();
         pendingRepository.deleteExpired(now);
-        String key = address.toLowerCase(Locale.ROOT);
-        if (!rateLimiter.tryAcquire("signup:" + key, MAILS_PER_ADDRESS, MAIL_WINDOW)
-                || !rateLimiter.tryAcquire("signup-all", MAILS_TOTAL_PER_HOUR, Duration.ofHours(1))) {
+        if (!mailLimiter.tryAcquire(clientIp, address)) {
             return;
         }
 
@@ -122,6 +112,7 @@ public class SignupService {
         if (userRepository.findByEmailIgnoreCase(pending.getEmail()).isEmpty()) {
             User user = new User(pending.getVorname(), pending.getNachname(), pending.getEmail(),
                     pending.getPasswordHash(), Role.USER);
+            user.setEmailVerified(true);
             userRepository.save(user);
         }
         pendingRepository.deleteAllForEmail(pending.getEmail());
@@ -155,12 +146,12 @@ public class SignupService {
         return trimmed;
     }
 
-    private static String requireEmail(String value) {
+    static String requireEmail(String value) {
         String trimmed = value == null ? "" : value.trim();
         if (trimmed.length() > MAX_EMAIL_LENGTH || !EMAIL.matcher(trimmed).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bitte gib eine gültige E-Mail-Adresse an.");
         }
-        return trimmed;
+        return trimmed.toLowerCase(java.util.Locale.ROOT);
     }
 
     private static void requirePassword(String password) {
@@ -175,19 +166,12 @@ public class SignupService {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_LINK);
     }
 
-    private String newToken() {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    private static String newToken() {
+        return SecureTokens.newToken();
     }
 
     static String hash(String token) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
+        return SecureTokens.hash(token);
     }
 
     // Kein vom Absender eingegebener Text in der Mail: sonst ließe sich unsere Adresse für fremde Botschaften nutzen

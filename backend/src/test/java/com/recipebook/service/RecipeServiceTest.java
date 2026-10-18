@@ -532,8 +532,8 @@ class RecipeServiceTest {
         recipe.setSource("  genussvoll   VEGETARISCH ");
         recipe.setAuthor("yotam  ottolenghi");
         recipe.setPage(" 87 ");
-        when(recipeRepository.findSourcesExcept(-1L)).thenReturn(List.of("Genussvoll vegetarisch", "Veggies"));
-        when(recipeRepository.findAuthorsExcept(-1L)).thenReturn(List.of("Yotam Ottolenghi"));
+        when(recipeRepository.findSourcesExcept(-1L, 1L)).thenReturn(List.of("Genussvoll vegetarisch", "Veggies"));
+        when(recipeRepository.findAuthorsExcept(-1L, 1L)).thenReturn(List.of("Yotam Ottolenghi"));
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Recipe result = recipeService.save(recipe, testUser);
@@ -550,7 +550,7 @@ class RecipeServiceTest {
         recipe.setSource(" Das  neue Buch ");
         recipe.setAuthor("   ");
         recipe.setPage("");
-        when(recipeRepository.findSourcesExcept(-1L)).thenReturn(List.of("Genussvoll vegetarisch"));
+        when(recipeRepository.findSourcesExcept(-1L, 1L)).thenReturn(List.of("Genussvoll vegetarisch"));
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Recipe result = recipeService.save(recipe, testUser);
@@ -558,7 +558,7 @@ class RecipeServiceTest {
         assertEquals("Das neue Buch", result.getSource());
         assertNull(result.getAuthor());
         assertNull(result.getPage());
-        verify(recipeRepository, never()).findAuthorsExcept(any());
+        verify(recipeRepository, never()).findAuthorsExcept(any(), any());
     }
 
     @Test
@@ -566,8 +566,8 @@ class RecipeServiceTest {
         testRecipe.setSource("Eigenkreation");
         testRecipe.setAuthor("paco");
         when(recipeRepository.existsById(1L)).thenReturn(true);
-        when(recipeRepository.findSourcesExcept(1L)).thenReturn(List.of());
-        when(recipeRepository.findAuthorsExcept(1L)).thenReturn(List.of("Paco"));
+        when(recipeRepository.findSourcesExcept(1L, 1L)).thenReturn(List.of());
+        when(recipeRepository.findAuthorsExcept(1L, 1L)).thenReturn(List.of("Paco"));
         when(recipeRepository.findOwner(1L)).thenReturn(Optional.of(testUser));
         storedRecipe();
 
@@ -671,6 +671,7 @@ class RecipeServiceTest {
         when(recipeAccess.visibleIds(5L)).thenReturn(java.util.Set.of(1L, 2L));
         when(recipeAccess.familiesByRecipe(5L)).thenReturn(java.util.Map.of(1L,
             List.of(new com.recipebook.family.FamilyRef(3L, "Familie Pastoors"))));
+        when(recipeAccess.fullNameVisibleUserIds(5L)).thenReturn(java.util.Set.of(5L, 7L));
         var rows = List.of(summary(1, 7, false), summary(2, 5, false), summary(3, 9, false));
         when(recipeRepository.findAllSummaries()).thenReturn(rows);
 
@@ -681,6 +682,21 @@ class RecipeServiceTest {
         assertEquals(7L, result.get(0).getOwnerId());
         assertEquals("FAMILY", result.get(0).getVisibility());
         assertEquals("PRIVATE", result.get(1).getVisibility());
+    }
+
+    @Test
+    void findAllSummaries_strangersPublicRecipe_showsOnlyFirstName() {
+        when(recipeAccess.visibleIds(5L)).thenReturn(java.util.Set.of(1L));
+        when(recipeAccess.familiesByRecipe(5L)).thenReturn(java.util.Map.of());
+        when(recipeAccess.fullNameVisibleUserIds(5L)).thenReturn(java.util.Set.of(5L));
+        var rows = List.of(summary(1, 9, true));
+        when(recipeRepository.findAllSummaries()).thenReturn(rows);
+
+        var result = recipeService.findAllSummaries(5L);
+
+        assertEquals("Anna", result.get(0).getCreatedBy());
+        assertEquals("Anna", result.get(0).getCreatedByFirstName());
+        assertEquals(9L, result.get(0).getOwnerId());
     }
 
     private static RecipeRepository.RecipeSummaryProjection rated(long id, boolean isPublic, Double avg, Long count) {

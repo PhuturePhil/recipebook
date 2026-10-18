@@ -1,5 +1,20 @@
 [
   {
+    "version": "2026-10-18.2",
+    "datum": "18.10.2026",
+    "titel": "Mehr Sicherheit für dein Konto",
+    "punkte": [
+      "Einmalig nach diesem Update: Bitte melde dich neu an – auf jedem Gerät. Danach bleibt eine Anmeldung 30 Tage gültig",
+      "„Abmelden“ meldet dich jetzt auf allen Geräten ab, nicht nur auf diesem",
+      "Neue E-Mail-Adresse oder neues Passwort im Profil nur noch mit deinem aktuellen Passwort. Die neue Adresse gilt erst, wenn du den Link in der Mail an sie öffnest – bis dahin bleibt die alte",
+      "Groß- und Kleinschreibung der E-Mail-Adresse spielt keine Rolle mehr",
+      "Foto-Scan: bis zu 5 Fotos pro Rezept und bis zu 10 Scans am Tag. Die Fotos werden vor dem Hochladen verkleinert",
+      "Rezeptbilder gehen nur noch als hochgeladenes Foto. Die Beschreibung kann bis zu 5.000 Zeichen lang sein, ein Arbeitsschritt bis zu 2.000",
+      "Bei öffentlichen Rezepten von Leuten außerhalb deiner Familien siehst du von Ersteller und Bewertenden nur noch den Vornamen",
+      "Nährwerte für neue Zutaten, die die KI vorschlägt, prüft erst ein Admin – bis dahin steht die Zutat als „ausstehend“"
+    ]
+  },
+  {
     "version": "2026-10-18.1",
     "datum": "18.10.2026",
     "titel": "Einfachere Anmeldung, Bewerten im Fokus, deutsche Adressen",
