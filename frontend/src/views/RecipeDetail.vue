@@ -161,7 +161,8 @@
         <h2>Zubereitung</h2>
         <ol class="instructions-list">
           <li v-for="(instruction, index) in shown.instructions" :key="index">
-            {{ instruction }}
+            <InstructionText v-if="ingredientRefs.enabled.value" :text="instruction" :step="index" :context="ingredientRefs" />
+            <template v-else>{{ instruction }}</template>
           </li>
         </ol>
       </section>
@@ -366,6 +367,9 @@ import {
 import { recipePath, recipeEditPath } from '@/router/paths.js'
 import KitchenMishap from '@/components/KitchenMishap.vue'
 import { pickDeleteWord, matchesDeleteWord } from '@/utils/deleteWord.js'
+import InstructionText from '@/components/InstructionText.vue'
+import { useIngredientRefs } from '@/composables/useIngredientRefs'
+import { ingredientRefsVisible } from '@/utils/ingredientRefs'
 
 const route = useRoute()
 const router = useRouter()
@@ -645,6 +649,16 @@ const scaledIngredients = computed(() =>
 )
 
 const ingredientSections = computed(() => groupSections(scaledIngredients.value))
+
+// Zutaten in den Schritten antippen → Menge (skaliert, in der angezeigten Sprache)
+const shownLanguage = computed(() =>
+  shown.value !== recipe.value ? 'de' : (recipe.value?.language || 'de')
+)
+const ingredientRefs = useIngredientRefs({
+  ingredients: scaledIngredients,
+  language: shownLanguage,
+  enabled: computed(() => ingredientRefsVisible(authStore.user)),
+})
 
 const printRecipe = async () => {
   track('pdf_gespeichert', { recipeId: recipe.value?.id })
