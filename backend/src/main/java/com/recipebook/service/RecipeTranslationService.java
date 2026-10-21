@@ -79,12 +79,20 @@ public class RecipeTranslationService {
           1 | cup | whole milk → 240 | ml | Vollmilch
           8 | oz | feta → 225 | g | Feta
           1 | lb | potatoes → 450 | g | Kartoffeln
-        - US-Dosen werden deutsche Standarddosen: 15-ounce can (Bohnen, Kichererbsen, Mais) → 1 Dose (400 g, Abtropfgewicht 240 g);
-          14/28-ounce can tomatoes → 1 Dose (400 g) bzw. 1 große Dose (800 g); 13.5/14-ounce can coconut milk → 1 Dose (400 ml);
-          6-ounce can tomato paste → 1 kleine Dose (70 g). Das gilt auch in Klammern im Namen, z. B.
+        - US-Dosen werden deutsche Standarddosen: 15-ounce can (Bohnen, Kichererbsen, Mais) → Dose (je 400 g, Abtropfgewicht 240 g);
+          14/28-ounce can tomatoes → Dose (je 400 g) bzw. große Dose (je 800 g); 13.5/14-ounce can coconut milk → Dose (je 400 ml);
+          6-ounce can tomato paste → kleine Dose (je 70 g). Z. B.
+          1 | | 15-ounce can black beans → 1 | Dose | schwarze Bohnen (je 400 g, Abtropfgewicht 240 g)
+          2 | | 14-ounce cans diced tomatoes → 2 | Dose | Tomaten, gehackt (je 400 g)
+        - Die App rechnet amount auf die gewählte Personenzahl hoch, der Name bleibt fest. Deshalb im Namen keine Mengen oder
+          Stückzahlen, die sich auf dieses Rezept beziehen ("aus 1 Dose", "ein kleiner Bund", "oder 1 Würfel", "2 × 7 g").
+          Packungs- und Doseninfos nur je Einheit ("je 400 g", "Abtropfgewicht je 400-g-Dose: 240 g"), Alternativen als
+          Verhältnis zur Menge in amount ("je EL"), überzählige Mengenangaben weglassen. Die Menge steht nur in amount. Z. B.
           1 1/2 | cups | cooked chickpeas (from one 15-ounce can, drained and rinsed)
-          → 240 | g | Kichererbsen, gekocht, abgetropft und abgespült (aus 1 Dose: 400 g, Abtropfgewicht 240 g)
-          1 | | 15-ounce can black beans → 1 | Dose | schwarze Bohnen (400 g, Abtropfgewicht 240 g)
+          → 240 | g | Kichererbsen, gekocht, abgetropft und abgespült (Abtropfgewicht je 400-g-Dose: 240 g)
+          20 | g | coriander (a small bunch), chopped → 20 | g | Koriander, gehackt (ein kleiner Bund ≈ 20 g)
+          1 | tbsp | vegetable stock powder (or 1 stock cube) → 1 | EL | Gemüsebrühepulver (oder 1 Brühwürfel je EL)
+          120 | ml | aquafaba (liquid from a can of chickpeas) → 120 | ml | Aquafaba (Abtropfflüssigkeit von Dosen-Kichererbsen)
         - name: der im deutschen Kochbuch übliche Zutatenname, das Lebensmittel zuerst und Zusätze nach einem Komma,
           z. B. "finely chopped onion" → "Zwiebel, fein gehackt", "tin chopped tomatoes" → "Tomaten, gehackt (Dose)".
           Deutsche Standardbegriffe verwenden (runner beans → Stangenbohnen, butter beans → Butterbohnen, soured cream → saure Sahne).

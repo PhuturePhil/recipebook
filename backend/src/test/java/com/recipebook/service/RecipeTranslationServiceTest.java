@@ -349,10 +349,19 @@ class RecipeTranslationServiceTest {
     void promptAsksForIngredientAwareMetricUnitsAndGermanCans() {
         String prompt = RecipeTranslationService.PROMPT;
         assertTrue(prompt.contains("1 1/2 | cups | cooked chickpeas → 240 | g | Kichererbsen, gekocht"));
-        assertTrue(prompt.contains("15-ounce can (Bohnen, Kichererbsen, Mais) → 1 Dose (400 g, Abtropfgewicht 240 g)"));
+        assertTrue(prompt.contains("15-ounce can (Bohnen, Kichererbsen, Mais) → Dose (je 400 g, Abtropfgewicht 240 g)"));
         assertTrue(prompt.contains("1 stick butter = 115 g"));
         assertTrue(prompt.contains("350 °F → 180 °C"));
         assertFalse(prompt.contains("NICHT umrechnen"));
+    }
+
+    @Test
+    void promptKeepsIngredientNamesScalingNeutral() {
+        String prompt = RecipeTranslationService.PROMPT;
+        assertTrue(prompt.contains("Die App rechnet amount auf die gewählte Personenzahl hoch, der Name bleibt fest."));
+        assertTrue(prompt.contains("Kichererbsen, gekocht, abgetropft und abgespült (Abtropfgewicht je 400-g-Dose: 240 g)"));
+        assertFalse(prompt.contains("aus 1 Dose:"));
+        assertFalse(prompt.contains("→ 1 Dose ("));
     }
 
     @Test
@@ -360,7 +369,7 @@ class RecipeTranslationServiceTest {
         aiAnswers("""
             {"title": "Türkische grüne Bohnen", "description": "",
              "ingredients": [
-               {"amount": "240", "unit": "g", "name": "Kichererbsen, gekocht (aus 1 Dose: 400 g, Abtropfgewicht 240 g)"},
+               {"amount": "240", "unit": "g", "name": "Kichererbsen, gekocht (Abtropfgewicht je 400-g-Dose: 240 g)"},
                {"amount": "240", "unit": "ml", "name": "Olivenöl (8 fl oz)"},
                {"amount": "2", "unit": "EL", "name": "Rotweinessig"}],
              "instructions": ["Den Ofen auf 180 °C vorheizen.", "Die Bohnen in 2,5 cm große Stücke schneiden."]}
@@ -369,7 +378,7 @@ class RecipeTranslationServiceTest {
         TranslatedRecipe result = service.translate(recipe, "de");
 
         assertEquals(List.of(
-            new TranslatedRecipe.Line("240", "g", "Kichererbsen, gekocht (aus 1 Dose: 400 g, Abtropfgewicht 240 g)"),
+            new TranslatedRecipe.Line("240", "g", "Kichererbsen, gekocht (Abtropfgewicht je 400-g-Dose: 240 g)"),
             new TranslatedRecipe.Line("240", "ml", "Olivenöl (240 ml)"),
             new TranslatedRecipe.Line("2", "EL", "Rotweinessig")), result.ingredients());
         assertEquals(List.of("Den Ofen auf 180 °C vorheizen.", "Die Bohnen in 2,5 cm große Stücke schneiden."),

@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026-10-21.4",
+    "datum": "21.10.2026",
+    "titel": "Übersetzte Zutaten passen zur Personenzahl",
+    "punkte": [
+      "In übersetzten Rezepten stehen im Zutatennamen keine festen Mengen mehr wie „aus 1 Dose“ oder „ein kleiner Bund“. Dosenangaben gelten je Dose, z. B. „Abtropfgewicht je 400-g-Dose: 240 g“ – so stimmt die Zeile auch, wenn du mehr Personen einstellst",
+      "Die betroffenen Übersetzungen sind schon neu erstellt, die englischen Originale bleiben unverändert"
+    ]
+  },
+  {
     "version": "2026-10-21.3",
     "datum": "21.10.2026",
     "titel": "Übersetzte Rezepte mit deutschen Mengen",
