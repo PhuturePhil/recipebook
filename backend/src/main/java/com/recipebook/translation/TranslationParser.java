@@ -8,7 +8,10 @@ import tools.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Prüft die KI-Antwort streng gegen das Original (gleich viele Zutaten und Schritte, Titel und Namen vorhanden) und
@@ -16,6 +19,12 @@ import java.util.Map;
  * Übersetzung als eine halbe.
  */
 public final class TranslationParser {
+
+    // Gebinde, deren Füllmenge im Namen je Stück gilt: "2 Dose Kokosmilch (400 ml)" wird zu "(je 400 ml)", damit die
+    // Zeile beim Hochrechnen der Personenzahl nicht nach 400 ml insgesamt aussieht
+    private static final Set<String> CONTAINERS = Set.of("dose", "große dose", "kleine dose", "glas", "packung",
+        "päckchen", "becher", "tüte", "flasche", "beutel");
+    private static final Pattern BARE_SIZE = Pattern.compile("\\((\\d+(?:[.,]\\d+)?\\s?(?:g|kg|ml|l))(?=[,;)])");
 
     public static final class InvalidTranslationException extends Exception {
         public InvalidTranslationException(String message) {
@@ -47,7 +56,7 @@ public final class TranslationParser {
             if (name == null || name.isBlank()) throw new InvalidTranslationException("Zutat " + (i + 1) + " ohne Namen");
             UnitConverter.Quantity q = UnitConverter.ingredient(blankToNull(text(row.path("amount"))),
                 blankToNull(text(row.path("unit"))));
-            lines.add(new Line(q.amount(), q.unit(), UnitConverter.text(name.trim()),
+            lines.add(new Line(q.amount(), q.unit(), perContainer(q.unit(), UnitConverter.text(name.trim())),
                 group(originalIngredients.get(i).getGroupName(), blankToNull(text(row.path("group"))), groups)));
         }
 
@@ -67,6 +76,11 @@ public final class TranslationParser {
         String description = blankToNull(text(json.path("description")));
         return new Parsed(title.trim(), description == null ? null : UnitConverter.text(description.trim()), lines,
             instructions);
+    }
+
+    static String perContainer(String unit, String name) {
+        if (unit == null || !CONTAINERS.contains(unit.trim().toLowerCase(Locale.ROOT))) return name;
+        return BARE_SIZE.matcher(name).replaceAll("(je $1");
     }
 
     // Eine Gruppe des Originals bekommt überall denselben übersetzten Namen, sonst zerfiele sie in der Anzeige.

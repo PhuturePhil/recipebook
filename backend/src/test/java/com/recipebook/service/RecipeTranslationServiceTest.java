@@ -365,6 +365,25 @@ class RecipeTranslationServiceTest {
     }
 
     @Test
+    void canSizesInNamesCountPerCanSoTheyScaleWithServings() throws Exception {
+        aiAnswers("""
+            {"title": "Dal", "description": "",
+             "ingredients": [
+               {"amount": "2", "unit": "Dose", "name": "Kokosmilch (400 ml)"},
+               {"amount": "1", "unit": "Dose", "name": "Kichererbsen (400g, Abtropfgewicht 240 g)"},
+               {"amount": "240", "unit": "g", "name": "Kichererbsen (400 g)"}],
+             "instructions": ["Alles verrühren.", "Kochen."]}
+            """);
+
+        TranslatedRecipe result = service.translate(recipe, "de");
+
+        assertEquals(List.of(
+            new TranslatedRecipe.Line("2", "Dose", "Kokosmilch (je 400 ml)"),
+            new TranslatedRecipe.Line("1", "Dose", "Kichererbsen (je 400g, Abtropfgewicht 240 g)"),
+            new TranslatedRecipe.Line("240", "g", "Kichererbsen (400 g)")), result.ingredients());
+    }
+
+    @Test
     void localizedAmountsOfTheAiStayAndLeftoverUsUnitsInNamesAreConverted() throws Exception {
         aiAnswers("""
             {"title": "Türkische grüne Bohnen", "description": "",
