@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026-10-21.2",
+    "datum": "21.10.2026",
+    "titel": "Eine Leiste unten für alles",
+    "punkte": [
+      "Die Leiste unten sieht jetzt überall gleich aus – in der Rezeptliste, auf der Rezeptseite und im Formular: alle Knöpfe gleich groß, Symbol über dem Namen",
+      "Auf der Rezeptseite: Bearbeiten, Bewerten (orange) und ganz rechts „Mehr“. Dort findest du „Rezept löschen…“"
+    ]
+  },
+  {
     "version": "2026-10-21.1",
     "datum": "21.10.2026",
     "titel": "Neues Rezept-Design: das Foto steht vorne",

@@ -80,7 +80,8 @@ body.has-shell { --shell-bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)
   .shell-nav, .shell-header, .shell-sheet-backdrop { display: none !important; }
 }
 
-/* Rezeptformular und Rezeptseite: mobil sitzt dort eine eigene Aktionsleiste an der Stelle der Tab-Leiste */
+/* Mobil ersetzt die generische BottomBar (styles/bottom-bar.css) die Tab-Leiste der app-shell; .shell-nav ist dort nur
+   noch die Seitenleiste ab 1024 px */
 @media (max-width: 1023px) {
-  .shell-nav.shell-nav--ersetzt { display: none; }
+  .shell-nav { display: none; }
 }

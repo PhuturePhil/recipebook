@@ -1,6 +1,15 @@
 <template>
-  <!-- Navigation nach app-shell-Spezifikation (gleiches Markup/CSS wie workspace/snippets/app-shell.js):
-       mobil schwebende Pillen-Tab-Leiste, ab 1024 px Seitenleiste mit den Mehr-Punkten -->
+  <!-- Mobil: generische BottomBar (dieselbe Leiste wie auf der Rezeptseite), „Mehr“ ganz rechts öffnet das Sheet.
+       Ab 1024 px: Seitenleiste nach app-shell-Spezifikation (Markup/CSS wie workspace/snippets/app-shell.js);
+       style.css blendet .shell-nav mobil aus. Auf Formular/Rezeptseite (replaced) ersetzt deren eigene Leiste die BottomBar. -->
+  <BottomBar
+    v-if="!replaced"
+    as="nav"
+    class="tab-bottom-bar"
+    label="Hauptnavigation"
+    :items="bottomItems"
+    @select="(id) => id === 'mehr' && emit('more')"
+  />
   <nav class="shell-nav shell-ui" aria-label="Hauptnavigation">
     <div class="shell-brand"><span class="app-chip app-chip--icon" aria-hidden="true"><img src="/icon-v2.svg" alt="" decoding="async"></span><span>Rezepte</span></div>
     <div class="shell-tabs">
@@ -51,17 +60,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
+import BottomBar from './BottomBar.vue'
 import ThemeSeg from './ThemeSeg.vue'
 import LegalLinks from '@/components/LegalLinks.vue'
 import { useNewBadge } from '@/composables/useNewBadge'
 import { NEW_RECIPE_PATH, INGREDIENTS_PATH } from '@/router/paths.js'
 
-defineProps({
+const props = defineProps({
   active: { type: String, default: '' },
   sideActive: { type: String, default: '' },
   mehr: { type: Array, required: true },
   moreOpen: { type: Boolean, default: false },
+  replaced: { type: Boolean, default: false },
 })
 const emit = defineEmits(['more'])
 const neu = useNewBadge()
@@ -71,6 +83,19 @@ const TABS = [
   { id: 'neu', label: 'Neu', icon: 'plus', to: NEW_RECIPE_PATH },
   { id: 'zutaten', label: 'Zutaten', icon: 'karotte', to: INGREDIENTS_PATH },
 ]
+
+const bottomItems = computed(() => [
+  ...TABS.map((t) => ({ ...t, current: props.active === t.id })),
+  {
+    id: 'mehr',
+    label: 'Mehr',
+    icon: 'mehr',
+    current: props.active === 'mehr',
+    popup: 'dialog',
+    expanded: props.moreOpen,
+    dot: neu.value || props.mehr.some((m) => m.badge),
+  },
+])
 </script>
 
 <style scoped>

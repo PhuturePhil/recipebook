@@ -1,8 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { detailActions, replacesTabBar, cycleFocus, formActions } from './detailActions.js'
+import { bottomBarLayout } from './bottomBar.js'
 
-test('detailActions: mit Bearbeitungsrecht ···-Menü mit Löschen, Leiste Bearbeiten + Bewerten', () => {
+test('detailActions: mit Bearbeitungsrecht Leiste Bearbeiten + Bewerten, „Mehr“-Menü mit Löschen', () => {
   const { menu, bar } = detailActions(true)
   assert.deepEqual(menu.map((a) => a.id), ['delete'])
   assert.deepEqual(menu.map((a) => a.label), ['Rezept löschen…'])
@@ -21,18 +22,26 @@ test('detailActions: Icons, nur Löschen als Gefahr markiert', () => {
   const byId = Object.fromEntries([...menu, ...bar].map((a) => [a.id, a]))
   assert.equal(byId.delete.icon, 'loeschen')
   assert.equal(byId.edit.icon, 'bearbeiten')
-  assert.equal(byId.rate.icon, 'sternLinie')
+  assert.equal(byId.rate.icon, 'stern')
   assert.equal(byId.delete.danger, true)
   assert.ok(!byId.edit.danger && !byId.rate.danger)
 })
 
-test('detailActions: Bewerten ist die Hauptaktion rechts, Bearbeiten als Umriss', () => {
+test('detailActions: Bewerten ist die einzige Hauptaktion (orange), Bearbeiten neutral', () => {
   const { bar } = detailActions(true)
   assert.equal(bar.at(-1).id, 'rate')
-  assert.equal(bar.at(-1).tone, 'primaer')
-  assert.equal(bar[0].tone, 'ghost')
-  assert.equal(bar.filter((a) => a.tone === 'primaer').length, 1)
-  assert.equal(detailActions(false).bar[0].tone, 'primaer')
+  assert.equal(bar.at(-1).primary, true)
+  assert.ok(!bar[0].primary)
+  assert.equal(bar.filter((a) => a.primary).length, 1)
+  assert.equal(detailActions(false).bar[0].primary, true)
+})
+
+test('detailActions: passt in die generische Leiste – Löschen landet auch per Layout im Menü', () => {
+  const { bar, menu } = detailActions(true)
+  const layout = bottomBarLayout(bar, menu)
+  assert.deepEqual(layout.bar.map((a) => a.id), ['edit', 'rate'])
+  assert.deepEqual(layout.menu.map((a) => a.id), ['delete'])
+  assert.deepEqual(bottomBarLayout([...bar, ...menu]).menu.map((a) => a.id), ['delete'])
 })
 
 test('replacesTabBar: Formular und Rezeptseite ersetzen die Tab-Leiste, sonst nicht', () => {

@@ -1,19 +1,18 @@
-// Rezept-Detailseite mobil: fixe Leiste an der Stelle der Tab-Leiste (Hero-Design, abgenommen 21.10.2026).
-// Links ein ···-Kreis mit den seltenen Aktionen (Menü klappt darüber auf), dann Bearbeiten (Umriss)
-// und Bewerten als Hauptaktion rechts (orange Pille).
+// Rezept-Detailseite mobil: BottomBar an der Stelle der Tab-Leiste (generische Leiste, 21.10.2026):
+// Bearbeiten, Bewerten als Hauptaktion (orange), ganz rechts „Mehr“ mit „Rezept löschen…“ (destruktiv → nur im Menü)
 
 const ACTIONS = [
-  { id: 'delete', label: 'Rezept löschen…', icon: 'loeschen', place: 'menu', danger: true, needsEdit: true },
-  { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', place: 'bar', tone: 'ghost', needsEdit: true },
-  { id: 'rate', label: 'Bewerten', icon: 'sternLinie', place: 'bar', tone: 'primaer' },
+  { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', needsEdit: true },
+  { id: 'rate', label: 'Bewerten', icon: 'stern', primary: true, popup: 'dialog' },
+  { id: 'delete', label: 'Rezept löschen…', icon: 'loeschen', danger: true, popup: 'dialog', needsEdit: true },
 ]
 
-// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleibt nur „Bewerten“ – und kein ···-Menü
+// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleibt nur „Bewerten“ – und kein „Mehr“
 export function detailActions(canEdit) {
   const allowed = ACTIONS.filter((a) => canEdit || !a.needsEdit)
   return {
-    menu: allowed.filter((a) => a.place === 'menu'),
-    bar: allowed.filter((a) => a.place === 'bar'),
+    menu: allowed.filter((a) => a.danger),
+    bar: allowed.filter((a) => !a.danger),
   }
 }
 

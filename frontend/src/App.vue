@@ -122,7 +122,7 @@ onMounted(async () => {
   <RouterView />
   <TabBar
     v-if="showShell"
-    :class="{ 'shell-nav--ersetzt': tabBarReplaced }"
+    :replaced="tabBarReplaced"
     :active="page.tab ?? ''"
     :side-active="page.side ?? ''"
     :mehr="mehr"

@@ -1,0 +1,147 @@
+/* Generische untere Leiste (Philipp-Vorgabe 21.10.2026, Entwürfe media/out/mock_home.html nav + mock_detail.html .bar/.menu):
+   eine Pille in Kartenfarbe, Einträge gleich groß (Icon über 11-px-Label), Hauptaktion/aktiver Punkt orange,
+   Überlauf-Menü rechtsbündig darüber. Nur mobil (< 1024 px) – genutzt von BottomBar.vue und FormActionBar.vue. */
+
+@media (max-width: 1023px) {
+  .bbar {
+    position: fixed;
+    z-index: 80;
+    left: 18px;
+    right: 18px;
+    bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 7px;
+    border-radius: 999px;
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .18);
+  }
+
+  .bbar-item {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 5px 2px;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--text2);
+    text-decoration: none;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.15;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+
+  .bbar-item > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .bbar-item.is-accent {
+    background: var(--akzent);
+    color: var(--akzent-kontrast);
+    font-weight: 700;
+  }
+
+  .bbar-item:not(.is-accent):not(:disabled):active {
+    background: var(--flaeche2);
+  }
+
+  .bbar-item.is-accent:active {
+    background: var(--akzent-hover, color-mix(in srgb, var(--akzent) 86%, #000));
+  }
+
+  .bbar-item:disabled {
+    opacity: .7;
+    cursor: wait;
+  }
+
+  .bbar-item:focus-visible,
+  .bbar-menu__item:focus-visible {
+    outline: 2px solid var(--akzent);
+    outline-offset: 2px;
+  }
+
+  .bbar-dot {
+    position: absolute;
+    top: 5px;
+    right: calc(50% - 17px);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--akzent);
+    border: 2px solid var(--flaeche);
+  }
+
+  .bbar-item.is-accent .bbar-dot {
+    background: var(--akzent-kontrast);
+    border-color: var(--akzent);
+  }
+
+  .bbar-dot[hidden] {
+    display: none;
+  }
+
+  .bbar-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    width: 230px;
+    max-width: 100%;
+    padding: 6px;
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: 16px;
+    box-shadow: 0 10px 36px rgba(0, 0, 0, .3);
+  }
+
+  .bbar-menu__item {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px;
+    border: none;
+    border-radius: 11px;
+    background: none;
+    font: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .bbar-menu__item--danger {
+    color: var(--h-red);
+  }
+
+  .bbar-menu__item:hover,
+  .bbar-menu__item:focus-visible {
+    background: var(--flaeche2);
+  }
+}
+
+@media (max-width: 1023px) and (hover: hover) {
+  .bbar-item:not(.is-accent):not(:disabled):hover {
+    background: var(--flaeche2);
+    color: var(--text);
+  }
+
+  .bbar-item.is-accent:hover {
+    background: var(--akzent-hover, color-mix(in srgb, var(--akzent) 86%, #000));
+  }
+}
