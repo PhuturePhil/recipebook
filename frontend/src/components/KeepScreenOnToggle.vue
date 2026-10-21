@@ -2,7 +2,7 @@
   <button
     v-if="supported"
     type="button"
-    :class="['screen-toggle', { 'screen-toggle--on': enabled, 'screen-toggle--waiting': enabled && !active }]"
+    :class="['screen-toggle', { 'screen-toggle--utility': utility, 'screen-toggle--on': enabled, 'screen-toggle--waiting': enabled && !active }]"
     :aria-pressed="enabled"
     :title="title"
     @click="toggle"
@@ -11,13 +11,19 @@
       <rect x="6" y="2.5" width="12" height="19" rx="2.5" />
       <line x1="10.5" y1="18" x2="13.5" y2="18" />
     </svg>
-    {{ enabled ? 'Display bleibt an' : 'Display geht aus' }}
+    <template v-if="utility">Display an</template>
+    <template v-else>{{ enabled ? 'Display bleibt an' : 'Display geht aus' }}</template>
   </button>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useWakeLock } from '@/composables/useWakeLock'
+
+defineProps({
+  // Rezeptseite (Hero): Knopf in der Utility-Reihe neben Teilen/PDF, Zustand nur über Farbe + aria-pressed
+  utility: { type: Boolean, default: false },
+})
 
 const { supported, enabled, active, toggle } = useWakeLock()
 
@@ -73,6 +79,41 @@ const title = computed(() => {
 
 .screen-toggle--on .screen-toggle__icon rect {
   fill: rgba(72, 187, 120, 0.2);
+}
+
+/* Werte aus dem abgenommenen Entwurf (mock_detail.html, .ub) */
+.screen-toggle--utility {
+  flex: 1;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 12px 0;
+  border: none;
+  border-radius: 13px;
+  background: var(--h-chip);
+  color: var(--h-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.screen-toggle--utility:hover,
+.screen-toggle--utility.screen-toggle--on:hover {
+  background: color-mix(in srgb, var(--h-chip) 88%, var(--h-ink));
+}
+
+.screen-toggle--utility.screen-toggle--on {
+  background: var(--h-chip);
+  color: var(--h-ok);
+}
+
+.screen-toggle--utility .screen-toggle__icon {
+  width: 15px;
+  height: 15px;
+}
+
+.screen-toggle--utility .screen-toggle__icon rect,
+.screen-toggle--utility.screen-toggle--on .screen-toggle__icon rect {
+  fill: none;
 }
 
 @media print {

@@ -106,6 +106,12 @@ onUnmounted(() => {
 .recipe-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .recipe-grid {
+    gap: 16px;
+  }
 }
 </style>

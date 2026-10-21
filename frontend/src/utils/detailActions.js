@@ -1,16 +1,20 @@
-// Rezept-Detailseite mobil: Aktionsleiste an der Stelle der Tab-Leiste (TabBar-Optik, nur Aktionen, kein Aktiv-Zustand).
-// Daumenfreundlich von links nach rechts: Löschen dezent (rot erst bei Hover/Druck), Bearbeiten sekundär,
-// Bewerten als Hauptaktion rechts (gefüllt orange).
+// Rezept-Detailseite mobil: fixe Leiste an der Stelle der Tab-Leiste (Hero-Design, abgenommen 21.10.2026).
+// Links ein ···-Kreis mit den seltenen Aktionen (Menü klappt darüber auf), dann Bearbeiten (Umriss)
+// und Bewerten als Hauptaktion rechts (orange Pille).
 
 const ACTIONS = [
-  { id: 'delete', label: 'Löschen', icon: 'loeschen', tone: 'dezent', danger: true, needsEdit: true },
-  { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', needsEdit: true },
-  { id: 'rate', label: 'Bewerten', icon: 'stern', tone: 'primaer' },
+  { id: 'delete', label: 'Rezept löschen…', icon: 'loeschen', place: 'menu', danger: true, needsEdit: true },
+  { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', place: 'bar', tone: 'ghost', needsEdit: true },
+  { id: 'rate', label: 'Bewerten', icon: 'sternLinie', place: 'bar', tone: 'primaer' },
 ]
 
-// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleibt nur „Bewerten“
+// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleibt nur „Bewerten“ – und kein ···-Menü
 export function detailActions(canEdit) {
-  return ACTIONS.filter((a) => canEdit || !a.needsEdit)
+  const allowed = ACTIONS.filter((a) => canEdit || !a.needsEdit)
+  return {
+    menu: allowed.filter((a) => a.place === 'menu'),
+    bar: allowed.filter((a) => a.place === 'bar'),
+  }
 }
 
 // Routen, auf denen mobil (<1024 px) eine eigene Leiste die Tab-Leiste ersetzt; die Seitenleiste ab 1024 px bleibt

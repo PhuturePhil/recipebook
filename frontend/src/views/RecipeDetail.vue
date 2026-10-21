@@ -19,222 +19,235 @@
     <div v-else-if="waitingForTranslation" class="loading">Rezept wird ins Deutsche übersetzt…</div>
 
     <div v-else-if="recipe" class="recipe-content">
-      <header class="recipe-header">
-        <h1 ref="titleRef">{{ shown.title }}</h1>
-        <TranslationBanner v-if="banner" :banner="banner" @show-original="setLanguage('original')" />
-        <div class="recipe-tools">
-          <div v-if="translatable" class="language-toggle" role="group" aria-label="Sprache des Rezepts">
+      <!-- Hero: Foto bis an die Ränder (ohne Foto warmer Verlauf), Titel + Fakten + Eigenschaften/Tags weiß im Bild -->
+      <header :class="['recipe-hero', { 'recipe-hero--ph': !recipe.imageUrl, 'recipe-hero--immersive': !isGuest }]">
+        <img
+          v-if="recipe.imageUrl"
+          ref="heroImage"
+          class="recipe-hero__img"
+          :src="recipe.imageUrl"
+          :alt="shown.title"
+          decoding="async"
+          fetchpriority="high"
+        />
+        <HeroIcon v-else name="topf" :size="72" class="recipe-hero__pot" />
+        <div class="recipe-hero__scrim"></div>
+        <button
+          v-if="!isGuest"
+          type="button"
+          class="recipe-hero__back"
+          aria-label="Zurück zur Übersicht"
+          @click="goBack"
+        ><HeroIcon name="zurueck" :size="17" /></button>
+        <ImageCredit :credit="recipe.imageCredit" overlay class="recipe-hero__credit" />
+        <div class="recipe-hero__content">
+          <h1 ref="titleRef">{{ shown.title }}</h1>
+          <div class="recipe-hero__facts">
+            <span v-if="recipe.prepTimeMinutes"><HeroIcon name="uhr" :size="14" />{{ formatPrepTime(recipe.prepTimeMinutes) }}</span>
+            <span v-if="ingredientCount"><HeroIcon name="zutaten" :size="14" />{{ ingredientCount }} {{ ingredientCount === 1 ? 'Zutat' : 'Zutaten' }}</span>
             <button
+              v-if="nutrition?.hasValues"
               type="button"
-              :class="['lang-btn', { active: languagePref === 'de' }]"
-              :aria-pressed="languagePref === 'de'"
-              @click="setLanguage('de')"
-            >Deutsch</button>
+              :class="['recipe-hero__fact', 'meta-item--kcal', { 'meta-item--incomplete': !nutrition.coverage.complete }]"
+              :title="kcalChipTitle"
+              @click="activeTab = 'nutrition'"
+            ><HeroIcon name="flamme" :size="14" />{{ nutrition.coverage.complete ? '' : 'mind. ' }}{{ formatKcal(nutrition.perServing.kcal) }} kcal</button>
             <button
+              v-if="ratingStats.count"
               type="button"
-              :class="['lang-btn', { active: languagePref === 'original' }]"
-              :aria-pressed="languagePref === 'original'"
-              @click="setLanguage('original')"
-            >Original</button>
+              class="recipe-hero__fact meta-item--rating"
+              :title="`Durchschnitt aus ${ratingCountLabel(ratingStats.count)}`"
+              @click="scrollToRatings()"
+            ><HeroIcon name="stern" :size="13" class="recipe-hero__star" />{{ ratingLabel(ratingStats.avg, ratingStats.count) }}</button>
+            <span class="print-only">{{ currentServings }} {{ currentServings === 1 ? 'Person' : 'Personen' }}</span>
           </div>
-          <template v-if="!isGuest">
-            <button class="btn-tool" @click="showShareModal = true">Teilen</button>
-            <button class="btn-tool" @click="printRecipe">Als PDF speichern</button>
-            <KeepScreenOnToggle />
-          </template>
+          <div v-if="heroBadges.length || recipe.tags?.length" class="recipe-hero__tags">
+            <span v-for="badge in heroBadges" :key="badge" class="recipe-hero__badge">
+              <HeroIcon :name="badgeIcon(badge)" :size="11" />{{ badge }}
+            </span>
+            <button
+              v-for="tag in recipe.tags"
+              :key="tag"
+              type="button"
+              class="recipe-tag"
+              :disabled="isGuest"
+              :title="isGuest ? undefined : `Alle Rezepte mit „${tag}“`"
+              @click="searchTag(tag)"
+            >#{{ tag }}</button>
+          </div>
         </div>
-        <p v-if="translationNote" class="translation-note">{{ translationNote }}</p>
       </header>
 
-      <figure v-if="recipe.imageUrl" class="recipe-figure">
-        <div class="recipe-image">
-          <img ref="heroImage" :src="recipe.imageUrl" :alt="shown.title" />
+      <div class="recipe-sheet">
+        <TranslationBanner v-if="banner" :banner="banner" @show-original="setLanguage('original')" />
+        <p v-if="translationNote" class="translation-note">{{ translationNote }}</p>
+
+        <p v-if="shown.description" class="recipe-description">
+          {{ shown.description }}
+        </p>
+
+        <!-- Quelle · Angelegt · Sichtbarkeit in einer gedämpften Zeile, Haarlinie darunter -->
+        <p v-if="hasSourceLine" class="recipe-source">
+          <span v-if="sourceText || recipe.page || sourceDomain(recipe.sourceUrl)" class="recipe-source__part">
+            <span class="source-label">Quelle:</span>
+            <span v-if="sourceText" class="source-name">{{ sourceText }}</span>
+            <span v-if="recipe.page" class="source-page">Seite {{ recipe.page }}</span>
+            <SourceLink :href="recipe.sourceUrl" class="source-url" />
+          </span>
+          <span v-if="createdText" class="recipe-source__part recipe-createdby">{{ createdText }}</span>
+          <span v-if="isGuest && recipe.createdByFirstName" class="recipe-source__part meta-item--origin">von {{ recipe.createdByFirstName }}</span>
+          <!-- Sichtbarkeit: für den Besitzer Sprung in die Bearbeitung, sonst reine Info -->
+          <span v-if="visibility && !isGuest" class="recipe-source__part">
+            <router-link
+              v-if="isOwner"
+              :to="recipeEditPath(recipe.id)"
+              class="recipe-visibility recipe-visibility--link"
+              :title="'Sichtbarkeit ändern'"
+            >{{ visibility.text }}</router-link>
+            <span v-else class="recipe-visibility">{{ visibility.text }}</span>
+          </span>
+        </p>
+
+        <div v-if="translatable" class="language-toggle" role="group" aria-label="Sprache des Rezepts">
+          <button
+            type="button"
+            :class="['lang-btn', { active: languagePref === 'de' }]"
+            :aria-pressed="languagePref === 'de'"
+            @click="setLanguage('de')"
+          >Deutsch</button>
+          <button
+            type="button"
+            :class="['lang-btn', { active: languagePref === 'original' }]"
+            :aria-pressed="languagePref === 'original'"
+            @click="setLanguage('original')"
+          >Original</button>
         </div>
-        <ImageCredit :credit="recipe.imageCredit" />
-      </figure>
 
-      <p v-if="shown.description" class="recipe-description">
-        {{ shown.description }}
-      </p>
+        <div v-if="!isGuest" class="recipe-tools">
+          <button type="button" class="btn-tool" @click="showShareModal = true"><HeroIcon name="teilen" :size="15" />Teilen</button>
+          <button type="button" class="btn-tool" title="Als PDF speichern" aria-label="Als PDF speichern" @click="printRecipe"><HeroIcon name="pdf" :size="15" />PDF</button>
+          <KeepScreenOnToggle utility />
+        </div>
 
-      <div class="recipe-meta">
-        <span v-if="recipe.prepTimeMinutes" class="meta-item">
-          {{ formatPrepTime(recipe.prepTimeMinutes) }}
-        </span>
-        <span v-if="recipe.baseServings" class="meta-item">
-          {{ recipe.baseServings }}{{ recipe.servingsTo ? `–${recipe.servingsTo}` : '' }} Personen
-        </span>
-        <button
-          v-if="nutrition?.hasValues"
-          type="button"
-          :class="['meta-item', 'meta-item--kcal', { 'meta-item--incomplete': !nutrition.coverage.complete }]"
-          :title="kcalChipTitle"
-          @click="activeTab = 'nutrition'"
-        >
-          {{ nutrition.coverage.complete ? '' : 'mind. ' }}{{ formatKcal(nutrition.perServing.kcal) }} kcal pro Portion
-        </button>
-        <button
-          v-if="ratingStats.count"
-          type="button"
-          class="meta-item meta-item--rating"
-          :title="`Durchschnitt aus ${ratingCountLabel(ratingStats.count)}`"
-          @click="scrollToRatings()"
-        >
-          <RatingStars :model-value="1" :count="1" :size="15" readonly aria-hidden="true" />
-          {{ ratingLabel(ratingStats.avg, ratingStats.count) }}
-        </button>
-        <span v-if="isGuest && recipe.createdByFirstName" class="meta-item meta-item--origin">
-          <AppIcon name="globus" :size="14" />von {{ recipe.createdByFirstName }}
-        </span>
-      </div>
-
-      <div v-if="!isGuest && (createdText || visibility)" class="recipe-origin">
-        <p v-if="createdText" class="recipe-createdby">{{ createdText }}</p>
-        <!-- Sichtbarkeit: für den Besitzer Sprung in die Bearbeitung, sonst reine Info -->
-        <router-link
-          v-if="visibility && isOwner"
-          :to="recipeEditPath(recipe.id)"
-          class="recipe-visibility"
-          :title="'Sichtbarkeit ändern'"
-        ><AppIcon :name="visibility.icon" :size="14" />{{ visibility.text }}</router-link>
-        <p v-else-if="visibility" class="recipe-visibility"><AppIcon :name="visibility.icon" :size="14" />{{ visibility.text }}</p>
-      </div>
-
-      <div v-if="recipe.tags?.length" class="recipe-tags">
-        <button
-          v-for="tag in recipe.tags"
-          :key="tag"
-          type="button"
-          class="recipe-tag"
-          :disabled="isGuest"
-          :title="isGuest ? undefined : `Alle Rezepte mit „${tag}“`"
-          @click="searchTag(tag)"
-        >#{{ tag }}</button>
-      </div>
-
-      <div v-if="recipe.author || recipe.source || sourceDomain(recipe.sourceUrl)" class="recipe-source">
-        <span class="source-label">Quelle:</span>
-        <span v-if="recipe.author" :class="['source-author', { 'source-author--sep': recipe.source }]">{{ recipe.author }}</span>
-        <span v-if="recipe.source" class="source-name">{{ recipe.source }}</span>
-        <span v-if="recipe.page" class="source-page">Seite {{ recipe.page }}</span>
-        <SourceLink :href="recipe.sourceUrl" class="source-url" />
-      </div>
-
-      <div class="servings-control">
-        <span class="servings-label">Personen:</span>
-        <button class="servings-btn" @click="decreaseServings" :disabled="currentServings <= 1">-</button>
-        <span class="servings-value">{{ currentServings }}</span>
-        <button class="servings-btn" @click="increaseServings">+</button>
-      </div>
-
-      <section v-if="recipe.ingredients?.length" class="recipe-section">
-        <div class="section-header">
-          <div class="tab-toggle">
-            <button :class="['tab-btn', { active: activeTab === 'ingredients' }]" @click="activeTab = 'ingredients'">Zutaten</button>
-            <button :class="['tab-btn', { active: activeTab === 'nutrition' }]" @click="activeTab = 'nutrition'">Nährwerte</button>
+        <div class="servings-control">
+          <span class="servings-label">Personen<span v-if="recipe.servingsTo" class="servings-range">Rezept: {{ recipe.baseServings }}–{{ recipe.servingsTo }}</span></span>
+          <div class="servings-step">
+            <button class="servings-btn" aria-label="Eine Person weniger" @click="decreaseServings" :disabled="currentServings <= 1">−</button>
+            <span class="servings-value" aria-live="polite">{{ currentServings }}</span>
+            <button class="servings-btn" aria-label="Eine Person mehr" @click="increaseServings">+</button>
           </div>
         </div>
 
-        <ul v-if="activeTab === 'ingredients'" class="ingredients-list">
-          <template v-for="(section, sIndex) in ingredientSections" :key="sIndex">
-            <li v-if="section.group" class="ingredient-group-title">{{ section.group }}</li>
-            <li v-else-if="sIndex > 0" class="ingredient-group-gap" aria-hidden="true"></li>
-            <li v-for="(ingredient, index) in section.items" :key="`${sIndex}-${index}`">
-              <span class="ingredient-amount">{{ ingredient.amount }} {{ ingredient.unit }}</span>
-              <span class="ingredient-name">{{ ingredient.name }}</span>
-            </li>
+        <section v-if="recipe.ingredients?.length" class="recipe-section">
+          <div class="section-header">
+            <div class="tab-toggle">
+              <button :class="['tab-btn', { active: activeTab === 'ingredients' }]" @click="activeTab = 'ingredients'">Zutaten</button>
+              <button :class="['tab-btn', { active: activeTab === 'nutrition' }]" @click="activeTab = 'nutrition'">Nährwerte</button>
+            </div>
+          </div>
+
+          <ul v-if="activeTab === 'ingredients'" class="ingredients-list">
+            <template v-for="(section, sIndex) in ingredientSections" :key="sIndex">
+              <li v-if="section.group" class="ingredient-group-title">{{ section.group }}</li>
+              <li v-else-if="sIndex > 0" class="ingredient-group-gap" aria-hidden="true"></li>
+              <li v-for="(ingredient, index) in section.items" :key="`${sIndex}-${index}`">
+                <span :class="['ingredient-amount', { 'ingredient-amount--opt': amountText(ingredient, shownLanguage).toTaste }]">{{ amountText(ingredient, shownLanguage).text }}</span>
+                <span class="ingredient-name">{{ ingredient.name }}</span>
+              </li>
+            </template>
+          </ul>
+
+          <template v-if="activeTab === 'nutrition'">
+            <p v-if="nutritionLoading" class="nutrition-state">Nährwerte werden berechnet…</p>
+            <p v-else-if="nutritionError" class="nutrition-state nutrition-state--error">{{ nutritionError }}</p>
+            <NutritionPanel
+              v-else-if="nutrition"
+              :nutrition="nutrition"
+              :info="nutritionInfo"
+            />
           </template>
-        </ul>
+        </section>
 
-        <template v-if="activeTab === 'nutrition'">
-          <p v-if="nutritionLoading" class="nutrition-state">Nährwerte werden berechnet…</p>
-          <p v-else-if="nutritionError" class="nutrition-state nutrition-state--error">{{ nutritionError }}</p>
-          <NutritionPanel
-            v-else-if="nutrition"
-            :nutrition="nutrition"
-            :info="nutritionInfo"
-          />
-        </template>
-      </section>
+        <section v-if="shown.instructions?.length" class="recipe-section">
+          <h2>Zubereitung</h2>
+          <ol class="instructions-list">
+            <li v-for="(instruction, index) in shown.instructions" :key="index">
+              <InstructionText v-if="ingredientRefs.enabled.value" :text="instruction" :step="index" :context="ingredientRefs" />
+              <template v-else>{{ instruction }}</template>
+            </li>
+          </ol>
+        </section>
 
-      <section v-if="shown.instructions?.length" class="recipe-section">
-        <h2>Zubereitung</h2>
-        <ol class="instructions-list">
-          <li v-for="(instruction, index) in shown.instructions" :key="index">
-            <InstructionText v-if="ingredientRefs.enabled.value" :text="instruction" :step="index" :context="ingredientRefs" />
-            <template v-else>{{ instruction }}</template>
-          </li>
-        </ol>
-      </section>
+        <section id="bewertungen" ref="ratingsSection" class="recipe-section recipe-ratings" aria-labelledby="ratings-title">
+          <h2 id="ratings-title">Bewertungen</h2>
 
-      <section id="bewertungen" ref="ratingsSection" class="recipe-section recipe-ratings" aria-labelledby="ratings-title">
-        <h2 id="ratings-title">Bewertungen</h2>
+          <p v-if="ratingsError" class="ratings-state ratings-state--error">{{ ratingsError }}</p>
+          <p v-else-if="ratingsLoading && !ratings.length" class="ratings-state">Bewertungen werden geladen…</p>
 
-        <p v-if="ratingsError" class="ratings-state ratings-state--error">{{ ratingsError }}</p>
-        <p v-else-if="ratingsLoading && !ratings.length" class="ratings-state">Bewertungen werden geladen…</p>
+          <div v-if="ratingStats.count" class="ratings-summary">
+            <RatingStars :model-value="Math.round(ratingStats.avg)" :size="20" readonly />
+            <span class="ratings-summary__value">{{ formatRating(ratingStats.avg) }}</span>
+            <span class="ratings-summary__count">bei {{ ratingCountLabel(ratingStats.count) }}</span>
+          </div>
+          <p v-else-if="!ratingsLoading && !ratingsError" class="ratings-state">{{ isGuest ? 'Noch keine Bewertungen.' : 'Noch keine Bewertungen – sei die/der Erste!' }}</p>
 
-        <div v-if="ratingStats.count" class="ratings-summary">
-          <RatingStars :model-value="Math.round(ratingStats.avg)" :size="20" readonly />
-          <span class="ratings-summary__value">{{ formatRating(ratingStats.avg) }}</span>
-          <span class="ratings-summary__count">bei {{ ratingCountLabel(ratingStats.count) }}</span>
+          <!-- Mobil wird über „Bewerten“ in der Aktionsleiste bewertet (Popup); das Inline-Formular gibt es nur ab 1024 px -->
+          <RatingForm v-if="!isGuest" class="rating-form--inline" :recipe-id="recipe.id" @submitted="loadRatings(recipe.id)" />
+
+          <ul v-if="ratings.length" class="rating-list">
+            <li v-for="r in visibleRatings" :key="r.id" class="rating-entry">
+              <div class="rating-entry__head">
+                <RatingStars :model-value="r.stars" :size="15" readonly />
+                <span class="rating-entry__name">{{ raterName(r) }}</span>
+                <span v-if="r.own" class="rating-entry__badge">Du</span>
+              </div>
+              <div class="rating-entry__meta">
+                <span class="rating-entry__date">{{ formatRatingDate(r.createdAt) }}</span>
+                <span v-if="r.updated" class="rating-entry__updated">aktualisiert</span>
+                <button
+                  v-if="!isGuest && (r.own || authStore.isAdmin)"
+                  type="button"
+                  class="rating-entry__delete"
+                  @click="ratingToDelete = r"
+                >Löschen</button>
+              </div>
+              <p v-if="r.comment" class="rating-entry__comment">{{ r.comment }}</p>
+            </li>
+          </ul>
+          <button
+            v-if="ratings.length > RATINGS_PREVIEW"
+            type="button"
+            class="rating-list__toggle"
+            :aria-expanded="showAllRatings"
+            @click="showAllRatings = !showAllRatings"
+          >{{ showAllRatings ? 'Weniger anzeigen' : `Alle ${ratings.length} Bewertungen anzeigen` }}</button>
+
+          <!-- Gäste: die einzige Anmelde-Aufforderung auf einem öffentlichen Rezept -->
+          <router-link
+            v-if="isGuest"
+            :to="{ path: '/login', query: { redirect: route.fullPath } }"
+            class="ui-btn rate-login"
+          ><AppIcon name="stern" :size="17" />Zum Bewerten anmelden</router-link>
+        </section>
+
+        <!-- Öffentliche Rezepte anderer: Melde-Link (Notice-and-Takedown) plus Impressum/Datenschutz -->
+        <LegalLinks v-if="reportable" :report="report" />
+
+        <footer class="print-footer">
+          <p>Aus dem Familienkochbuch — pastoors.cloud</p>
+          <p class="print-footer__small">Für den privaten Gebrauch</p>
+        </footer>
+
+        <div v-if="!isGuest" class="detail-actions">
+          <button class="btn-cancel" @click="goBack">Zurück</button>
+          <template v-if="canEdit">
+            <button class="btn-delete" @click="openDeleteRecipe">Löschen</button>
+            <router-link :to="recipeEditPath(recipe.id)" class="btn-edit">
+              Bearbeiten
+            </router-link>
+          </template>
         </div>
-        <p v-else-if="!ratingsLoading && !ratingsError" class="ratings-state">{{ isGuest ? 'Noch keine Bewertungen.' : 'Noch keine Bewertungen – sei die/der Erste!' }}</p>
 
-        <!-- Mobil wird über „Bewerten“ in der Aktionsleiste bewertet (Popup); das Inline-Formular gibt es nur ab 1024 px -->
-        <RatingForm v-if="!isGuest" class="rating-form--inline" :recipe-id="recipe.id" @submitted="loadRatings(recipe.id)" />
-
-        <ul v-if="ratings.length" class="rating-list">
-          <li v-for="r in visibleRatings" :key="r.id" class="rating-entry">
-            <div class="rating-entry__head">
-              <RatingStars :model-value="r.stars" :size="15" readonly />
-              <span class="rating-entry__name">{{ raterName(r) }}</span>
-              <span v-if="r.own" class="rating-entry__badge">Du</span>
-            </div>
-            <div class="rating-entry__meta">
-              <span class="rating-entry__date">{{ formatRatingDate(r.createdAt) }}</span>
-              <span v-if="r.updated" class="rating-entry__updated">aktualisiert</span>
-              <button
-                v-if="!isGuest && (r.own || authStore.isAdmin)"
-                type="button"
-                class="rating-entry__delete"
-                @click="ratingToDelete = r"
-              >Löschen</button>
-            </div>
-            <p v-if="r.comment" class="rating-entry__comment">{{ r.comment }}</p>
-          </li>
-        </ul>
-        <button
-          v-if="ratings.length > RATINGS_PREVIEW"
-          type="button"
-          class="rating-list__toggle"
-          :aria-expanded="showAllRatings"
-          @click="showAllRatings = !showAllRatings"
-        >{{ showAllRatings ? 'Weniger anzeigen' : `Alle ${ratings.length} Bewertungen anzeigen` }}</button>
-
-        <!-- Gäste: die einzige Anmelde-Aufforderung auf einem öffentlichen Rezept -->
-        <router-link
-          v-if="isGuest"
-          :to="{ path: '/login', query: { redirect: route.fullPath } }"
-          class="ui-btn rate-login"
-        ><AppIcon name="stern" :size="17" />Zum Bewerten anmelden</router-link>
-      </section>
-
-      <!-- Öffentliche Rezepte anderer: Melde-Link (Notice-and-Takedown) plus Impressum/Datenschutz -->
-      <LegalLinks v-if="reportable" :report="report" />
-
-      <footer class="print-footer">
-        <p>Aus dem Familienkochbuch — pastoors.cloud</p>
-        <p class="print-footer__small">Für den privaten Gebrauch</p>
-      </footer>
-
-      <div v-if="!isGuest" class="detail-actions">
-        <button class="btn-cancel" @click="goBack">Zurück</button>
-        <template v-if="canEdit">
-          <button class="btn-delete" @click="openDeleteRecipe">Löschen</button>
-          <router-link :to="recipeEditPath(recipe.id)" class="btn-edit">
-            Bearbeiten
-          </router-link>
-        </template>
       </div>
 
       <DetailActionBar
@@ -327,6 +340,7 @@ import RatingForm from '@/components/RatingForm.vue'
 import RatingDialog from '@/components/RatingDialog.vue'
 import DetailActionBar from '@/components/shell/DetailActionBar.vue'
 import AppIcon from '@/components/shell/AppIcon.vue'
+import HeroIcon from '@/components/HeroIcon.vue'
 import { visibilityLabel, VISIBILITY } from '@/utils/visibility'
 import LegalLinks from '@/components/LegalLinks.vue'
 import {
@@ -336,11 +350,18 @@ import {
   ratingSummary,
   markUpdated,
   formatRatingDate,
-  createdLine,
   raterName,
   wantsRatings,
 } from '@/utils/ratings'
 import { sourceDomain } from '@/utils/sourceUrl'
+import {
+  amountText,
+  badgeIcon,
+  createdShort,
+  formatPrepTime,
+  recipeBadges,
+  sourceLabel,
+} from '@/utils/recipeHero'
 import { navigateBackTo, LIST_PATH } from '@/utils/backNavigation'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 import { recipeService } from '@/services/recipeService'
@@ -438,7 +459,20 @@ const ratingStats = computed(() => ratingSummary(ratings.value))
 const visibleRatings = computed(() =>
   showAllRatings.value ? ratings.value : ratings.value.slice(0, RATINGS_PREVIEW)
 )
-const createdText = computed(() => createdLine(recipe.value?.createdBy, recipe.value?.createdAt))
+const createdText = computed(() =>
+  isGuest.value ? '' : createdShort(recipe.value?.createdBy, recipe.value?.createdAt, isOwner.value)
+)
+const sourceText = computed(() => sourceLabel(recipe.value))
+const hasSourceLine = computed(() =>
+  !!(sourceText.value || recipe.value?.page || sourceDomain(recipe.value?.sourceUrl) || createdText.value
+    || (isGuest.value ? recipe.value?.createdByFirstName : visibility.value))
+)
+const ingredientCount = computed(() => recipe.value?.ingredients?.length ?? 0)
+// Eigenschaften wie auf der Karte: Nährwert-Badges (Detail-Berechnung, sonst aus der Liste) + „Schnell“
+const heroBadges = computed(() => recipeBadges(
+  nutrition.value?.badges ?? store.getRecipeById(recipe.value?.id)?.nutrition?.badges,
+  recipe.value?.prepTimeMinutes,
+))
 
 const loadRatings = async (id) => {
   ratingsLoading.value = true
@@ -670,14 +704,6 @@ const printRecipe = async () => {
   window.print()
 }
 
-const formatPrepTime = (minutes) => {
-  if (!minutes) return ''
-  if (minutes < 60) return `${minutes} Min.`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m > 0 ? `${h} Std. ${m} Min.` : `${h} Std.`
-}
-
 const deleteRecipe = async () => {
   try {
     await store.deleteRecipe(route.params.id)
@@ -703,10 +729,18 @@ const confirmDeleteRecipe = async () => {
 </script>
 
 <style scoped>
+/* Hero-Design (abgenommen 21.10.2026, Entwurf media/out/mock_detail.html): Foto bis an die Ränder, Inhalt als
+   ein Sheet, das sich mit runden Ecken über das Foto schiebt. Farben aus styles/hero.css (--h-*). */
 .recipe-detail {
   max-width: 800px;
   margin: 0 auto;
   padding: 24px;
+}
+
+@media (max-width: 1023px) {
+  .recipe-detail {
+    padding: 0;
+  }
 }
 
 .loading,
@@ -731,46 +765,554 @@ const confirmDeleteRecipe = async () => {
   margin-top: 16px;
 }
 
-.recipe-header {
-  margin-bottom: 24px;
-}
-
-.language-toggle {
-  display: inline-flex;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.recipe-hero {
+  position: relative;
+  height: 400px;
   overflow: hidden;
+  background: #2a2e37;
 }
 
-.lang-btn {
-  padding: 6px 10px;
+.recipe-hero--immersive {
+  height: calc(400px + var(--shell-top, 0px));
+}
+
+.recipe-hero--ph {
+  background: var(--h-placeholder);
+}
+
+.recipe-hero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 45%;
+}
+
+.recipe-hero__pot {
+  position: absolute;
+  top: calc(var(--shell-top, 0px) + 60px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  opacity: .45;
+}
+
+.recipe-hero__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .28) 0%, rgba(0, 0, 0, 0) 32%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, .72) 100%);
+  pointer-events: none;
+}
+
+.recipe-hero__back {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--shell-top, 0px) + 14px);
+  left: 14px;
+  width: 38px;
+  height: 38px;
   border: none;
-  background: transparent;
-  font-size: 0.85rem;
-  font-family: inherit;
-  color: var(--color-text-secondary, #666);
+  border-radius: 999px;
+  background: var(--h-glass);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
-.lang-btn + .lang-btn {
-  border-left: 1px solid var(--color-border, #ddd);
+/* Tippfläche 46 px, sichtbar bleibt der 38-px-Kreis */
+.recipe-hero__back::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
 }
 
-.lang-btn.active {
-  background: var(--color-primary, #4a5568);
-  color: var(--akzent-kontrast);
+.recipe-hero__back:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.recipe-hero__credit {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  max-width: calc(100% - 28px);
+}
+
+.recipe-hero--immersive .recipe-hero__credit {
+  top: calc(var(--shell-top, 0px) + 63px);
+}
+
+.recipe-hero__content {
+  position: absolute;
+  z-index: 1;
+  left: 18px;
+  right: 18px;
+  bottom: 44px;
+  color: #fff;
+}
+
+.recipe-hero__content h1 {
+  margin: 0 0 9px;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, .35);
+  overflow-wrap: anywhere;
+}
+
+.recipe-hero__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, .95);
+}
+
+.recipe-hero__facts > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 5.5px;
+}
+
+.recipe-hero__facts .hero-icon {
+  color: rgba(255, 255, 255, .85);
+}
+
+.recipe-hero__facts .recipe-hero__star {
+  color: var(--h-star);
+}
+
+.recipe-hero__fact {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.recipe-hero__fact:hover {
+  text-decoration: underline;
+}
+
+.recipe-hero__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 9px;
+  margin-top: 9px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, .92);
+}
+
+.recipe-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  font-weight: 750;
+}
+
+.recipe-tag {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.recipe-tag:disabled {
+  cursor: default;
+}
+
+.recipe-tag:not(:disabled):hover {
+  text-decoration: underline;
+}
+
+.print-only {
+  display: none !important;
+}
+
+/* ── Sheet ────────────────────────────────────────────────────────────── */
+.recipe-sheet {
+  position: relative;
+  z-index: 1;
+  margin-top: -26px;
+  min-height: calc(100vh - 374px);
+  padding: 24px 18px 32px;
+  background: var(--h-card);
+  color: var(--h-ink);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, .10);
+}
+
+@media (min-width: 1024px) {
+  .recipe-hero {
+    border-radius: 22px;
+  }
+
+  /* Am Desktop führt der Pfeil der Kopfzeile zurück */
+  .recipe-hero__back {
+    display: none;
+  }
+
+  .recipe-hero__credit,
+  .recipe-hero--immersive .recipe-hero__credit {
+    top: 14px;
+  }
+
+  .recipe-sheet {
+    min-height: 0;
+    padding: 28px 32px 8px;
+    border-radius: 26px;
+  }
 }
 
 .translation-note {
-  margin: 8px 0 0;
+  margin: 0 0 12px;
   font-size: 0.875rem;
   color: var(--warn-text);
 }
 
-.recipe-header h1 {
+.recipe-sheet > :deep(.translation-banner:first-child) {
+  margin-top: 0;
+}
+
+.recipe-description {
   margin: 0;
-  font-size: 2rem;
-  color: var(--color-text-primary, #333);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--h-ink);
+}
+
+.recipe-source {
+  margin: 8px 0 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--h-sep);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--h-by);
+  /* Lange Webadressen im Quellenfeld umbrechen statt die Seite zu verbreitern (Rezept 194) */
+  overflow-wrap: anywhere;
+}
+
+.recipe-sheet > .recipe-source:first-child {
+  margin-top: 0;
+}
+
+.recipe-source__part + .recipe-source__part::before {
+  content: '·';
+  margin: 0 5px;
+  color: var(--h-by);
+}
+
+.source-label {
+  margin-right: 4px;
+}
+
+.source-page {
+  margin-left: 4px;
+}
+
+.source-name + .source-page::before {
+  content: ', ';
+  margin-left: -4px;
+}
+
+.source-url {
+  margin-left: 6px;
+}
+
+.source-label + .source-url {
+  margin-left: 0;
+}
+
+.recipe-visibility {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.recipe-visibility--link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.language-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin-top: 16px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--h-chip);
+}
+
+.lang-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--h-mut);
+  cursor: pointer;
+}
+
+.lang-btn.active {
+  background: var(--h-card);
+  color: var(--h-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.recipe-tools {
+  display: flex;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.btn-tool {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 12px 0;
+  border: none;
+  border-radius: 13px;
+  background: var(--h-chip);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--h-ink);
+  cursor: pointer;
+}
+
+.btn-tool:hover {
+  background: color-mix(in srgb, var(--h-chip) 88%, var(--h-ink));
+}
+
+.btn-tool:focus-visible,
+.servings-btn:focus-visible,
+.tab-btn:focus-visible,
+.lang-btn:focus-visible {
+  outline: 2px solid var(--h-acc);
+  outline-offset: 2px;
+}
+
+.servings-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--h-sep);
+  border-bottom: 1px solid var(--h-sep);
+}
+
+.servings-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--h-ink);
+}
+
+.servings-range {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--h-by);
+}
+
+.servings-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.servings-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: var(--h-chip);
+  font: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--h-ink);
+  cursor: pointer;
+}
+
+.servings-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--h-chip) 88%, var(--h-ink));
+}
+
+.servings-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.servings-value {
+  min-width: 20px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--h-tag);   /* dunkel heller als --h-acc, sonst zu wenig Kontrast */
+}
+
+/* ── Zutaten / Nährwerte / Zubereitung ────────────────────────────────── */
+.recipe-section + .recipe-section {
+  margin-top: 30px;
+}
+
+.section-header {
+  display: flex;
+  margin: 10px 0 4px;
+  border-bottom: 1px solid var(--h-line);
+}
+
+.tab-toggle {
+  display: flex;
+  gap: 18px;
+}
+
+.tab-btn {
+  min-height: 44px;
+  padding: 8px 0;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--h-mut);
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  color: var(--h-ink);
+  border-bottom-color: var(--h-acc);
+}
+
+.tab-btn:not(.active):hover {
+  color: var(--h-ink);
+}
+
+.recipe-section h2 {
+  margin: 0 0 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--h-line);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--h-ink);
+}
+
+.ingredients-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ingredients-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--h-sep);
+}
+
+.ingredients-list li.ingredient-group-title {
+  display: block;
+  padding: 18px 2px 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--h-ink);
+  break-after: avoid;
+}
+
+.ingredients-list li.ingredient-group-title:first-child {
+  padding-top: 8px;
+}
+
+.ingredients-list li:has(+ .ingredient-group-gap) {
+  border-bottom: none;
+}
+
+.ingredients-list li.ingredient-group-gap {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--h-sep);
+}
+
+.ingredient-amount {
+  width: 86px;
+  flex: none;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--h-ink);
+}
+
+.ingredient-amount--opt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--h-by);
+}
+
+.ingredient-name {
+  font-size: 15px;
+  color: var(--h-ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.instructions-list {
+  padding-left: 24px;
+}
+
+.instructions-list li {
+  padding: 10px 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--h-ink);
+}
+
+.instructions-list li::marker {
+  color: var(--h-acc);
+  font-weight: 700;
+}
+
+.nutrition-state {
+  margin-top: 12px;
+  color: var(--h-by);
+}
+
+.nutrition-state--error {
+  color: var(--color-error, #e53e3e);
+}
+
+.rate-login {
+  width: 100%;
+  margin-top: 14px;
+  text-decoration: none;
 }
 
 .detail-actions {
@@ -779,13 +1321,13 @@ const confirmDeleteRecipe = async () => {
   justify-content: flex-end;
   position: sticky;
   bottom: var(--shell-bottom, 0px);
-  background: var(--color-bg, #f9fafb);
+  background: var(--h-card);
   padding: 12px 0;
-  border-top: 1px solid var(--color-border, #e2e8f0);
+  border-top: 1px solid var(--h-line);
   margin-top: 32px;
 }
 
-/* Mobil übernimmt die Aktionsleiste (DetailActionBar), zurück geht es über den Pfeil in der Kopfzeile;
+/* Mobil übernimmt die Aktionsleiste (DetailActionBar), zurück geht es über den Kreis im Foto;
    bewertet wird dort über „Bewerten“ (Popup) statt über das Inline-Formular */
 @media (max-width: 1023px) {
   .detail-actions,
@@ -871,377 +1413,6 @@ const confirmDeleteRecipe = async () => {
 
 .btn-cancel:hover {
   background: var(--color-border, #ddd);
-}
-
-.recipe-meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-  font-size: 0.95rem;
-  color: var(--color-text-secondary, #666);
-}
-
-.recipe-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin: -8px 0 16px;
-}
-
-.recipe-tag {
-  padding: 2px 0;
-  border: none;
-  background: none;
-  font: inherit;
-  font-size: 0.85rem;
-  color: var(--color-text-muted, #999);
-  cursor: pointer;
-}
-
-.recipe-tag:disabled {
-  cursor: default;
-}
-
-.recipe-tag:not(:disabled):hover {
-  color: var(--color-primary, #4a5568);
-  text-decoration: underline;
-}
-
-.meta-item {
-  padding: 4px 10px;
-  background: var(--color-bg-secondary, #f0f0f0);
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.meta-item--kcal {
-  border: 1px solid transparent;
-  font-family: inherit;
-  font-size: inherit;
-  color: var(--pos);
-  background: var(--pos-weich);
-  cursor: pointer;
-}
-
-.meta-item--kcal:hover {
-  border-color: var(--pos-linie);
-}
-
-.meta-item--rating {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid transparent;
-  font-family: inherit;
-  font-size: inherit;
-  color: var(--color-text-primary, #333);
-  cursor: pointer;
-}
-
-.meta-item--rating:hover {
-  border-color: var(--linie);
-}
-
-.recipe-origin {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 14px;
-  margin: -6px 0 16px;
-}
-
-.recipe-createdby {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text3);
-}
-
-.recipe-origin .recipe-visibility {
-  margin: 0;
-  font-size: 0.85rem;
-}
-
-.meta-item--origin {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text2);
-}
-
-.rate-login {
-  width: 100%;
-  margin-top: 14px;
-  text-decoration: none;
-}
-
-.meta-item--incomplete {
-  color: var(--warn-text);
-  background: var(--warn-bg);
-}
-
-.nutrition-state {
-  color: var(--color-text-secondary, #666);
-}
-
-.nutrition-state--error {
-  color: var(--color-error, #e53e3e);
-}
-
-.recipe-description {
-  font-size: 1.125rem;
-  color: var(--color-text-secondary, #666);
-  line-height: 1.6;
-  margin-bottom: 16px;
-}
-
-.recipe-source {
-  margin-bottom: 24px;
-  padding: 12px 16px;
-  background: var(--color-bg-secondary, #f0f0f0);
-  border-radius: 8px;
-  font-size: 0.875rem;
-  /* Lange Webadressen im Quellenfeld umbrechen statt die Seite zu verbreitern (Rezept 194) */
-  overflow-wrap: anywhere;
-}
-
-.source-label {
-  font-weight: 600;
-  color: var(--color-text-primary, #333);
-  margin-right: 8px;
-}
-
-.source-author {
-  color: var(--color-text-primary, #333);
-}
-
-.source-author--sep::after {
-  content: ' - ';
-}
-
-.source-name {
-  color: var(--color-text-secondary, #666);
-}
-
-.source-page {
-  color: var(--color-text-muted, #999);
-  margin-left: 8px;
-}
-
-.source-url {
-  margin-left: 8px;
-}
-
-.source-label + .source-url {
-  margin-left: 0;
-}
-
-.recipe-figure {
-  margin: 0 0 24px;
-}
-
-.recipe-image {
-  width: 100%;
-  max-height: 400px;
-  overflow: hidden;
-  border-radius: 12px;
-  background: var(--color-bg-secondary, #f0f0f0);
-}
-
-.recipe-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.servings-control {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 32px;
-  padding: 12px 16px;
-  background: var(--color-bg-card, #fff);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.servings-label {
-  font-weight: 600;
-  color: var(--color-text-primary, #333);
-}
-
-.servings-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
-  background: var(--color-bg-secondary, #f0f0f0);
-  color: var(--color-text-primary, #333);
-  font-size: 1.25rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease;
-}
-
-.servings-btn:hover:not(:disabled) {
-  background: var(--color-border, #ddd);
-}
-
-.servings-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.servings-value {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-primary, #4a5568);
-  min-width: 32px;
-  text-align: center;
-}
-
-.recipe-section {
-  margin-bottom: 32px;
-}
-
-.recipe-section h2 {
-  font-size: 1.5rem;
-  color: var(--color-text-primary, #333);
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--color-border, #ddd);
-}
-
-.ingredients-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.ingredients-list li {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-border-light, #eee);
-  display: flex;
-  gap: 8px;
-}
-
-.ingredients-list li:last-child {
-  border-bottom: none;
-}
-
-.ingredients-list li.ingredient-group-title {
-  display: block;
-  padding: 16px 0 6px;
-  font-weight: 700;
-  color: var(--color-text-primary, #333);
-  border-bottom: 1px solid var(--color-border, #ddd);
-  break-after: avoid;
-}
-
-.ingredients-list li.ingredient-group-title:first-child {
-  padding-top: 4px;
-}
-
-.ingredients-list li:has(+ .ingredient-group-title),
-.ingredients-list li:has(+ .ingredient-group-gap) {
-  border-bottom: none;
-}
-
-.ingredients-list li.ingredient-group-gap {
-  padding: 6px 0;
-  border-bottom: 1px solid var(--color-border, #ddd);
-}
-
-.ingredient-amount {
-  font-weight: 600;
-  color: var(--color-primary, #4a5568);
-  min-width: 100px;
-}
-
-.ingredient-name {
-  color: var(--color-text-primary, #333);
-}
-
-.instructions-list {
-  padding-left: 24px;
-}
-
-.instructions-list li {
-  padding: 12px 0;
-  line-height: 1.6;
-  color: var(--color-text-primary, #333);
-}
-
-.instructions-list li::marker {
-  color: var(--color-primary, #4a5568);
-  font-weight: 600;
-}
-
-.section-header {
-  display: flex;
-  align-items: flex-end;
-  margin-bottom: 16px;
-  border-bottom: 2px solid var(--color-border, #ddd);
-}
-
-.section-header h2 {
-  font-size: 1.5rem;
-  color: var(--color-text-primary, #333);
-  margin: 0;
-  padding-bottom: 8px;
-  border-bottom: none;
-}
-
-.tab-toggle {
-  display: flex;
-  gap: 0;
-}
-
-.tab-btn {
-  padding: 0 20px 10px 0;
-  border: none;
-  border-bottom: 3px solid transparent;
-  background: none;
-  color: var(--color-text-muted, #a0aec0);
-  font-size: 1.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
-  margin-bottom: -2px;
-  font-family: inherit;
-}
-
-.tab-btn.active {
-  color: var(--color-text-primary, #333);
-  border-bottom-color: var(--color-primary, #4a5568);
-}
-
-.tab-btn:not(.active):hover {
-  color: var(--color-text-secondary, #4a5568);
-}
-
-.recipe-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.btn-tool {
-  padding: 6px 12px;
-  background: var(--color-bg-card, #fff);
-  color: var(--color-primary, #4a5568);
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 6px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.btn-tool:hover {
-  background: var(--color-bg-secondary, #f0f0f0);
 }
 
 .print-footer {
@@ -1381,12 +1552,31 @@ const confirmDeleteRecipe = async () => {
     padding: 0;
   }
 
+  .recipe-hero {
+    height: auto;
+    overflow: visible;
+    background: none;
+    border-radius: 0;
+  }
+
+  .recipe-hero__img {
+    position: static;
+    display: block;
+    height: 240px;
+    border-radius: 12px;
+  }
+
+  .recipe-hero__scrim,
+  .recipe-hero__back,
+  .recipe-hero__pot,
+  .recipe-hero__tags,
+  .meta-item--rating,
   .recipe-ratings,
   .recipe-createdby,
-  .recipe-origin,
-  .meta-item--rating,
+  .recipe-visibility,
+  .meta-item--origin,
+  .language-toggle,
   .recipe-tools,
-  .recipe-tags,
   .translation-note,
   .detail-actions,
   .servings-control,
@@ -1394,8 +1584,42 @@ const confirmDeleteRecipe = async () => {
     display: none !important;
   }
 
-  .recipe-image {
-    max-height: 240px;
+  .recipe-hero__credit {
+    position: static;
+    max-width: none;
+    margin-top: 4px;
+  }
+
+  .recipe-hero__content {
+    position: static;
+    margin-top: 12px;
+    color: #1C1C1E;
+  }
+
+  .recipe-hero__content h1 {
+    color: #1C1C1E;
+    text-shadow: none;
+  }
+
+  .recipe-hero__facts,
+  .recipe-hero__facts .hero-icon {
+    color: #6E6E73;
+  }
+
+  .print-only {
+    display: inline-flex !important;
+  }
+
+  .recipe-sheet {
+    margin: 16px 0 0;
+    padding: 0;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .recipe-source {
+    padding-bottom: 12px;
   }
 
   .recipe-section,
@@ -1407,7 +1631,6 @@ const confirmDeleteRecipe = async () => {
   .tab-btn.active {
     padding-right: 0;
     border-bottom-color: transparent;
-    color: var(--color-text-primary, #333);
   }
 
   .print-footer {
@@ -1424,6 +1647,26 @@ const confirmDeleteRecipe = async () => {
   .print-footer__small {
     font-size: 0.75rem;
     color: var(--color-text-muted, #999);
+  }
+}
+</style>
+
+<style>
+/* Rezeptseite mobil (angemeldet): Foto bis unter die Statusleiste, Zurück sitzt im Bild – keine Kopfzeile;
+   Seitengrund in Sheet-Farbe, damit unter dem Sheet kein Streifen bleibt */
+@media (max-width: 1023px) {
+  body:has(.recipe-hero--immersive) .shell-header {
+    display: none;
+  }
+
+  body:has(.recipe-hero--immersive) {
+    background: var(--h-card);
+  }
+}
+
+@media print {
+  body:has(.recipe-hero--immersive) {
+    background: #fff;
   }
 }
 </style>

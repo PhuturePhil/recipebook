@@ -1,5 +1,17 @@
 [
   {
+    "version": "2026-10-21.1",
+    "datum": "21.10.2026",
+    "titel": "Neues Rezept-Design: das Foto steht vorne",
+    "punkte": [
+      "Auf der Startseite ist jedes Rezept jetzt eine große Fotokarte: Titel, Quelle, Zeit, Zutaten, Kalorien und Bewertung stehen direkt im Bild. Rezepte ohne Foto bekommen einen warmen Platzhalter mit Topf",
+      "Eigenschaften wie Schnell, Fettarm oder Proteinreich erkennst du an kleinen Symbolen, Tags stehen als #Tag daneben – ohne Kästchen drumherum",
+      "Die Rezeptseite beginnt mit dem Foto über die ganze Breite, darauf Titel, Eckdaten und Tags. Der Inhalt schiebt sich als Karte darüber, der Zurück-Pfeil sitzt im Bild",
+      "Teilen, PDF und „Display an“ findest du als Knöpfe unter der Beschreibung, die Personenzahl stellst du mit großen − und + ein",
+      "Unten: Bewerten als orange Hauptaktion, daneben Bearbeiten. „Rezept löschen…“ liegt jetzt im ···-Menü links"
+    ]
+  },
+  {
     "version": "2026-10-18.3",
     "datum": "18.10.2026",
     "titel": "Startseite erklärt, worum es hier geht",

@@ -5,7 +5,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { SCOPE_ALL, SCOPE_MINE, scopeRecipes, normalizeScope } from '@/utils/families'
 import { filterRecipes, matchTag, normalizeText, sortRecipes, SORT_OPTIONS } from '@/utils/recipeSearch'
 
-export const QUICK_MAX_MINUTES = 30
+import { QUICK_MAX_MINUTES, recipeBadges } from '@/utils/recipeHero'
+
+export { QUICK_MAX_MINUTES }
 
 const BADGE_NAMES = ['Energiearm', 'Proteinreich', 'Ballaststoffreich', 'Fettarm', 'Schnell']
 const BADGE_SEARCH_ALIASES = { kalorienarm: 'Energiearm' }
@@ -79,9 +81,7 @@ export const useRecipeStore = defineStore('recipe', {
     computedBadges: (state) => {
       const badgeMap = new Map()
       for (const r of state.recipes) {
-        const badges = [...(r.nutrition?.badges ?? [])]
-        if (r.prepTimeMinutes != null && r.prepTimeMinutes <= QUICK_MAX_MINUTES) badges.push('Schnell')
-        badgeMap.set(r.id, badges)
+        badgeMap.set(r.id, recipeBadges(r.nutrition?.badges, r.prepTimeMinutes))
       }
       return badgeMap
     },

@@ -1,62 +1,52 @@
 <template>
-  <!-- Ganze Karte klickbar über den Titel-Link (::after deckt die Karte ab) – echtes <a href>, damit Mittelklick und
-       „In neuem Tab öffnen“ gehen; Bewertung und Tags liegen als eigene Ziele darüber -->
-  <div class="recipe-card">
-    <div v-if="recipe.imageUrl" ref="imageBox" class="recipe-card__image">
-      <img v-if="imageSrc" :src="imageSrc" :alt="recipe.title" loading="lazy" decoding="async" />
+  <!-- Hero-Karte: volles Foto (ohne Foto warmer Verlauf mit Topf), Text weiß im Bild. Ganze Karte klickbar über den
+       Titel-Link (::after deckt die Karte ab) – echtes <a href>, damit Mittelklick und „In neuem Tab öffnen“ gehen;
+       Bewertung und Tags liegen als eigene Ziele darüber -->
+  <div :class="['recipe-card', { 'recipe-card--ph': !recipe.imageUrl }]">
+    <div ref="imageBox" class="recipe-card__media">
+      <img v-if="imageSrc" :src="imageSrc" alt="" loading="lazy" decoding="async" />
+      <HeroIcon v-else-if="!recipe.imageUrl" name="topf" :size="64" class="recipe-card__pot" />
     </div>
+    <div class="recipe-card__scrim"></div>
+    <p v-if="showOrigin || visHint" class="recipe-card__origin">
+      <span v-if="showOrigin" class="recipe-card__owner">
+        <span :class="['mini-avatar', avatarTone(recipe.ownerId)]">{{ ownerInitials }}</span>von {{ recipe.createdByFirstName }}
+      </span>
+      <span v-if="visHint" class="recipe-card__vis"><AppIcon :name="visHint.icon" :size="12" />{{ visHint.text }}</span>
+    </p>
     <div class="recipe-card__content">
       <h3 class="recipe-card__title">
         <RouterLink :to="recipePath(recipe.id)" class="recipe-card__link">{{ recipe.title }}</RouterLink>
+        <span v-if="source" class="recipe-card__by">{{ ` (${source})` }}</span>
       </h3>
-      <p class="recipe-card__description">{{ recipe.description }}</p>
-      <div class="recipe-card__meta">
-        <span v-if="recipe.prepTimeMinutes" class="recipe-card__count">
-          {{ formatPrepTime(recipe.prepTimeMinutes) }}
-        </span>
-        <span v-if="recipe.ingredientCount" class="recipe-card__count">
-          {{ recipe.ingredientCount }} Zutaten
-        </span>
-        <span
-          v-if="kcalPerServing != null"
-          class="recipe-card__count"
-          :title="recipe.nutrition.complete ? 'pro Portion' : 'pro Portion, unvollständig berechnet'"
-        >
-          {{ recipe.nutrition.complete ? '' : 'mind. ' }}{{ kcalPerServing }} kcal
-        </span>
-        <!-- Tipp auf die Bewertung: Rezept öffnen und direkt zum Abschnitt „Bewertungen“ -->
-        <RouterLink
-          v-if="recipe.ratingCount"
-          :to="ratingsRoute(recipe.id)"
-          class="recipe-card__count recipe-card__rating"
-          :title="`Durchschnitt aus ${ratingCountLabel(recipe.ratingCount)} – zu den Bewertungen`"
-          :aria-label="`${ratingLabel(recipe.ratingAvg, recipe.ratingCount)}, zu den Bewertungen`"
-        >
-          <RatingStars :model-value="1" :count="1" :size="13" readonly aria-hidden="true" />
-          {{ ratingLabel(recipe.ratingAvg, recipe.ratingCount) }}
-        </RouterLink>
+      <div v-if="meta || recipe.ratingCount" class="recipe-card__meta">
+        <span v-if="meta">{{ meta }}</span>
+        <template v-if="recipe.ratingCount">
+          <span v-if="meta" aria-hidden="true">·</span>
+          <!-- Tipp auf die Bewertung: Rezept öffnen und direkt zum Abschnitt „Bewertungen“ -->
+          <RouterLink
+            :to="ratingsRoute(recipe.id)"
+            class="recipe-card__rating"
+            :title="`Durchschnitt aus ${ratingCountLabel(recipe.ratingCount)} – zu den Bewertungen`"
+            :aria-label="`${ratingLabel(recipe.ratingAvg, recipe.ratingCount)}, zu den Bewertungen`"
+          ><HeroIcon name="stern" :size="12" />{{ formatRating(recipe.ratingAvg) }}&nbsp;<i>({{ recipe.ratingCount }})</i></RouterLink>
+        </template>
       </div>
-      <div v-if="showTags && recipe.tags?.length" class="recipe-card__tags">
-        <button
-          v-for="tag in recipe.tags"
-          :key="tag"
-          type="button"
-          class="recipe-card__tag"
-          :title="`Nach „${tag}“ suchen`"
-          @click="searchTag(tag)"
-        >#{{ tag }}</button>
+      <div v-if="tagRow.items.length" class="recipe-card__tags">
+        <template v-for="item in tagRow.items" :key="`${item.kind}-${item.name}`">
+          <span v-if="item.kind === 'badge'" class="recipe-card__badge">
+            <HeroIcon :name="badgeIcon(item.name)" :size="11" />{{ item.name }}
+          </span>
+          <button
+            v-else
+            type="button"
+            class="recipe-card__tag"
+            :title="`Nach „${item.name}“ suchen`"
+            @click="searchTag(item.name)"
+          >#{{ item.name }}</button>
+        </template>
+        <span v-if="tagRow.more" class="recipe-card__more">+{{ tagRow.more }}</span>
       </div>
-      <div v-if="badges && badges.length" class="recipe-card__badges">
-        <span v-for="badge in badges" :key="badge" :class="['badge', `badge--${badgeKey(badge)}`]">
-          {{ badge }}
-        </span>
-      </div>
-      <p v-if="showOrigin || visHint" class="recipe-card__created">
-        <span v-if="showOrigin" class="origin-chip">
-          <span :class="['mini-avatar', avatarTone(recipe.ownerId)]">{{ ownerInitials }}</span>von {{ recipe.createdByFirstName }}
-        </span>
-        <span v-if="visHint" class="vis-hint"><AppIcon :name="visHint.icon" :size="13" />{{ visHint.text }}</span>
-      </p>
     </div>
   </div>
 </template>
@@ -66,13 +56,14 @@ import { computed, ref } from 'vue'
 import { useRecipeImage } from '@/composables/useRecipeImage'
 import { useRecipeStore } from '@/stores/recipeStore'
 import { tagSearchTerm } from '@/utils/recipeTags'
-import { ratingLabel, ratingCountLabel, ratingsRoute } from '@/utils/ratings'
+import { formatRating, ratingLabel, ratingCountLabel, ratingsRoute } from '@/utils/ratings'
+import { badgeIcon, cardMeta, cardTagRow, sourceLabel } from '@/utils/recipeHero'
 import { recipePath } from '@/router/paths.js'
 import { useAuthStore } from '@/stores/authStore'
 import { avatarTone } from '@/stores/familyStore'
 import { visibilityLabel, initials } from '@/utils/visibility'
-import RatingStars from '@/components/RatingStars.vue'
 import AppIcon from '@/components/shell/AppIcon.vue'
+import HeroIcon from '@/components/HeroIcon.vue'
 
 const props = defineProps({
   recipe: {
@@ -93,10 +84,9 @@ const props = defineProps({
 const imageBox = ref(null)
 const imageSrc = useRecipeImage(() => props.recipe.imageUrl, imageBox)
 
-const kcalPerServing = computed(() => {
-  const kcal = props.recipe.nutrition?.perServing?.kcal
-  return kcal == null ? null : Math.round(kcal).toLocaleString('de-DE')
-})
+const source = computed(() => sourceLabel(props.recipe))
+const meta = computed(() => cardMeta(props.recipe))
+const tagRow = computed(() => cardTagRow(props.badges, props.showTags ? props.recipe.tags : []))
 
 // Herkunft nur bei fremden Rezepten; Sichtbarkeit nur für Angemeldete (Gäste sehen ohnehin nur Öffentliches)
 const authStore = useAuthStore()
@@ -106,47 +96,138 @@ const showOrigin = computed(() =>
 const ownerInitials = computed(() => initials(props.recipe.createdBy || props.recipe.createdByFirstName))
 const visHint = computed(() => (authStore.isAuthenticated ? visibilityLabel(props.recipe) : null))
 
-const badgeKey = (badge) => badge.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/\s+/g, '-')
-
 const store = useRecipeStore()
 
 const searchTag = (tag) => {
   store.addSearchTerm(tagSearchTerm(tag))
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
-
-const formatPrepTime = (minutes) => {
-  if (!minutes) return ''
-  if (minutes < 60) return `${minutes} Min.`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m > 0 ? `${h} Std. ${m} Min.` : `${h} Std.`
-}
 </script>
 
 <style scoped>
 .recipe-card {
   position: relative;
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--radius-karte);
-  overflow: hidden;
-  box-shadow: var(--schatten-karte);
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 232px;
   display: flex;
   flex-direction: column;
-  min-height: 320px;
+  justify-content: flex-end;
+  isolation: isolate;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--flaeche2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.recipe-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--bar-schatten);
+[data-theme="dark"] .recipe-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .4);
+}
+
+.recipe-card--ph {
+  background: var(--h-placeholder);
+}
+
+@media (hover: hover) {
+  .recipe-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--bar-schatten);
+  }
 }
 
 .recipe-card:has(.recipe-card__link:focus-visible) {
   outline: 2px solid var(--akzent);
   outline-offset: 2px;
+}
+
+/* Foto und Verlauf hinter dem Text (z-index -1 in der isolierten Karte); der Text bleibt im Fluss und damit ohne
+   eigenen Positionsrahmen, sodass das ::after des Titel-Links die ganze Karte abdeckt */
+.recipe-card__media {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.recipe-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.recipe-card__pot {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  opacity: .45;
+}
+
+.recipe-card__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .05) 30%, rgba(0, 0, 0, .78) 100%);
+  pointer-events: none;
+}
+
+.recipe-card__origin {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.recipe-card__owner,
+.recipe-card__vis {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--h-glass);
+  color: rgba(255, 255, 255, .9);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipe-card__owner {
+  padding-left: 3px;
+}
+
+.recipe-card__owner .mini-avatar {
+  width: 17px;
+  height: 17px;
+  font-size: 8px;
+}
+
+.recipe-card__content {
+  padding: 0 14px 12px;
+  color: #fff;
+}
+
+.recipe-card__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.25;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .35);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .recipe-card__link {
@@ -165,124 +246,87 @@ const formatPrepTime = (minutes) => {
   z-index: 1;
 }
 
-.recipe-card__rating,
-.recipe-card__tag {
-  position: relative;
-  z-index: 2;
-}
-
-.recipe-card__image {
-  width: 100%;
-  height: 180px;
-  overflow: hidden;
-  background: var(--color-bg-secondary, #f0f0f0);
-}
-
-.recipe-card__image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.recipe-card__content {
-  padding: var(--spacing-md, 16px);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.recipe-card__title {
-  font-size: 1.12rem;
-  font-weight: 650;
-  line-height: 1.3;
-  color: var(--color-text-primary, #333);
-  margin: 0 0 8px 0;
-}
-
-.recipe-card__description {
-  color: var(--color-text-secondary, #666);
-  margin: 0 0 12px 0;
-  line-height: 1.5;
-  flex: 1;
+.recipe-card__by {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .78);
 }
 
 .recipe-card__meta {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 4px 16px;
-  font-size: 0.875rem;
-  color: var(--color-text-muted, #999);
+  gap: 0 6px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, .92);
 }
 
 .recipe-card__rating {
-  text-decoration: none;
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: var(--color-text-secondary, #666);
-  cursor: pointer;
+  gap: 3px;
+  font-weight: 750;
+  color: var(--h-star);
+  text-decoration: none;
+}
+
+.recipe-card__rating i {
+  font-style: normal;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .8);
 }
 
 .recipe-card__rating:hover {
-  color: var(--color-text-primary, #333);
   text-decoration: underline;
-}
-
-.recipe-card__created {
-  margin: 10px 0 0;
-  font-size: 0.78rem;
-  color: var(--text3);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
 }
 
 .recipe-card__tags {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-top: 10px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, .88);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.recipe-card__badge,
+.recipe-card__more {
+  flex: none;
+}
+
+.recipe-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  font-weight: 750;
 }
 
 .recipe-card__tag {
-  padding: 2px 0;
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0;
   border: none;
   background: none;
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--akzent-text);
+  color: inherit;
   cursor: pointer;
 }
 
 .recipe-card__tag:hover {
-  color: var(--color-primary, #4a5568);
   text-decoration: underline;
 }
 
-.recipe-card__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
+.recipe-card__more {
+  color: rgba(255, 255, 255, .6);
 }
-
-.badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
-  letter-spacing: 0.02em;
-}
-
-.badge--schnell { background: var(--pos-weich); color: var(--pos); }
-.badge--proteinreich { background: var(--info-weich); color: var(--info-text); }
-.badge--energiearm { background: var(--pos-weich); color: var(--pos); border: 1px solid var(--pos-linie); }
-.badge--fettarm { background: var(--warn-bg); color: var(--warn-text); }
-.badge--ballaststoffreich { background: var(--lila-weich); color: var(--lila-text); }
 </style>

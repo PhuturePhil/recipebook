@@ -1,0 +1,39 @@
+/* Hero-Design Startseite + Rezeptseite (abgenommen 21.10.2026, Entwürfe media/out/mock_home.html + mock_detail.html).
+   Eigene Tokens nur für diese beiden Ansichten; hell/dunkel folgt dem Darstellungs-Schalter (data-theme). */
+
+:root {
+  --h-card: #fff;
+  --h-ink: #17181c;
+  --h-mut: #6b7280;
+  --h-by: #565c66;
+  --h-acc: #e8590c;
+  --h-line: #e5e7eb;
+  --h-chip: #f3f4f6;
+  --h-sep: #eceef2;
+  --h-ok: #1f7a3d;
+  --h-red: #dc2626;
+  --h-tag: #e8590c;
+  --h-star: #ffc24d;
+  --h-glass: rgba(20, 20, 24, .42);
+  --h-placeholder: linear-gradient(150deg, #b5774a, #7a4e2b);
+}
+
+[data-theme="dark"] {
+  --h-card: #1d2027;
+  --h-ink: #eef0f3;
+  --h-mut: #9aa1ad;
+  --h-by: #aab0bb;
+  --h-line: #333845;
+  --h-chip: #2a2e37;
+  --h-sep: #2a2e37;
+  --h-ok: #7fd49a;
+  --h-red: #f87171;
+  --h-tag: #f09a63;
+}
+
+@media print {
+  :root, [data-theme="dark"] {
+    --h-card: #fff; --h-ink: #17181c; --h-mut: #6b7280; --h-by: #565c66;
+    --h-line: #e5e7eb; --h-chip: #f3f4f6; --h-sep: #eceef2; --h-ok: #1f7a3d; --h-red: #dc2626; --h-tag: #e8590c;
+  }
+}
