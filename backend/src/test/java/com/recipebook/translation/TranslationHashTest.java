@@ -21,6 +21,12 @@ class TranslationHashTest {
         return r;
     }
 
+    private static Recipe metric() {
+        Recipe r = recipe();
+        r.getIngredients().set(1, new Ingredient("oil", "150", "ml"));
+        return r;
+    }
+
     @Test
     void sameContentSameHash() {
         String hash = TranslationHash.of(recipe());
@@ -79,8 +85,39 @@ class TranslationHashTest {
     }
 
     @Test
-    void recipesWithoutGroupsKeepTheirHash() {
-        // Wert vor Einführung der Gruppen: gespeicherte Übersetzungen ohne Gruppen bleiben gültig
-        assertEquals("b2ab0352011f43144f66075c39cf0bcf2ca67492bffe132fe692fa73512ef271", TranslationHash.of(recipe()));
+    void recipesWithoutGroupsAndUsUnitsKeepTheirHash() {
+        // Wert vor Einführung der Gruppen und der Einheiten-Lokalisierung: diese Übersetzungen bleiben gültig
+        assertEquals("016027d4c65324d614f2e334d3f13632c0f39592ed9331043f1123da772d32e9", TranslationHash.of(metric()));
+    }
+
+    @Test
+    void recipesWithUsUnitsAreTranslatedAgainAfterTheLocalization() {
+        // Wert mit "1 cup" vor der Einheiten-Lokalisierung: diese Übersetzung muss neu erzeugt werden
+        assertNotEquals("b2ab0352011f43144f66075c39cf0bcf2ca67492bffe132fe692fa73512ef271", TranslationHash.of(recipe()));
+    }
+
+    @Test
+    void usUnitsAreFoundInEveryField() {
+        assertTrue(TranslationHash.usesImperialUnits(recipe()));
+        assertFalse(TranslationHash.usesImperialUnits(metric()));
+
+        Recipe can = metric();
+        can.getIngredients().set(0, new Ingredient("cooked chickpeas (from one 15-ounce can)", "240", "g"));
+        Recipe butter = metric();
+        butter.getIngredients().set(0, new Ingredient("butter", "1", "stick"));
+        Recipe oven = metric();
+        oven.getInstructions().set(0, "Preheat the oven to 176°C (350°F).");
+        Recipe inches = metric();
+        inches.getInstructions().set(0, "Set a bowl over a few inches of water.");
+        Recipe description = metric();
+        description.setDescription("Bake in a 9x13-inch pan.");
+        for (Recipe r : List.of(can, butter, oven, inches, description)) {
+            assertTrue(TranslationHash.usesImperialUnits(r));
+        }
+
+        Recipe cinnamon = metric();
+        cinnamon.getIngredients().set(0, new Ingredient("cinnamon stick", "1", ""));
+        cinnamon.getInstructions().set(0, "Fry for 2 minutes in a large pan at 200°C, then serve in bowls.");
+        assertFalse(TranslationHash.usesImperialUnits(cinnamon));
     }
 }

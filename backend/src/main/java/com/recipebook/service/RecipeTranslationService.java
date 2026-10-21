@@ -34,8 +34,9 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Deutsche Fassung englischer Rezepte: beim ersten Abruf per KI übersetzt, Mengen und Einheiten danach im Code
- * umgerechnet, gespeichert und so lange wiederverwendet, wie der Hash über das Original passt. Das Original wird nie
+ * Deutsche Fassung englischer Rezepte: beim ersten Abruf per KI übersetzt, US-Maße dabei zutatengerecht lokalisiert
+ * (cups Kichererbsen in g, US-Dosen als deutsche Standarddosen); was die KI übersieht, rechnet der Code danach
+ * pauschal um. Gespeichert und so lange wiederverwendet, wie der Hash über das Original passt. Das Original wird nie
  * verändert. Fällt die KI aus, gibt es das Original mit Status "unavailable" – gespeichert wird dann nichts.
  */
 @Service
@@ -53,17 +54,54 @@ public class RecipeTranslationService {
         {"title": "...", "description": "...", "ingredients": [{"amount": "...", "unit": "...", "name": "...", "group": "..."}], "instructions": ["..."]}
         Regeln:
         - Genau so viele Zutaten und Schritte wie im Original, in derselben Reihenfolge. Nichts zusammenfassen, nichts weglassen, nichts ergänzen.
-        - amount: die Zahl aus dem Original unverändert übernehmen (auch Brüche wie 1/2 oder Spannen wie 2-3), leer lassen, wenn sie leer ist.
-        - unit: cup, oz, lb, fl oz, pint, quart und inch NICHT umrechnen und auf Englisch stehen lassen – das rechnet die App um.
-          Alle anderen Einheiten auf Deutsch: tablespoon → EL, teaspoon → TL, pinch → Prise, clove → Zehe, bunch → Bund,
-          handful → Handvoll, can/tin → Dose, jar → Glas, pc/pcs/piece → Stück, slice → Scheibe, sprig → Zweig. g, kg, ml, l bleiben.
+        - amount: die Zahl aus dem Original übernehmen (auch Brüche wie 1/2 oder Spannen wie 2-3), leer lassen, wenn sie leer ist.
+          Nur bei US-Maßen (siehe unten) steht hier die umgerechnete metrische Zahl.
+        - unit: auf Deutsch: tablespoon → EL, teaspoon → TL, pinch → Prise, clove → Zehe, bunch → Bund, handful → Handvoll,
+          can/tin → Dose, jar → Glas, pc/pcs/piece → Stück, slice → Scheibe, sprig → Zweig. g, kg, ml, l bleiben.
+        - US-Maße (cup, oz/ounce, lb/pound, fl oz, pint, quart, stick butter) rechnest du für deutsche Küchen in metrische Einheiten um,
+          passend zur Zutat: feste Zutaten (Hülsenfrüchte, Getreide, Nudeln, Mehl, Zucker, Käse, Nüsse, Gemüse, Butter) in g,
+          Flüssigkeiten (Wasser, Brühe, Milch, Sahne, Öl, Saft, Wein) in ml. Volumen fester Zutaten über die übliche Dichte in Gewicht.
+          Richtwerte je cup: Mehl 125 g, Zucker 200 g, Puderzucker 120 g, Kakao 85 g, Haferflocken 90 g, Reis (roh) 190 g,
+          rote Linsen (roh) 200 g, Bulgur/Couscous (roh) 170 g, kleine Nudeln (roh) 110 g, gekochte Bohnen/Kichererbsen 160 g,
+          Parmesan gerieben 100 g, Feta zerbröselt 150 g, Nüsse 140 g, Schokostückchen 170 g, Butter 225 g, gehackte Zwiebel 160 g,
+          gehackte frische Kräuter 30 g, Blattspinat (roh) 30 g. 1 stick butter = 115 g, 1 oz = 28 g, 1 lb = 450 g, 1 fl oz = 30 ml.
+          Nennt das Original selbst eine metrische Angabe (z. B. "2 ounces or 55 grams", "2 cups (475 ml)"), nimm genau diese Zahl.
+          Immer in g bzw. ml umrechnen, nie in andere Maße wie Bund, Tasse oder Glas umdeuten.
+          Runden: unter 10 auf ganze Zahlen, unter 100 auf 5er, darüber auf 10er; ab 1000 in kg bzw. l mit einer Nachkommastelle
+          (Dezimalpunkt, z. B. "1.2"). Spannen an beiden Enden umrechnen. EL, TL, Prise usw. bleiben Löffelmaße.
+          Beispiele (amount | unit | name):
+          1 1/2 | cups | cooked chickpeas → 240 | g | Kichererbsen, gekocht
+          2 | cups | red lentils → 400 | g | rote Linsen
+          1/2 | cup | uncooked ditalini pasta (2 ounces or 55 grams) → 55 | g | Ditalini, ungekocht
+          1 | cup | all-purpose flour → 125 | g | Weizenmehl (Type 405)
+          1 | stick | butter, softened → 115 | g | Butter, weich
+          4-5 | cups | water → 1-1.2 | l | Wasser
+          1 | cup | whole milk → 240 | ml | Vollmilch
+          8 | oz | feta → 225 | g | Feta
+          1 | lb | potatoes → 450 | g | Kartoffeln
+        - US-Dosen werden deutsche Standarddosen: 15-ounce can (Bohnen, Kichererbsen, Mais) → 1 Dose (400 g, Abtropfgewicht 240 g);
+          14/28-ounce can tomatoes → 1 Dose (400 g) bzw. 1 große Dose (800 g); 13.5/14-ounce can coconut milk → 1 Dose (400 ml);
+          6-ounce can tomato paste → 1 kleine Dose (70 g). Das gilt auch in Klammern im Namen, z. B.
+          1 1/2 | cups | cooked chickpeas (from one 15-ounce can, drained and rinsed)
+          → 240 | g | Kichererbsen, gekocht, abgetropft und abgespült (aus 1 Dose: 400 g, Abtropfgewicht 240 g)
+          1 | | 15-ounce can black beans → 1 | Dose | schwarze Bohnen (400 g, Abtropfgewicht 240 g)
         - name: der im deutschen Kochbuch übliche Zutatenname, das Lebensmittel zuerst und Zusätze nach einem Komma,
           z. B. "finely chopped onion" → "Zwiebel, fein gehackt", "tin chopped tomatoes" → "Tomaten, gehackt (Dose)".
           Deutsche Standardbegriffe verwenden (runner beans → Stangenbohnen, butter beans → Butterbohnen, soured cream → saure Sahne).
+          Im Namen keine US-Maße stehen lassen – genauso umrechnen wie oben; doppelte Mengenangaben in Klammern fallen weg,
+          alle übrigen Hinweise bleiben ("2 cups boiling water (475 ml; I just use tap water)" →
+          475 | ml | Wasser, kochend (Hinweis: ich nehme einfach Leitungswasser)).
         - group: Überschrift der Zutatengruppe (z. B. "For the dressing" → "Für das Dressing", "Salsa" → "Salsa") übersetzen;
           gleiche Gruppe immer gleich übersetzen. Fehlt group im Original, group weglassen.
         - instructions und description: natürliches Deutsch im Kochbuchstil (Infinitiv, z. B. "Die Zwiebel fein hacken.").
-          Temperaturen in °F und Längen in inch als Zahl mit Einheit stehen lassen (z. B. "350 °F", "1 inch") – die App rechnet sie um.
+          US-Angaben im Text genauso lokalisieren, Dezimalzahlen mit Komma:
+          °F → °C auf übliche Ofenstufen gerundet (325 °F → 160 °C, 350 °F → 180 °C, 375 °F → 190 °C, 400 °F → 200 °C,
+          425 °F → 220 °C, 450 °F → 230 °C); steht schon °C dabei (z. B. "176°C (350°F)"), nur die gerundete Celsius-Angabe ("180 °C").
+          inch → cm ("1-inch pieces" → "2,5 cm große Stücke", "1/2 inch thick" → "1 cm dick", "a few inches of water" →
+          "einige Zentimeter Wasser", "9x13-inch pan" → "Auflaufform (ca. 23 x 33 cm)").
+          Mengen wie bei den Zutaten ("4–5 cups of salted water" → "1–1,2 l Salzwasser", "a 15-ounce can" → "1 Dose (400 g)",
+          "½ cup of the chopped herb mixture" → "15 g (etwa eine Handvoll) der gehackten Kräutermischung");
+          auch im Text cup nie zu Bund, Tasse oder Glas machen.
           Mengen, die schon metrisch sind, unverändert übernehmen.
         - Leere description bleibt leer. Keine Kommentare, keine Erklärungen.
         """;

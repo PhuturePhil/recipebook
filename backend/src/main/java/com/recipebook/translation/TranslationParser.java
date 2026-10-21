@@ -12,7 +12,7 @@ import java.util.Map;
 
 /**
  * Prüft die KI-Antwort streng gegen das Original (gleich viele Zutaten und Schritte, Titel und Namen vorhanden) und
- * rechnet Mengen und Einheiten danach deterministisch um. Alles, was nicht passt, ist ein Fehler – lieber keine
+ * rechnet verbliebene US-Maße in Mengen, Namen und Text danach deterministisch um. Alles, was nicht passt, ist ein Fehler – lieber keine
  * Übersetzung als eine halbe.
  */
 public final class TranslationParser {
@@ -47,7 +47,7 @@ public final class TranslationParser {
             if (name == null || name.isBlank()) throw new InvalidTranslationException("Zutat " + (i + 1) + " ohne Namen");
             UnitConverter.Quantity q = UnitConverter.ingredient(blankToNull(text(row.path("amount"))),
                 blankToNull(text(row.path("unit"))));
-            lines.add(new Line(q.amount(), q.unit(), name.trim(),
+            lines.add(new Line(q.amount(), q.unit(), UnitConverter.text(name.trim()),
                 group(originalIngredients.get(i).getGroupName(), blankToNull(text(row.path("group"))), groups)));
         }
 

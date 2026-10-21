@@ -54,7 +54,20 @@ public final class UnitConverter {
             + "(fl\\.? ?oz|fluid ounces?|cups?|Tassen?|ounces?|oz|Unzen?|pounds?|lbs?|Pfund|pints?|quarts?|inch(?:es)?|Zoll)(?![\\p{L}])",
         Pattern.CASE_INSENSITIVE);
 
+    private static final Pattern IMPERIAL = Pattern.compile(
+        "(?<![\\p{L}])(?:cups?|ounces?|oz|fl\\.? ?oz|pounds?|lbs?|pints?|quarts?|gallons?|inch(?:es)?|sticks? (?:of )?butter"
+            + "|fahrenheit)(?![\\p{L}])|\\d\\s*°\\s*F(?![\\p{L}])",
+        Pattern.CASE_INSENSITIVE);
+
     private UnitConverter() {
+    }
+
+    /**
+     * Steht im Text ein US-Maß (cup, oz, lb, inch, stick butter, °F …)? Für englische Originale – "pound" als Verb zählt
+     * mit, das kostet höchstens eine unnötige Neuübersetzung.
+     */
+    public static boolean containsImperial(String text) {
+        return text != null && IMPERIAL.matcher(text).find();
     }
 
     private static void rule(double factor, String unit, String... names) {

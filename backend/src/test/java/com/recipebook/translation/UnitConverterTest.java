@@ -94,6 +94,19 @@ class UnitConverterTest {
     }
 
     @Test
+    void imperialUnitsAreRecognisedInText() {
+        assertTrue(UnitConverter.containsImperial("1 1/2 cups cooked chickpeas"));
+        assertTrue(UnitConverter.containsImperial("from one 15-ounce can"));
+        assertTrue(UnitConverter.containsImperial("8 oz feta"));
+        assertTrue(UnitConverter.containsImperial("1 lb potatoes"));
+        assertTrue(UnitConverter.containsImperial("2 sticks of butter"));
+        assertTrue(UnitConverter.containsImperial("Preheat to 350°F"));
+        assertTrue(UnitConverter.containsImperial("a few inches of water"));
+        assertFalse(UnitConverter.containsImperial("400 g Dose Tomaten, 220 °C, Cupcakes, 1 cinnamon stick, in a pan"));
+        assertFalse(UnitConverter.containsImperial(null));
+    }
+
+    @Test
     void textWithoutImperialUnitsIsUnchanged() {
         String step = "1 x 400g Dose Tomaten und 150ml Olivenöl in den Topf geben, 15 Minuten köcheln. Cupcakes!";
         assertEquals(step, UnitConverter.text(step));

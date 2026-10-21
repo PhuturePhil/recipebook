@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026-10-21.3",
+    "datum": "21.10.2026",
+    "titel": "Übersetzte Rezepte mit deutschen Mengen",
+    "punkte": [
+      "Englische Rezepte zeigen in der deutschen Übersetzung jetzt Gramm statt Tassen, wo es passt: 1 1/2 cups gekochte Kichererbsen werden zu 240 g, nicht mehr zu 360 ml",
+      "Amerikanische Dosen werden zu deutschen Standarddosen, z. B. „1 Dose (400 g, Abtropfgewicht 240 g)“ statt „15-ounce Dose“. Fahrenheit, Inch und Butter-Sticks rechnet die Übersetzung ebenfalls um",
+      "Das englische Original bleibt unverändert, die betroffenen Übersetzungen sind schon neu erstellt"
+    ]
+  },
+  {
     "version": "2026-10-21.2",
     "datum": "21.10.2026",
     "titel": "Eine Leiste unten für alles",
