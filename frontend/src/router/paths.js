@@ -3,6 +3,7 @@
 
 export const NEW_RECIPE_PATH = '/rezepte/neu'
 export const INGREDIENTS_PATH = '/zutaten'
+export const MEAL_PLAN_PATH = '/plan'
 export const RECIPE_DETAIL_ROUTE = '/rezepte/:id(\\d+)'
 export const RECIPE_EDIT_ROUTE = '/rezepte/:id(\\d+)/bearbeiten'
 

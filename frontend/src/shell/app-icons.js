@@ -92,7 +92,10 @@
     // v1.7 (Rezepte: Familien)
     familie:    '<path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M12 16.2s-3-1.8-3-3.8a1.7 1.7 0 0 1 3-1.1 1.7 1.7 0 0 1 3 1.1c0 2-3 3.8-3 3.8z"/>',
     kopieren:   '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5.5A1.5 1.5 0 0 1 4 13.5v-8A1.5 1.5 0 0 1 5.5 4h8A1.5 1.5 0 0 1 15 5.5V6"/>',
-    teilen:     '<path d="M12 3.5V14"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7.5 10H6A1.5 1.5 0 0 0 4.5 11.5V19A1.5 1.5 0 0 0 6 20.5h12A1.5 1.5 0 0 0 19.5 19v-7.5A1.5 1.5 0 0 0 18 10h-1.5"/>'
+    teilen:     '<path d="M12 3.5V14"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7.5 10H6A1.5 1.5 0 0 0 4.5 11.5V19A1.5 1.5 0 0 0 6 20.5h12A1.5 1.5 0 0 0 19.5 19v-7.5A1.5 1.5 0 0 0 18 10h-1.5"/>',
+    // v1.8 (Rezepte: Essensplan – Entwürfe mock_plan_week.html / mock_detail.html)
+    plan:       '<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17M8 2.8V7M16 2.8V7"/>',
+    planen:     '<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17M8 2.8V7M16 2.8V7M12 13v5M9.5 15.5h5"/>'
   };
 
   function svg(name, size, cls) {

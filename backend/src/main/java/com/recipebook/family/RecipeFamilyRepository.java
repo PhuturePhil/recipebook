@@ -13,10 +13,6 @@ public interface RecipeFamilyRepository extends JpaRepository<RecipeFamily, Reci
 
     long countByFamilyId(Long familyId);
 
-    @Modifying
-    @Query("DELETE FROM RecipeFamily rf WHERE rf.recipeId = :recipeId")
-    int deleteByRecipe(@Param("recipeId") Long recipeId);
-
     // Freigaben, die ein Mitglied mit seinen Rezepten in die Familie gebracht hat (beim Austreten/Entfernen)
     @Modifying
     @Query("DELETE FROM RecipeFamily rf WHERE rf.familyId = :familyId "

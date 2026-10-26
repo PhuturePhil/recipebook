@@ -1,5 +1,6 @@
 package com.recipebook.family;
 
+import com.recipebook.mealplan.MealPlanEntryRepository;
 import com.recipebook.model.User;
 import com.recipebook.model.UserNames;
 import com.recipebook.repository.UserRepository;
@@ -24,7 +25,8 @@ import java.util.regex.Pattern;
  * Familien: alle Mitglieder sind gleichberechtigt (umbenennen, einladen, entfernen, austreten). Jede Aktion prüft
  * serverseitig die Mitgliedschaft; wer nicht Mitglied ist, bekommt „nicht gefunden“. Höchstens {@link #MAX_MEMBERS}
  * Mitglieder; verlässt das letzte Mitglied die Familie, wird sie gelöscht. Beim Austreten/Entfernen verschwinden nur
- * die Freigaben der Rezepte dieses Mitglieds in dieser Familie – Rezepte gehen nie verloren.
+ * die Freigaben der Rezepte dieses Mitglieds in dieser Familie (und damit deren Einträge im Essensplan) – Rezepte
+ * gehen nie verloren.
  */
 @Service
 public class FamilyService {
@@ -51,6 +53,7 @@ public class FamilyService {
     private final FamilyMemberRepository memberRepository;
     private final RecipeFamilyRepository recipeFamilyRepository;
     private final UserRepository userRepository;
+    private final MealPlanEntryRepository mealPlanRepository;
     private final SecureRandom secureRandom = new SecureRandom();
     private Clock clock = Clock.systemDefaultZone();
 
@@ -58,11 +61,13 @@ public class FamilyService {
     private String appUrl;
 
     public FamilyService(FamilyRepository familyRepository, FamilyMemberRepository memberRepository,
-            RecipeFamilyRepository recipeFamilyRepository, UserRepository userRepository) {
+            RecipeFamilyRepository recipeFamilyRepository, UserRepository userRepository,
+            MealPlanEntryRepository mealPlanRepository) {
         this.familyRepository = familyRepository;
         this.memberRepository = memberRepository;
         this.recipeFamilyRepository = recipeFamilyRepository;
         this.userRepository = userRepository;
+        this.mealPlanRepository = mealPlanRepository;
     }
 
     void setClock(Clock clock) {
@@ -170,6 +175,8 @@ public class FamilyService {
 
     private boolean leave(Family family, Long userId) {
         recipeFamilyRepository.deleteOwnedBy(family.getId(), userId);
+        // Geplante Rezepte des Mitglieds, die die Familie damit nicht mehr sehen darf, verschwinden aus dem Plan
+        mealPlanRepository.pruneFamily(family.getId());
         memberRepository.deleteMember(family.getId(), userId);
         memberRepository.flush();
         if (memberRepository.countByFamilyId(family.getId()) == 0) {

@@ -10,6 +10,7 @@ import com.recipebook.model.User;
 import com.recipebook.service.CustomUserDetailsService;
 import com.recipebook.service.JwtService;
 import com.recipebook.service.RecipeService;
+import com.recipebook.service.RecipeThumbnails;
 import com.recipebook.service.RecipeTranslationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,9 @@ class RecipeControllerTest {
 
     @MockitoBean
     private RecipeAccess recipeAccess;
+
+    @MockitoBean
+    private RecipeThumbnails thumbnails;
 
     @BeforeEach
     void visibleByDefault() {
@@ -147,6 +151,36 @@ class RecipeControllerTest {
                 .andExpect(content().bytes(jpeg))
                 .andExpect(header().string("Cache-Control", containsString("max-age=31536000")))
                 .andExpect(header().string("Cache-Control", containsString("private")));
+    }
+
+    @Test
+    void getImage_thumb_servesSmallJpeg_fallsBackToOriginal() throws Exception {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x01, 0x02};
+        byte[] thumb = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x09};
+        String dataUrl = "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(jpeg);
+        when(recipeService.findImageUrl(7L)).thenReturn(Optional.of(dataUrl));
+        when(recipeService.findImageUrl(8L)).thenReturn(Optional.of(dataUrl));
+        when(thumbnails.of(7L, dataUrl)).thenReturn(Optional.of(thumb));
+        when(thumbnails.of(8L, dataUrl)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/recipes/7/image").param("v", "abc").param("size", "thumb")
+                        .with(user(principal(5, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/jpeg"))
+                .andExpect(content().bytes(thumb))
+                .andExpect(header().string("Cache-Control", containsString("max-age=31536000")));
+        mockMvc.perform(get("/api/recipes/8/image").param("size", "thumb").with(user(principal(5, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(jpeg));
+    }
+
+    @Test
+    void getImage_thumbOfHiddenRecipe_is404() throws Exception {
+        doThrow(RecipeAccess.notFound()).when(recipeAccess).requireVisible(7L, 6L);
+
+        mockMvc.perform(get("/api/recipes/7/image").param("size", "thumb").with(user(principal(6, Role.USER))))
+                .andExpect(status().isNotFound());
+        verifyNoInteractions(thumbnails);
     }
 
     @Test

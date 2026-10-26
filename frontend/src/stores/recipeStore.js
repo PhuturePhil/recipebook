@@ -126,7 +126,8 @@ export const useRecipeStore = defineStore('recipe', {
   },
 
   actions: {
-    async fetchRecipes({ background = false } = {}) {
+    // quiet: ohne Lade-Overlay (z. B. Rezeptsuche im Essensplan-Picker, der selbst „…“ zeigt)
+    async fetchRecipes({ background = false, quiet = false } = {}) {
       // Anderes Konto oder Gast ↔ angemeldet: nichts aus der vorigen Sicht weiterzeigen
       const viewer = viewerKey()
       if (viewer !== this._viewer) {
@@ -142,7 +143,7 @@ export const useRecipeStore = defineStore('recipe', {
       if (!background) this.loading = true
       this.error = null
       const uiStore = useUiStore()
-      uiStore.showLoading('Rezepte werden geladen…')
+      if (!quiet) uiStore.showLoading('Rezepte werden geladen…')
       try {
         const data = await recipeService.getAll()
         // Während des Ladens abgemeldet/gewechselt: Antwort gehört zur alten Sicht
@@ -154,7 +155,7 @@ export const useRecipeStore = defineStore('recipe', {
         console.error('Failed to fetch recipes:', error)
       } finally {
         this.loading = false
-        uiStore.hideLoading()
+        if (!quiet) uiStore.hideLoading()
       }
     },
 

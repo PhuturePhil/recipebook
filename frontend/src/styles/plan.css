@@ -1,0 +1,1000 @@
+/* Essensplan (abgenommen 26.10.2026, Entwürfe media/out/mock_plan_week.html, mock_plan_month.html,
+   mock_plan_monat_liste.html). Werte aus den Entwürfen; Karten-, Schrift- und Akzentfarben über die Hero-Tokens
+   (hero.css), dazu Seitengrund, Segment und Schatten der Entwürfe. Hell/dunkel folgt data-theme. */
+
+:root {
+  --plan-bg: #eef0f4;
+  --plan-seg: #e3e6ec;
+  --plan-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+  --plan-today: rgba(232, 89, 12, .09);
+  --plan-today-row: rgba(232, 89, 12, .07);
+  /* Orange als Schrift auf hellem Grund: dunklere Stufe für Kontrast ≥ 4,5:1 */
+  --plan-acc-text: #c2410c;
+}
+
+[data-theme="dark"] {
+  --plan-bg: #14161b;
+  --plan-seg: #272b33;
+  --plan-shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  --plan-acc-text: #f09a63;
+}
+
+body:has(.plan-view),
+html:has(.plan-view) {
+  background: var(--plan-bg);
+}
+
+body:has(.plan-view) .shell-header {
+  background: var(--plan-bg);
+}
+
+/* Mobil: eigene Überschrift „Essensplan“ wie im Entwurf statt der Kopfzeile */
+@media (max-width: 1023px) {
+  body:has(.plan-view) .shell-header {
+    display: none;
+  }
+}
+
+.plan-view {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: max(14px, var(--shell-top, 0px)) 14px 14px;
+  color: var(--h-ink);
+}
+
+/* Schriftfamilie für Knöpfe ohne Spezifität – Größe, Gewicht und Farbe setzen die Klassen */
+.plan-view :where(button),
+.plan-sheet :where(button, input) {
+  font-family: inherit;
+}
+
+/* ── Kopf, Segment, Blättern ─────────────────────────────────────────── */
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  min-height: 44px;
+}
+
+.plan-head h1 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+}
+
+@media (min-width: 1024px) {
+  .plan-view {
+    padding-top: 6px;
+  }
+
+  .plan-head {
+    min-height: 0;
+  }
+
+  .plan-head:not(:has(button)) {
+    margin-bottom: 0;
+  }
+
+  .plan-head h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+.plan-head__tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Kleine Pillen (Heute, Familie) mit 44-px-Tippfläche */
+.plan-pill {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.plan-pill > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--h-card);
+  border: 1px solid var(--h-line);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--h-ink);
+  white-space: nowrap;
+}
+
+.plan-pill--today > span {
+  color: var(--plan-acc-text);
+}
+
+.plan-seg {
+  display: flex;
+  background: var(--plan-seg);
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 12px;
+}
+
+.plan-seg button {
+  flex: 1;
+  min-height: 44px;
+  text-align: center;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--h-mut);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.plan-seg button[aria-pressed="true"] {
+  background: var(--h-card);
+  color: var(--h-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.plan-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.plan-arr {
+  width: 44px;
+  height: 44px;
+  margin: -2px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.plan-arr > span {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--h-card);
+  border: 1px solid var(--h-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--h-ink);
+}
+
+.plan-nav__lbl {
+  text-align: center;
+}
+
+.plan-nav__lbl b {
+  font-size: 15.5px;
+  font-weight: 750;
+  display: block;
+}
+
+.plan-nav__lbl i {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--h-mut);
+  font-weight: 600;
+}
+
+/* ── Wochenansicht ───────────────────────────────────────────────────── */
+.plan-day {
+  display: flex;
+  gap: 11px;
+  margin-bottom: 10px;
+}
+
+.plan-day.is-today {
+  background: var(--plan-today);
+  border-radius: 20px;
+  padding: 6px 7px;
+  margin: 0 -7px 10px;
+}
+
+.plan-dcol {
+  width: 44px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+}
+
+.plan-dcol b {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--h-mut);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.plan-dcol em {
+  font-style: normal;
+  font-size: 17px;
+  font-weight: 750;
+  margin-top: 3px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.plan-day.is-today .plan-dcol b {
+  color: var(--plan-acc-text);
+}
+
+.plan-day.is-today .plan-dcol em {
+  background: var(--h-acc);
+  color: #fff;
+}
+
+.plan-dmeals {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Karte: ganze Fläche öffnet das Rezept, ··· rechts verwaltet */
+.plan-meal {
+  position: relative;
+  background: var(--h-card);
+  border-radius: 16px;
+  box-shadow: var(--plan-shadow);
+  min-height: 72px;
+}
+
+.plan-meal__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 44px 9px 9px;
+  min-height: 72px;
+  border-radius: 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.plan-meal__link--text {
+  padding-left: 14px;
+}
+
+.plan-meal__link:focus-visible,
+.plan-meal__more:focus-visible,
+.plan-empty:focus-visible,
+.plan-d:focus-visible,
+.plan-r:focus-visible,
+.plan-arr:focus-visible > span,
+.plan-pill:focus-visible > span,
+.plan-seg button:focus-visible {
+  outline: 2px solid var(--h-acc);
+  outline-offset: 2px;
+}
+
+.plan-photo {
+  width: 62px;
+  height: 62px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: none;
+  background: var(--h-chip);
+  display: block;
+}
+
+.plan-mt {
+  min-width: 0;
+}
+
+.plan-mt h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-mt p {
+  font-size: 12px;
+  color: var(--h-mut);
+  font-weight: 600;
+  margin: 3px 0 0;
+}
+
+.plan-meal__more {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--h-mut);
+  cursor: pointer;
+}
+
+.plan-empty {
+  flex: 1;
+  width: 100%;
+  border: 1.5px dashed var(--h-line);
+  border-radius: 16px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: none;
+  color: var(--h-mut);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Monatsraster ────────────────────────────────────────────────────── */
+.plan-cal {
+  background: var(--h-card);
+  border-radius: 18px;
+  box-shadow: var(--plan-shadow);
+  padding: 12px 10px 10px;
+}
+
+.plan-wdh {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 6px;
+}
+
+.plan-wdh span {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--h-mut);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.plan-d {
+  position: relative;
+  height: 48px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  background: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.plan-d--blank,
+.plan-d.off {
+  cursor: default;
+}
+
+.plan-d i {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 4px 0 0 6px;
+  color: var(--h-ink);
+  position: relative;
+  z-index: 2;
+}
+
+.plan-d .plan-d__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.plan-d .sc {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .42), rgba(0, 0, 0, .08));
+}
+
+.plan-d.has i {
+  color: #fff;
+  font-weight: 750;
+}
+
+.plan-d.off i {
+  color: var(--h-mut);
+  opacity: .55;
+}
+
+/* Tag mit Freitext (ohne Foto): Punkt unten */
+.plan-d__dot {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--h-acc);
+}
+
+.plan-d.sel {
+  outline: 2.5px solid var(--h-acc);
+  outline-offset: -2.5px;
+}
+
+.plan-d.today {
+  outline: 3px solid var(--h-acc);
+  outline-offset: -3px;
+}
+
+.plan-d.today i {
+  background: var(--h-acc);
+  color: #fff !important;
+  border-radius: 999px;
+  min-width: 19px;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 3px 0 0 3px;
+  font-size: 11px;
+}
+
+.plan-selrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 2px 8px;
+}
+
+.plan-selrow b {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.plan-selrow i {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--h-mut);
+  font-weight: 600;
+}
+
+.plan-selmeals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Monatsliste ─────────────────────────────────────────────────────── */
+.plan-list {
+  background: var(--h-card);
+  border-radius: 18px;
+  box-shadow: var(--plan-shadow);
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.plan-r {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--h-chip);
+  background: none;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+a.plan-r,
+button.plan-r {
+  cursor: pointer;
+}
+
+.plan-r:last-child {
+  border-bottom: none;
+}
+
+.plan-r .d {
+  width: 46px;
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--h-mut);
+}
+
+.plan-r .d b {
+  font-weight: 750;
+  color: var(--h-ink);
+  font-size: 13px;
+  margin-left: 3px;
+}
+
+.plan-r h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.plan-r .plan-r__chev {
+  color: var(--h-mut);
+  display: flex;
+}
+
+.plan-r.leer {
+  padding: 5px 14px;
+}
+
+.plan-r.leer .d {
+  opacity: .55;
+}
+
+.plan-r.leer h3 {
+  color: var(--h-line);
+  font-weight: 600;
+}
+
+.plan-r.we {
+  background: var(--h-chip);
+}
+
+.plan-r.today {
+  border-left: 4px solid var(--h-acc);
+  padding-left: 10px;
+  background: var(--plan-today-row);
+}
+
+.plan-r.today .d,
+.plan-r.today .d b {
+  color: var(--plan-acc-text);
+}
+
+.plan-r.today.leer .d {
+  opacity: 1;
+}
+
+.plan-hb {
+  background: var(--h-acc);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 750;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: .3px;
+  flex: none;
+}
+
+/* ── Zustände ────────────────────────────────────────────────────────── */
+.plan-state {
+  background: var(--h-card);
+  border-radius: 18px;
+  box-shadow: var(--plan-shadow);
+  padding: 20px 18px;
+  text-align: center;
+  color: var(--h-mut);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.plan-state p {
+  margin: 0 0 14px;
+}
+
+.plan-state__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
+  font-size: 14.5px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.plan-loading {
+  opacity: .6;
+  transition: opacity .15s;
+}
+
+/* ── Sheets (Picker, Datum, Verwalten, Familie) ──────────────────────── */
+.plan-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--overlay);
+  animation: planFade .18s ease-out;
+}
+
+.plan-sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--h-card);
+  color: var(--h-ink);
+  border-radius: var(--radius-sheet, 22px) var(--radius-sheet, 22px) 0 0;
+  box-shadow: var(--schatten-sheet, 0 -8px 30px rgba(0, 0, 0, .2));
+  padding: 10px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  animation: planUp .22s cubic-bezier(.2, .8, .2, 1);
+}
+
+@media (min-width: 1024px) {
+  .plan-sheet-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .plan-sheet {
+    max-width: 440px;
+    border-radius: var(--radius-dialog, 18px);
+    padding-bottom: 18px;
+  }
+
+  .plan-sheet__grab {
+    display: none;
+  }
+}
+
+.plan-sheet__grab {
+  width: 40px;
+  height: 4.5px;
+  border-radius: 3px;
+  background: var(--h-line);
+  margin: 4px auto 10px;
+  flex: none;
+}
+
+.plan-sheet__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex: none;
+}
+
+.plan-sheet__titles {
+  flex: 1;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.plan-sheet__titles h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.plan-sheet__titles p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--h-mut);
+  font-weight: 600;
+}
+
+.plan-sheet__close {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--h-mut);
+  cursor: pointer;
+}
+
+.plan-sheet__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.plan-sheet :focus-visible {
+  outline: 2px solid var(--h-acc);
+  outline-offset: 2px;
+}
+
+/* Menüzeilen (Verwalten, Familie, In welchen Plan?) */
+.plan-mi {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--h-line);
+  background: none;
+  color: var(--h-ink);
+  font-size: 15.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-mi:last-child {
+  border-bottom: 0;
+}
+
+.plan-mi .icon {
+  color: var(--plan-acc-text);
+}
+
+.plan-mi--danger,
+.plan-mi--danger .icon {
+  color: var(--h-red);
+}
+
+.plan-mi__check {
+  margin-left: auto;
+  color: var(--plan-acc-text);
+}
+
+/* Picker */
+.plan-search {
+  position: relative;
+  margin-bottom: 8px;
+  flex: none;
+}
+
+.plan-search .icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--h-mut);
+}
+
+.plan-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--h-line);
+  background: var(--h-chip);
+  color: var(--h-ink);
+  font-size: 16px;
+}
+
+.plan-search .plan-input {
+  padding-left: 38px;
+}
+
+.plan-input::placeholder {
+  color: var(--h-mut);
+}
+
+.plan-pick {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--h-chip);
+  background: none;
+  color: var(--h-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-pick:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.plan-pick .plan-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+}
+
+.plan-pick h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.plan-pick p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--h-mut);
+  font-weight: 600;
+}
+
+.plan-picker__none {
+  padding: 16px 4px;
+  color: var(--h-mut);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.plan-free {
+  flex: none;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid var(--h-line);
+}
+
+.plan-free label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--h-mut);
+  margin: 0 2px 6px;
+}
+
+.plan-free__row {
+  display: flex;
+  gap: 8px;
+}
+
+.plan-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--akzent);
+  color: var(--akzent-kontrast);
+  font-size: 14.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.plan-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* Datumswahl: Heute/Morgen + Mini-Kalender */
+.plan-quick {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.plan-quick button {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--h-line);
+  background: var(--h-chip);
+  color: var(--h-ink);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.plan-mini__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.plan-mini__nav b {
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.plan-mini__nav button {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--h-ink);
+  cursor: pointer;
+}
+
+.plan-mini .plan-wdh {
+  margin-bottom: 2px;
+}
+
+.plan-mini__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.plan-mini__day {
+  height: 44px;
+  min-width: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--h-ink);
+  font-size: 14.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.plan-mini__day.today {
+  color: var(--plan-acc-text);
+  font-weight: 800;
+  box-shadow: inset 0 0 0 2px var(--h-acc);
+}
+
+.plan-mini__day.sel {
+  background: var(--h-acc);
+  color: #fff;
+  box-shadow: none;
+}
+
+.plan-mini__day:disabled {
+  cursor: wait;
+}
+
+@keyframes planFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes planUp { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-sheet-backdrop,
+  .plan-sheet {
+    animation: none;
+  }
+}

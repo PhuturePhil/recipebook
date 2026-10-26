@@ -66,7 +66,7 @@ import BottomBar from './BottomBar.vue'
 import ThemeSeg from './ThemeSeg.vue'
 import LegalLinks from '@/components/LegalLinks.vue'
 import { useNewBadge } from '@/composables/useNewBadge'
-import { NEW_RECIPE_PATH, INGREDIENTS_PATH } from '@/router/paths.js'
+import { NEW_RECIPE_PATH, MEAL_PLAN_PATH } from '@/router/paths.js'
 
 const props = defineProps({
   active: { type: String, default: '' },
@@ -78,10 +78,11 @@ const props = defineProps({
 const emit = defineEmits(['more'])
 const neu = useNewBadge()
 
+// Rezepte · Plan · Neu · Mehr (Essensplan 26.10.2026: „Zutaten“ ist ins Mehr-Menü gewandert)
 const TABS = [
   { id: 'rezepte', label: 'Rezepte', icon: 'buch', to: '/' },
+  { id: 'plan', label: 'Plan', icon: 'plan', to: MEAL_PLAN_PATH },
   { id: 'neu', label: 'Neu', icon: 'plus', to: NEW_RECIPE_PATH },
-  { id: 'zutaten', label: 'Zutaten', icon: 'karotte', to: INGREDIENTS_PATH },
 ]
 
 const bottomItems = computed(() => [

@@ -246,6 +246,9 @@
               Bearbeiten
             </router-link>
           </template>
+          <button type="button" class="btn-plan" aria-haspopup="dialog" @click="openPlan($event)">
+            <AppIcon name="planen" :size="17" />{{ planText('planAction') }}
+          </button>
         </div>
 
       </div>
@@ -256,6 +259,7 @@
         :can-edit="canEdit"
         @delete="openDeleteRecipe"
         @edit="router.push(recipeEditPath(recipe.id))"
+        @plan="openPlan"
         @rate="showRatingDialog = true"
       />
     </div>
@@ -310,6 +314,16 @@
       @submitted="onDialogRated"
     />
 
+    <PlanFromRecipe
+      v-if="planOpen && recipe"
+      :recipe="recipe"
+      :title="shown?.title ?? recipe.title"
+      :is-owner="isOwner"
+      :return-focus="planReturnFocus"
+      @close="closePlan"
+      @planned="onPlanned"
+    />
+
     <ShareModal
       v-if="showShareModal && recipe"
       :recipe-id="recipe.id"
@@ -339,6 +353,8 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import RatingForm from '@/components/RatingForm.vue'
 import RatingDialog from '@/components/RatingDialog.vue'
 import DetailActionBar from '@/components/shell/DetailActionBar.vue'
+import PlanFromRecipe from '@/components/plan/PlanFromRecipe.vue'
+import { planText } from '@/utils/planTexts'
 import AppIcon from '@/components/shell/AppIcon.vue'
 import HeroIcon from '@/components/HeroIcon.vue'
 import { visibilityLabel, VISIBILITY } from '@/utils/visibility'
@@ -362,7 +378,7 @@ import {
   recipeBadges,
   sourceLabel,
 } from '@/utils/recipeHero'
-import { navigateBackTo, LIST_PATH } from '@/utils/backNavigation'
+import { recipeBack } from '@/utils/backNavigation'
 import { nutritionService, formatKcal } from '@/services/nutritionService'
 import { recipeService } from '@/services/recipeService'
 import {
@@ -491,6 +507,27 @@ const closeRatingDialog = async () => {
   showRatingDialog.value = false
   await nextTick()
   actionBar.value?.focus('rate')
+}
+
+// Essensplan: „Planen“ (Leiste mobil, Knopf am Desktop) – Ablauf in PlanFromRecipe
+const planOpen = ref(false)
+const planReturnFocus = ref(null)
+const openPlan = (event) => {
+  planReturnFocus.value = event?.currentTarget ?? null
+  planOpen.value = true
+}
+const closePlan = async () => {
+  planOpen.value = false
+  await nextTick()
+  if (!planReturnFocus.value) actionBar.value?.focus('plan')
+}
+// Beim Planen geteilt: Freigabe-Anzeige des Rezepts und die Liste auffrischen
+const onPlanned = async ({ shared }) => {
+  await closePlan()
+  if (shared) {
+    store.invalidateRecipes()
+    await store.fetchRecipeById(recipe.value.id).catch(() => {})
+  }
 }
 
 const onDialogRated = async () => {
@@ -664,7 +701,7 @@ onUnmounted(() => {
 })
 
 // Wie der Zurück-Pfeil der Kopfzeile: immer zur Liste, aus der Liste kommend per router.back()
-const goBack = () => navigateBackTo(router, LIST_PATH)
+const goBack = () => recipeBack(router)
 
 const increaseServings = () => {
   servingsChanges.change(currentServings.value, currentServings.value + 1)
@@ -708,7 +745,7 @@ const deleteRecipe = async () => {
   try {
     await store.deleteRecipe(route.params.id)
     // Gelöschtes Rezept nicht im Verlauf lassen
-    navigateBackTo(router, LIST_PATH)
+    recipeBack(router)
   } catch (error) {
     alert('Fehler beim Löschen des Rezepts: ' + error.message)
   }
@@ -1360,6 +1397,26 @@ const confirmDeleteRecipe = async () => {
 
 .btn-edit:hover {
   background: var(--color-primary-dark, #2d3748);
+}
+
+/* Planen: neutral mit Kalender-Plus */
+.btn-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--linie);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn-plan:hover {
+  background: var(--flaeche2);
 }
 
 /* Löschen dezent: grau, rot erst bei Hover/Druck */

@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026-10-26.1",
+    "datum": "26.10.2026",
+    "titel": "Der Essensplan ist da",
+    "punkte": [
+      "Neu unten in der Leiste: „Plan“. Dort seht ihr als Familie, was es wann gibt – als Woche mit Fotos, als Monatskalender oder als kompakte Liste. Heute ist orange markiert, ein Tippen auf ein Gericht öffnet das Rezept",
+      "Auf freie Tage tippen und ein Rezept aussuchen oder einen freien Eintrag schreiben, z. B. „Essen bei Oma“. Über ··· an einem Eintrag lässt er sich verschieben oder entfernen",
+      "Auf der Rezeptseite gibt es dafür den neuen Knopf „Planen“: Tag wählen, fertig. Ist das Rezept noch privat, fragt die App vorher, ob du es mit deiner Familie teilen möchtest",
+      "„Zutaten“ findest du jetzt unter „Mehr“"
+    ]
+  },
+  {
     "version": "2026-10-21.4",
     "datum": "21.10.2026",
     "titel": "Übersetzte Zutaten passen zur Personenzahl",

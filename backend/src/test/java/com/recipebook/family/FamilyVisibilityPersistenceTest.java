@@ -181,6 +181,27 @@ class FamilyVisibilityPersistenceTest {
     }
 
     @Test
+    void removingOneFamily_keepsTheOthers() {
+        Long a = familyOf(anna, paco);
+        Long b = familyOf(anna, fremd);
+        Recipe r = recipe(anna, "FAMILY", List.of(a, b));
+
+        Recipe update = new Recipe();
+        update.setId(r.getId());
+        update.setTitle("Nur noch b");
+        update.setIngredients(new ArrayList<>());
+        update.setInstructions(new ArrayList<>());
+        update.setVisibility("FAMILY");
+        update.setFamilyIds(List.of(b));
+        recipeService.save(update, anna);
+        flush();
+
+        assertEquals(Set.of(b), access.stored(r.getId()).familyIds());
+        assertFalse(access.canView(r.getId(), paco.getId()));
+        assertTrue(access.canView(r.getId(), fremd.getId()));
+    }
+
+    @Test
     void editToPrivate_removesAllShares() {
         Long fam = familyOf(anna, paco);
         Recipe r = recipe(anna, "PUBLIC", List.of(fam));

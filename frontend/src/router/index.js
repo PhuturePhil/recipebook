@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { useAuthStore } from '@/stores/authStore'
-import { LEGACY_REDIRECTS, NEW_RECIPE_PATH, INGREDIENTS_PATH, RECIPE_DETAIL_ROUTE, RECIPE_EDIT_ROUTE } from './paths.js'
+import { LEGACY_REDIRECTS, NEW_RECIPE_PATH, INGREDIENTS_PATH, MEAL_PLAN_PATH, RECIPE_DETAIL_ROUTE, RECIPE_EDIT_ROUTE } from './paths.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -65,6 +65,12 @@ const router = createRouter({
       name: 'shared-recipe',
       component: () => import('@/views/SharedRecipeView.vue'),
       meta: { requiresAuth: false }
+    },
+    {
+      path: MEAL_PLAN_PATH,
+      name: 'meal-plan',
+      component: () => import('@/views/MealPlanView.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: INGREDIENTS_PATH,

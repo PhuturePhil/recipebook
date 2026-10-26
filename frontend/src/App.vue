@@ -13,6 +13,7 @@ import WhatsNewModal from '@/components/WhatsNewModal.vue'
 import { useUpdateCheck } from '@/composables/useUpdateCheck'
 import { replacesTabBar } from '@/utils/detailActions'
 import { flushNow } from '@/utils/analytics'
+import { INGREDIENTS_PATH } from '@/router/paths.js'
 import '@/composables/useTheme'
 
 const route = useRoute()
@@ -28,7 +29,8 @@ const { popup: whatsNew, close: closeWhatsNew } = useUpdateCheck()
 const PAGES = {
   home: { tab: 'rezepte', title: 'Rezepte', search: true },
   'recipe-new': { tab: 'neu', title: 'Neues Rezept' },
-  ingredients: { tab: 'zutaten', title: 'Zutaten' },
+  'meal-plan': { tab: 'plan', title: 'Essensplan' },
+  ingredients: { tab: 'mehr', side: 'zutaten', title: 'Zutaten', back: true },
   'recipe-detail': { tab: 'rezepte', title: 'Rezept', back: '/', navTitle: true },
   'recipe-edit': { tab: 'rezepte', title: 'Rezept bearbeiten', back: true },
   'nutrition-info': { tab: 'mehr', side: 'naehrwerte', title: 'Nährwerte & Badges', back: true },
@@ -62,6 +64,7 @@ const headerTitle = computed(() => {
 const tabBarReplaced = computed(() => replacesTabBar(route.name))
 
 const mehr = computed(() => [
+  { id: 'zutaten', label: 'Zutaten', icon: 'karotte', to: INGREDIENTS_PATH },
   { id: 'familien', label: 'Familien', icon: 'familie', to: '/familien', badge: familienNeu.value },
   { id: 'naehrwerte', label: 'Nährwerte & Badges', icon: 'balken', to: '/naehrwerte' },
   { id: 'neuerungen', label: 'Neuerungen', icon: 'neuerungen', to: '/changelog' },

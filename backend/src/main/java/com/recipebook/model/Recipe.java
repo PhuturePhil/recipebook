@@ -1,6 +1,7 @@
 package com.recipebook.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import com.recipebook.family.FamilyRef;
@@ -99,6 +100,12 @@ public class Recipe {
     @Transient
     @JsonIgnore
     private boolean guestView;
+
+    // Nur in der Antwort aufs Speichern: so viele Essensplan-Einträge sind mit der entzogenen Freigabe weggefallen
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Integer removedPlanEntries;
     
     public Recipe() {}
     
@@ -302,6 +309,14 @@ public class Recipe {
     @JsonIgnore
     public boolean isGuestView() {
         return guestView;
+    }
+
+    public Integer getRemovedPlanEntries() {
+        return removedPlanEntries;
+    }
+
+    public void setRemovedPlanEntries(Integer removedPlanEntries) {
+        this.removedPlanEntries = removedPlanEntries;
     }
 
     public void setGuestView(boolean guestView) {

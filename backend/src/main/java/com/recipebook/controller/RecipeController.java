@@ -9,12 +9,14 @@ import com.recipebook.model.Recipe;
 import com.recipebook.model.Role;
 import com.recipebook.service.IngredientUnits;
 import com.recipebook.service.RecipeService;
+import com.recipebook.service.RecipeThumbnails;
 import com.recipebook.service.RecipeTranslationService;
 import com.recipebook.translation.RecipeLanguage;
 import com.recipebook.translation.TranslatedRecipe;
 import com.recipebook.service.RecipeValidator;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -29,12 +31,14 @@ public class RecipeController {
     private final RecipeService recipeService;
     private final RecipeTranslationService translationService;
     private final RecipeAccess recipeAccess;
+    private final RecipeThumbnails thumbnails;
 
     public RecipeController(RecipeService recipeService, RecipeTranslationService translationService,
-            RecipeAccess recipeAccess) {
+            RecipeAccess recipeAccess, RecipeThumbnails thumbnails) {
         this.recipeService = recipeService;
         this.translationService = translationService;
         this.recipeAccess = recipeAccess;
+        this.thumbnails = thumbnails;
     }
 
     // Auch ohne Anmeldung erreichbar: Gäste bekommen nur öffentliche Rezepte
@@ -91,12 +95,22 @@ public class RecipeController {
 
     @GetMapping("/{id}/image")
     public ResponseEntity<byte[]> getImage(@PathVariable Long id, @RequestParam(name = "v", required = false) String version,
+            @RequestParam(name = "size", required = false) String size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         recipeAccess.requireVisible(id, RecipeAccess.viewerId(userDetails));
         CacheControl cache = version != null
                 ? CacheControl.maxAge(Duration.ofDays(365)).cachePrivate().immutable()
                 : CacheControl.noCache().cachePrivate();
-        return ImageResponses.of(recipeService.findImageUrl(id).orElse(null), cache);
+        String imageUrl = recipeService.findImageUrl(id).orElse(null);
+        // size=thumb: kleines Vorschaubild (Essensplan); lässt es sich nicht erzeugen, kommt das Original
+        if ("thumb".equals(size)) {
+            byte[] thumb = thumbnails.of(id, imageUrl).orElse(null);
+            if (thumb != null) {
+                return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+                        .header("X-Content-Type-Options", "nosniff").cacheControl(cache).body(thumb);
+            }
+        }
+        return ImageResponses.of(imageUrl, cache);
     }
 
     @PostMapping

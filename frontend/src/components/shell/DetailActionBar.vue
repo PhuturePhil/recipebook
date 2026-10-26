@@ -1,5 +1,5 @@
 <template>
-  <!-- Ersetzt auf der Rezeptseite mobil die Tab-Leiste: dieselbe BottomBar wie die Tab-Leiste – Bearbeiten,
+  <!-- Ersetzt auf der Rezeptseite mobil die Tab-Leiste: dieselbe BottomBar wie die Tab-Leiste – Bearbeiten, Planen,
        Bewerten (orange), ganz rechts „Mehr“ mit „Rezept löschen…“. Ab 1024 px gibt es die Leiste nicht. -->
   <BottomBar
     ref="bar"
@@ -19,7 +19,7 @@ import { detailActions } from '@/utils/detailActions'
 const props = defineProps({
   canEdit: { type: Boolean, default: false },
 })
-const emit = defineEmits(['delete', 'edit', 'rate'])
+const emit = defineEmits(['delete', 'edit', 'plan', 'rate'])
 const actions = computed(() => detailActions(props.canEdit))
 const bar = ref(null)
 

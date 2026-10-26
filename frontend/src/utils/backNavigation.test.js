@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pathOf, isListPath, backAction, navigateBackTo, formExitTarget, headerBack, LIST_PATH } from './backNavigation.js'
+import { pathOf, isListPath, backAction, navigateBackTo, formExitTarget, headerBack, recipeBackAction, LIST_PATH } from './backNavigation.js'
 
 const fakeRouter = () => {
   const calls = []
@@ -112,4 +112,14 @@ test('andere Seiten (back = true): vorige Seite, ohne Verlauf Liste ersetzt', ()
   headerBack(r, true, '/rezepte/5')
   headerBack(r, true, null)
   assert.deepEqual(r.calls, [['back'], ['replace', '/']])
+})
+
+test('Rezeptseite aus dem Essensplan: zurück in den Plan (Ansicht und Woche/Monat bleiben)', () => {
+  const r = fakeRouter()
+  headerBack(r, '/', '/plan')
+  headerBack(r, '/', '/plan?ansicht=monat&datum=2026-11-01')
+  assert.deepEqual(r.calls, [['back'], ['back']])
+  assert.equal(recipeBackAction('/plan?ansicht=liste'), 'back')
+  assert.equal(recipeBackAction('/planung'), 'replace')
+  assert.equal(recipeBackAction(null), 'replace')
 })

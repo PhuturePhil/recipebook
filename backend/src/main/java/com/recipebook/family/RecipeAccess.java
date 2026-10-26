@@ -1,5 +1,6 @@
 package com.recipebook.family;
 
+import com.recipebook.mealplan.MealPlanEntryRepository;
 import com.recipebook.model.CustomUserDetails;
 import com.recipebook.model.Recipe;
 import com.recipebook.repository.RecipeRepository;
@@ -32,13 +33,16 @@ public class RecipeAccess {
     private final RecipeFamilyRepository recipeFamilyRepository;
     private final FamilyMemberRepository memberRepository;
     private final FamilyRepository familyRepository;
+    private final MealPlanEntryRepository mealPlanRepository;
 
     public RecipeAccess(RecipeRepository recipeRepository, RecipeFamilyRepository recipeFamilyRepository,
-            FamilyMemberRepository memberRepository, FamilyRepository familyRepository) {
+            FamilyMemberRepository memberRepository, FamilyRepository familyRepository,
+            MealPlanEntryRepository mealPlanRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeFamilyRepository = recipeFamilyRepository;
         this.memberRepository = memberRepository;
         this.familyRepository = familyRepository;
+        this.mealPlanRepository = mealPlanRepository;
     }
 
     public static Long viewerId(CustomUserDetails user) {
@@ -151,14 +155,33 @@ public class RecipeAccess {
         return new Stored(isPublic, chosen);
     }
 
+    // Nur die Unterschiede schreiben: ein Sammel-DELETE mit anschließendem save() ließ die geladenen Zeilen im
+    // Persistenzkontext stehen, save() wurde zum Merge ohne INSERT – bleibende Familien gingen dabei verloren
     @Transactional
     public void writeLinks(Long recipeId, Set<Long> familyIds) {
+        List<RecipeFamily> existing = recipeFamilyRepository.findByRecipeId(recipeId);
         Set<Long> current = new HashSet<>();
-        recipeFamilyRepository.findByRecipeId(recipeId).forEach(rf -> current.add(rf.getFamilyId()));
+        existing.forEach(rf -> current.add(rf.getFamilyId()));
         if (current.equals(familyIds)) return;
-        recipeFamilyRepository.deleteByRecipe(recipeId);
+        existing.stream().filter(rf -> !familyIds.contains(rf.getFamilyId())).forEach(recipeFamilyRepository::delete);
         recipeFamilyRepository.flush();
-        familyIds.forEach(id -> recipeFamilyRepository.save(new RecipeFamily(recipeId, id)));
+        familyIds.stream().filter(id -> !current.contains(id))
+            .forEach(id -> recipeFamilyRepository.save(new RecipeFamily(recipeId, id)));
+    }
+
+    /**
+     * Essensplan nach einer Freigabe-Änderung: Einträge des Rezepts in Familien, die es nicht mehr sehen dürfen
+     * (weder freigegeben noch öffentlich), fallen weg – vergangene wie zukünftige. Liefert die Anzahl.
+     */
+    @Transactional
+    public int prunePlans(Long recipeId) {
+        recipeFamilyRepository.flush();
+        return mealPlanRepository.pruneRecipe(recipeId);
+    }
+
+    @Transactional
+    public void removeFromPlans(Long recipeId) {
+        mealPlanRepository.deleteByRecipe(recipeId);
     }
 
     private Map<Long, String> familyNames(Collection<Long> ids) {

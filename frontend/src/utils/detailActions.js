@@ -1,13 +1,15 @@
 // Rezept-Detailseite mobil: BottomBar an der Stelle der Tab-Leiste (generische Leiste, 21.10.2026):
-// Bearbeiten, Bewerten als Hauptaktion (orange), ganz rechts „Mehr“ mit „Rezept löschen…“ (destruktiv → nur im Menü)
+// Bearbeiten, Planen (Essensplan, 26.10.2026), Bewerten als Hauptaktion (orange), ganz rechts „Mehr“ mit
+// „Rezept löschen…“ (destruktiv → nur im Menü)
 
 const ACTIONS = [
   { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', needsEdit: true },
+  { id: 'plan', label: 'Planen', icon: 'planen', popup: 'dialog' },
   { id: 'rate', label: 'Bewerten', icon: 'stern', primary: true, popup: 'dialog' },
   { id: 'delete', label: 'Rezept löschen…', icon: 'loeschen', danger: true, popup: 'dialog', needsEdit: true },
 ]
 
-// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleibt nur „Bewerten“ – und kein „Mehr“
+// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleiben „Planen“ und „Bewerten“ – und kein „Mehr“
 export function detailActions(canEdit) {
   const allowed = ACTIONS.filter((a) => canEdit || !a.needsEdit)
   return {
