@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -27,7 +28,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = MealPlanController.class, properties = "app.allowed-origin=http://localhost")
+@WebMvcTest(controllers = MealPlanController.class, properties = "app.allowed-origin=https://pastoors.cloud")
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class MealPlanControllerTest {
 
@@ -126,6 +127,22 @@ class MealPlanControllerTest {
                         .content("{\"date\":\"2026-10-29\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.date").value("2026-10-29"));
+    }
+
+    @Test
+    void patch_fromTheBrowserWithOrigin_isNotRejectedByCors() throws Exception {
+        when(mealPlanService.move(5L, 3L, "2026-10-29")).thenReturn(entry(3, "2026-10-29"));
+
+        mockMvc.perform(options("/api/meal-plan/3").header("Origin", "https://pastoors.cloud")
+                        .header("Access-Control-Request-Method", "PATCH"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Methods", containsString("PATCH")));
+
+        mockMvc.perform(patch("/api/meal-plan/3").with(user(principal(5))).header("Origin", "https://pastoors.cloud")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2026-10-29\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-10-29"));
+        verify(mealPlanService).move(5L, 3L, "2026-10-29");
     }
 
     @Test

@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-10-28.1",
+    "datum": "28.10.2026",
+    "titel": "Essensplan: Verschieben funktioniert wieder",
+    "punkte": [
+      "Über ··· an einem Eintrag lässt sich ein Gericht wieder auf einen anderen Tag verschieben – bisher kam dabei eine Fehlermeldung"
+    ]
+  },
+  {
     "version": "2026-10-26.1",
     "datum": "26.10.2026",
     "titel": "Der Essensplan ist da",
