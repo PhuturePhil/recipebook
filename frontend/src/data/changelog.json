@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026-11-07.1",
+    "datum": "07.11.2026",
+    "titel": "Rezeptseite: Start-Knopf und belegte Tage beim Planen",
+    "punkte": [
+      "Unten auf der Rezeptseite führt ganz links der neue Knopf „Start“ zurück zur Rezeptübersicht. „Bearbeiten“ findest du jetzt unter „Mehr“, zusammen mit „Rezept löschen…“",
+      "Beim Planen und Verschieben zeigt der Kalender mit einem Punkt, an welchen Tagen schon etwas im Essensplan steht – auch bei „Heute“ und „Morgen“. Belegte Tage lassen sich trotzdem wählen"
+    ]
+  },
+  {
     "version": "2026-10-28.1",
     "datum": "28.10.2026",
     "titel": "Essensplan: Verschieben funktioniert wieder",

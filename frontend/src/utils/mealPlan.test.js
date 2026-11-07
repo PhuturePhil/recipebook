@@ -4,6 +4,7 @@ import {
   VIEWS, isoDate, fromIso, addDays, weekStart, weekDays, isoWeek, monthDays, monthGrid, rangeFor, shiftAnchor,
   isCurrentPeriod, weekLabel, weekSubLabel, monthLabel, dayLabel, weekdayShort, groupByDate, entryTitle, entryMeta,
   planTargets, plannableIn, pickerRecipes, thumbFor, insertEntry, dayPhoto, removedPlanEntriesText,
+  bookedDaysLoader,
 } from './mealPlan.js'
 
 const d = (iso) => fromIso(iso)
@@ -205,4 +206,49 @@ test('removedPlanEntriesText: Hinweis nur bei entfernten Einträgen, Einzahl/Meh
   assert.match(removedPlanEntriesText(1, 'de'), /^1 Eintrag im Essensplan wurde entfernt/)
   assert.match(removedPlanEntriesText(3, 'de'), /^3 Einträge im Essensplan wurden entfernt/)
   assert.match(removedPlanEntriesText(2, 'en'), /^2 meal plan entries were removed/)
+})
+
+test('bookedDaysLoader: lädt den ganzen sichtbaren Monat und liefert die belegten Tage (auch mehrfach belegt)', async () => {
+  const calls = []
+  const load = bookedDaysLoader(async (from, to) => {
+    calls.push([from, to])
+    return [{ id: 1, date: '2026-11-07' }, { id: 2, date: '2026-11-07' }, { id: 3, date: '2026-11-12' }]
+  })
+  assert.deepEqual(await load(d('2026-11-01')), ['2026-11-07', '2026-11-07', '2026-11-12'])
+  assert.deepEqual(calls, [['2026-11-01', '2026-11-30']])
+})
+
+test('bookedDaysLoader: Monatswechsel lädt nach, schon geladene Monate kein zweites Mal', async () => {
+  const calls = []
+  const load = bookedDaysLoader(async (from, to) => {
+    calls.push([from, to])
+    return from === '2026-12-01' ? [{ date: '2026-12-24' }] : []
+  })
+  await Promise.all([load(d('2026-11-01')), load(d('2026-11-15'))])
+  assert.deepEqual(await load(d('2026-12-01')), ['2026-12-24'])
+  await load(d('2026-11-30'))
+  assert.deepEqual(calls, [['2026-11-01', '2026-11-30'], ['2026-12-01', '2026-12-31']])
+})
+
+test('bookedDaysLoader: Februar im Schaltjahr, Jahreswechsel; Zeitraum bleibt im API-Limit von 62 Tagen', async () => {
+  const calls = []
+  const load = bookedDaysLoader(async (from, to) => { calls.push([from, to]); return [] })
+  await load(d('2028-02-10'))
+  await load(d('2026-12-31'))
+  await load(d('2027-01-01'))
+  assert.deepEqual(calls, [['2028-02-01', '2028-02-29'], ['2026-12-01', '2026-12-31'], ['2027-01-01', '2027-01-31']])
+})
+
+test('bookedDaysLoader: Fehler → keine Markierung, der nächste Aufruf versucht es erneut', async () => {
+  let fail = true
+  let count = 0
+  const load = bookedDaysLoader(async () => {
+    count += 1
+    if (fail) throw new Error('offline')
+    return [{ date: '2026-11-09' }]
+  })
+  assert.deepEqual(await load(d('2026-11-01')), [])
+  fail = false
+  assert.deepEqual(await load(d('2026-11-01')), ['2026-11-09'])
+  assert.equal(count, 2)
 })

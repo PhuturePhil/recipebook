@@ -219,7 +219,12 @@
       :return-focus="sheet.returnFocus"
       @close="closeSheet"
     >
-      <PlanDatePicker :selected="fromIso(sheet.entry.date)" :busy="busy" @pick="moveEntry(sheet.entry, $event)" />
+      <PlanDatePicker
+        :selected="fromIso(sheet.entry.date)"
+        :family-id="familyId"
+        :busy="busy"
+        @pick="moveEntry(sheet.entry, $event)"
+      />
     </PlanSheet>
 
     <PlanSheet

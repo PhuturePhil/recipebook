@@ -1,20 +1,26 @@
 // Rezept-Detailseite mobil: BottomBar an der Stelle der Tab-Leiste (generische Leiste, 21.10.2026):
-// Bearbeiten, Planen (Essensplan, 26.10.2026), Bewerten als Hauptaktion (orange), ganz rechts „Mehr“ mit
-// „Rezept löschen…“ (destruktiv → nur im Menü)
+// ganz links „Start“ zur Rezeptübersicht (07.11.2026), Planen (Essensplan, 26.10.2026), Bewerten als Hauptaktion
+// (orange), ganz rechts „Mehr“ mit „Bearbeiten“ und „Rezept löschen…“ (destruktiv → nur im Menü)
+import { planLanguage } from './planTexts.js'
+
+const HOME_LABEL = { de: 'Start', en: 'Home' }
 
 const ACTIONS = [
-  { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', needsEdit: true },
+  { id: 'home', label: 'Start', icon: 'buch', to: '/' },
   { id: 'plan', label: 'Planen', icon: 'planen', popup: 'dialog' },
   { id: 'rate', label: 'Bewerten', icon: 'stern', primary: true, popup: 'dialog' },
+  { id: 'edit', label: 'Bearbeiten', icon: 'bearbeiten', needsEdit: true, inMenu: true },
   { id: 'delete', label: 'Rezept löschen…', icon: 'loeschen', danger: true, popup: 'dialog', needsEdit: true },
 ]
 
-// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleiben „Planen“ und „Bewerten“ – und kein „Mehr“
-export function detailActions(canEdit) {
-  const allowed = ACTIONS.filter((a) => canEdit || !a.needsEdit)
+// Ohne Bearbeitungsrecht (fremdes Rezept, kein Admin) bleiben Start, Planen und Bewerten – und kein „Mehr“
+export function detailActions(canEdit, lang = planLanguage()) {
+  const allowed = ACTIONS
+    .filter((a) => canEdit || !a.needsEdit)
+    .map((a) => (a.id === 'home' ? { ...a, label: HOME_LABEL[lang] ?? HOME_LABEL.de } : a))
   return {
-    menu: allowed.filter((a) => a.danger),
-    bar: allowed.filter((a) => !a.danger),
+    menu: allowed.filter((a) => a.inMenu || a.danger),
+    bar: allowed.filter((a) => !a.inMenu && !a.danger),
   }
 }
 

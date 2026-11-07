@@ -1,6 +1,7 @@
 <template>
-  <!-- Ersetzt auf der Rezeptseite mobil die Tab-Leiste: dieselbe BottomBar wie die Tab-Leiste – Bearbeiten, Planen,
-       Bewerten (orange), ganz rechts „Mehr“ mit „Rezept löschen…“. Ab 1024 px gibt es die Leiste nicht. -->
+  <!-- Ersetzt auf der Rezeptseite mobil die Tab-Leiste: dieselbe BottomBar wie die Tab-Leiste – Start (zur Übersicht),
+       Planen, Bewerten (orange), ganz rechts „Mehr“ mit „Bearbeiten“ und „Rezept löschen…“. Ab 1024 px gibt es die
+       Leiste nicht. -->
   <BottomBar
     ref="bar"
     class="detail-action-bar"

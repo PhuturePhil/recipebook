@@ -190,3 +190,21 @@ export function pickerRecipes(recipes, familyId, query = '') {
 
 // Monatsraster: Foto des ersten Eintrags mit Bild
 export const dayPhoto = (entries) => (entries ?? []).find((e) => e.recipe?.thumbUrl)?.recipe.thumbUrl ?? null
+
+// Datumswahl (Planen, Verschieben): belegte Tage der Familie je Monat einmal laden (ganzer Monat, ≤ 62 Tage).
+// Fehlschlag: keine Markierung, der nächste Aufruf versucht es erneut – gewählt werden kann trotzdem.
+export function bookedDaysLoader(list) {
+  const months = new Map()
+  return (month) => {
+    const { from, to } = rangeFor('monat', month)
+    if (!months.has(from)) {
+      months.set(from, Promise.resolve()
+        .then(() => list(from, to))
+        .then((entries) => (entries ?? []).map((e) => e.date), () => {
+          months.delete(from)
+          return []
+        }))
+    }
+    return months.get(from)
+  }
+}

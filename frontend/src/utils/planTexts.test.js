@@ -27,3 +27,8 @@ test('planTexts: Nav und Rezeptseite wie im Entwurf, kein „veröffentlichen“
 test('planLanguage: ohne Dokument Deutsch', () => {
   assert.equal(planLanguage(), 'de')
 })
+
+test('planTexts: belegte Tage im Datums-Picker – „belegt“ bzw. „planned“', () => {
+  assert.equal(planText('booked', {}, 'de'), 'belegt')
+  assert.equal(planText('booked', {}, 'en'), 'planned')
+})

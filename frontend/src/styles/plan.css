@@ -962,6 +962,7 @@ button.plan-r {
 }
 
 .plan-mini__day {
+  position: relative;
   height: 44px;
   min-width: 0;
   border: 0;
@@ -987,6 +988,32 @@ button.plan-r {
 
 .plan-mini__day:disabled {
   cursor: wait;
+}
+
+/* Belegte Tage (Einträge der Familie): Akzent-Punkt unter der Zahl bzw. hinter Heute/Morgen; auf dem gewählten
+   Tag weiß, damit er auf Orange sichtbar bleibt */
+.plan-booked-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--plan-acc-text);
+}
+
+.plan-mini__day .plan-booked-dot {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+}
+
+.plan-mini__day.sel .plan-booked-dot {
+  background: #fff;
+}
+
+.plan-quick .plan-booked-dot {
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 @keyframes planFade { from { opacity: 0; } to { opacity: 1; } }

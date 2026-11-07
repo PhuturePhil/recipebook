@@ -33,7 +33,7 @@
     :return-focus="returnFocus"
     @close="emit('close')"
   >
-    <PlanDatePicker :busy="busy" @pick="plan" />
+    <PlanDatePicker :family-id="family?.id ?? null" :busy="busy" @pick="plan" />
   </PlanSheet>
 </template>
 
