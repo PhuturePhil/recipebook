@@ -3,15 +3,15 @@ import assert from 'node:assert/strict'
 import { detailActions, replacesTabBar, cycleFocus, formActions } from './detailActions.js'
 import { bottomBarLayout } from './bottomBar.js'
 
-test('detailActions: mit Bearbeitungsrecht Leiste Start + Planen + Bewerten, „Mehr“ mit Bearbeiten und Löschen', () => {
+test('detailActions: mit Bearbeitungsrecht Leiste Rezepte + Planen + Bewerten, „Mehr“ mit Bearbeiten und Löschen', () => {
   const { menu, bar } = detailActions(true, 'de')
   assert.deepEqual(bar.map((a) => a.id), ['home', 'plan', 'rate'])
-  assert.deepEqual(bar.map((a) => a.label), ['Start', 'Planen', 'Bewerten'])
+  assert.deepEqual(bar.map((a) => a.label), ['Rezepte', 'Planen', 'Bewerten'])
   assert.deepEqual(menu.map((a) => a.id), ['edit', 'delete'])
   assert.deepEqual(menu.map((a) => a.label), ['Bearbeiten', 'Rezept löschen…'])
 })
 
-test('detailActions: ohne Bearbeitungsrecht Start, Planen und Bewerten, kein Menü', () => {
+test('detailActions: ohne Bearbeitungsrecht Rezepte, Planen und Bewerten, kein Menü', () => {
   const { menu, bar } = detailActions(false, 'de')
   assert.deepEqual(menu, [])
   assert.deepEqual(bar.map((a) => a.id), ['home', 'plan', 'rate'])
@@ -20,7 +20,7 @@ test('detailActions: ohne Bearbeitungsrecht Start, Planen und Bewerten, kein Men
   assert.equal(layout.bar.length, 3)
 })
 
-test('detailActions: Start ganz links führt zur Rezeptübersicht, Buch-Icon wie in der Tab-Leiste, DE + EN', () => {
+test('detailActions: Rezepte ganz links führt zur Rezeptübersicht, Buch-Icon wie in der Tab-Leiste, DE + EN', () => {
   for (const canEdit of [true, false]) {
     const home = detailActions(canEdit, 'de').bar[0]
     assert.equal(home.id, 'home')
@@ -28,9 +28,9 @@ test('detailActions: Start ganz links führt zur Rezeptübersicht, Buch-Icon wie
     assert.equal(home.icon, 'buch')
     assert.ok(!home.popup && !home.primary)
   }
-  assert.equal(detailActions(true, 'en').bar[0].label, 'Home')
-  assert.equal(detailActions(true, 'fr').bar[0].label, 'Start')
-  assert.equal(detailActions(true).bar[0].label, 'Start')
+  assert.equal(detailActions(true, 'en').bar[0].label, 'Recipes')
+  assert.equal(detailActions(true, 'fr').bar[0].label, 'Rezepte')
+  assert.equal(detailActions(true).bar[0].label, 'Rezepte')
 })
 
 test('detailActions: Icons, nur Löschen als Gefahr markiert', () => {
@@ -44,7 +44,7 @@ test('detailActions: Icons, nur Löschen als Gefahr markiert', () => {
   assert.ok(!byId.edit.danger && !byId.rate.danger && !byId.plan.danger && !byId.home.danger)
 })
 
-test('detailActions: Bewerten ist die einzige Hauptaktion (orange), Start und Planen neutral', () => {
+test('detailActions: Bewerten ist die einzige Hauptaktion (orange), Rezepte und Planen neutral', () => {
   const { bar } = detailActions(true)
   assert.equal(bar.at(-1).id, 'rate')
   assert.equal(bar.at(-1).primary, true)
@@ -61,7 +61,7 @@ test('detailActions: passt in die generische Leiste – Bearbeiten oben, Lösche
   assert.equal(layout.menu.at(-1).danger, true)
 })
 
-test('detailActions: Leiste Start | Planen | Bewerten | Mehr, höchstens vier', () => {
+test('detailActions: Leiste Rezepte | Planen | Bewerten | Mehr, höchstens vier', () => {
   const { bar, menu } = detailActions(true)
   const layout = bottomBarLayout(bar, menu)
   assert.equal(layout.bar.length + (layout.menu.length ? 1 : 0), 4)

@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026-11-07.2",
+    "datum": "07.11.2026",
+    "titel": "Rezeptseite: Knopf heißt jetzt Rezepte",
+    "punkte": [
+      "Der Knopf ganz links unten auf der Rezeptseite heißt jetzt „Rezepte“ statt „Start“ – wie in der Tab-Leiste"
+    ]
+  },
+  {
     "version": "2026-11-07.1",
     "datum": "07.11.2026",
     "titel": "Rezeptseite: Start-Knopf und belegte Tage beim Planen",
