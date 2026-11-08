@@ -229,6 +229,8 @@ class MealPlanPersistenceTest {
         String thumb = only(paco, fam, "2026-10-27").recipe().thumbUrl();
 
         assertEquals("/api/meal-plan/" + entry.id() + "/image?v=abcdef012345&size=thumb", thumb);
+        assertNull(only(paco, fam, "2026-10-27").recipe().id(), "auch die Planliste nennt keine Rezept-ID");
+        assertEquals(r.getId(), only(anna, fam, "2026-10-27").recipe().id());
     }
 
     @Test

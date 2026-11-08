@@ -228,7 +228,8 @@ public class MealPlanService {
         String version = versions.get(recipeId);
         String base = FULL.equals(access) ? "/api/recipes/" + recipeId : "/api/meal-plan/" + row.getId();
         String thumb = version == null ? null : base + "/image?v=" + version + "&size=" + THUMB_SIZE;
-        RecipeInfo recipe = new RecipeInfo(recipeId, row.getTitle(), row.getTranslatedTitle(), row.getLanguage(),
+        // Rezept-ID nur bei FULL – „nur über den Plan“ läuft ausschließlich über die Eintrags-ID
+        RecipeInfo recipe = new RecipeInfo(FULL.equals(access) ? recipeId : null, row.getTitle(), row.getTranslatedTitle(), row.getLanguage(),
             row.getPrepTimeMinutes(), row.getAuthor(), row.getSource(), thumb);
         return new EntryView(row.getId(), familyId, row.getDate(), null, recipe, access, null);
     }
