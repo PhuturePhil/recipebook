@@ -1,53 +1,65 @@
 <template>
-  <!-- „Planen“ auf der Rezeptseite: eine infrage kommende Familie → direkt die Datumswahl; mehrere → „In welchen Plan?“;
-       privates eigenes Rezept → erst „Mit Familie ‚X‘ teilen?“ (geteilt wird serverseitig zusammen mit dem Eintrag,
-       bei Ablehnung entsteht nichts) -->
+  <!-- „Planen“ auf der Rezeptseite (Entwurf media/out/mock_family_plan.html): ein Sheet mit Datumswahl, bei mehreren
+       Familien darüber „Planen für“ mit Chips (Standard-Familie vorausgewählt, mit ★). Sieht die gewählte Familie das
+       Rezept nicht, steht eine Fußnote darunter. Nur der Besitzer wird danach gefragt, ob er teilen oder nur über den
+       Plan sichtbar machen will; alle anderen planen still „nur über den Plan“. -->
   <PlanSheet
-    v-if="step === 'family'"
-    :title="t('whichPlan')"
+    v-if="step === 'date'"
+    :title="t('dateTitle')"
     :subtitle="title"
     :return-focus="returnFocus"
     @close="emit('close')"
   >
-    <div class="plan-sheet__body">
-      <button v-for="f in choices" :key="f.id" type="button" class="plan-mi" @click="chooseFamily(f)">
-        <AppIcon name="familie" :size="21" />{{ f.name }}
-      </button>
+    <div v-if="families.length > 1" class="plan-for">
+      <div :id="forId" class="plan-for__label">{{ t('planFor') }}</div>
+      <div class="plan-for__chips" role="radiogroup" :aria-labelledby="forId">
+        <button
+          v-for="f in families"
+          :key="f.id"
+          type="button"
+          role="radio"
+          :class="['plan-for__chip', { on: f.id === familyId }]"
+          :aria-checked="f.id === familyId ? 'true' : 'false'"
+          :aria-label="f.defaultFamily ? `${f.name} · ${t('defaultMark')}` : undefined"
+          @click="familyId = f.id"
+        >
+          <HeroIcon v-if="f.defaultFamily" name="stern" :size="13" class="plan-for__star" />{{ f.name }}
+        </button>
+      </div>
     </div>
+    <p v-if="planOnlyFamily" class="plan-for__note">{{ t('planOnlyNote', { name: planOnlyFamily.name }) }}</p>
+    <PlanDatePicker :family-id="familyId" :busy="busy" @pick="pickDate" />
   </PlanSheet>
 
-  <ConfirmDialog
-    v-else-if="step === 'share'"
-    :title="t('shareTitle', { name: family.name })"
-    :text="t('shareText', { name: family.name })"
-    :confirm-label="t('shareConfirm')"
-    :cancel-label="t('cancel')"
-    @confirm="share = true; step = 'date'"
-    @cancel="emit('close')"
-  />
-
   <PlanSheet
-    v-else-if="step === 'date'"
-    :title="t('dateTitle')"
-    :subtitle="dateSubtitle"
+    v-else-if="step === 'share'"
+    :title="t('shareOrPlanTitle')"
+    :subtitle="`${title} · ${family?.name ?? ''}`"
     :return-focus="returnFocus"
     @close="emit('close')"
   >
-    <PlanDatePicker :family-id="family?.id ?? null" :busy="busy" @pick="plan" />
+    <div class="plan-sheet__body">
+      <button type="button" class="plan-mi" :disabled="busy" @click="plan(true)">
+        <AppIcon name="familie" :size="21" />{{ t('shareWith', { name: family?.name ?? '' }) }}
+      </button>
+      <button type="button" class="plan-mi" :disabled="busy" @click="plan(false)">
+        <AppIcon name="planen" :size="21" />{{ t('planOnly') }}
+      </button>
+    </div>
   </PlanSheet>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useId } from 'vue'
 import AppIcon from '@/components/shell/AppIcon.vue'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import HeroIcon from '@/components/HeroIcon.vue'
 import PlanSheet from './PlanSheet.vue'
 import PlanDatePicker from './PlanDatePicker.vue'
 import { useFamilyStore } from '@/stores/familyStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { mealPlanService } from '@/services/mealPlanService'
-import { dayLabel, isoDate, planTargets } from '@/utils/mealPlan'
+import { asksToShare, dayLabel, defaultFamilyId, isoDate, plannableIn } from '@/utils/mealPlan'
 import { planText as t } from '@/utils/planTexts'
 
 const props = defineProps({
@@ -61,55 +73,47 @@ const emit = defineEmits(['close', 'planned'])
 const familyStore = useFamilyStore()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
+const forId = `plan-for-${useId()}`
 
 const step = ref(null)
-const choices = ref([])
-const family = ref(null)
-const share = ref(false)
+const families = ref([])
+const familyId = ref(null)
+const date = ref(null)
 const busy = ref(false)
-let targets = { plannable: [], shareable: [] }
 
-const dateSubtitle = computed(() =>
-  [props.title, choices.value.length > 1 || familyStore.families.length > 1 ? family.value?.name : '']
-    .filter(Boolean).join(' · '))
-
-function chooseFamily(f) {
-  family.value = f
-  step.value = share.value || targets.plannable.some((p) => p.id === f.id) ? 'date' : 'share'
-}
+const family = computed(() => families.value.find((f) => f.id === familyId.value) ?? null)
+const planOnlyFamily = computed(() =>
+  family.value && !plannableIn(props.recipe, family.value.id) ? family.value : null)
 
 onMounted(async () => {
-  const families = await familyStore.ensureLoaded(authStore.user?.id)
-  targets = planTargets(props.recipe, families, props.isOwner)
-  const { plannable, shareable } = targets
-  if (!families.length) {
+  families.value = await familyStore.ensureLoaded(authStore.user?.id)
+  if (!families.value.length) {
     uiStore.showToast(t('noFamilyShort'))
     emit('close')
     return
   }
-  choices.value = plannable.length ? plannable : shareable
-  if (!choices.value.length) {
-    uiStore.showToast(t('notPlannable'))
-    emit('close')
-  } else if (choices.value.length === 1) {
-    chooseFamily(choices.value[0])
-  } else {
-    step.value = 'family'
-  }
+  familyId.value = defaultFamilyId(families.value)
+  step.value = 'date'
 })
 
-async function plan(date) {
-  if (busy.value || !family.value) return
+function pickDate(picked) {
+  date.value = picked
+  if (asksToShare(props.recipe, familyId.value, props.isOwner)) step.value = 'share'
+  else plan(false)
+}
+
+async function plan(share) {
+  if (busy.value || !family.value || !date.value) return
   busy.value = true
   try {
     await mealPlanService.add({
       familyId: family.value.id,
-      date: isoDate(date),
+      date: isoDate(date.value),
       recipeId: props.recipe.id,
-      shareWithFamily: share.value,
+      shareWithFamily: share,
     })
-    uiStore.showToast(t('planned', { day: dayLabel(date) }))
-    emit('planned', { shared: share.value })
+    uiStore.showToast(t('planned', { day: dayLabel(date.value) }))
+    emit('planned', { shared: share })
   } catch (e) {
     uiStore.showToast(e.message)
     busy.value = false

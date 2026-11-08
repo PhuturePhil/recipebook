@@ -32,9 +32,14 @@ async function request(path, { method = 'GET', body } = {}) {
 export const mealPlanService = {
   list: (familyId, from, to) =>
     request(`/meal-plan?familyId=${encodeURIComponent(familyId)}&from=${from}&to=${to}`),
-  // Entweder recipeId oder freeText; shareWithFamily: eigenes privates Rezept dabei für die Familie freigeben
+  // Entweder recipeId oder freeText; shareWithFamily: eigenes Rezept dabei für die Familie freigeben (nur Besitzer),
+  // sonst sieht die Familie es, wenn nötig, nur über den Plan
   add: ({ familyId, date, recipeId = null, freeText = null, shareWithFamily = false }) =>
     request('/meal-plan', { method: 'POST', body: { familyId, date, recipeId, freeText, shareWithFamily } }),
   move: (id, date) => request(`/meal-plan/${id}`, { method: 'PATCH', body: { date } }),
   remove: (id) => request(`/meal-plan/${id}`, { method: 'DELETE' }),
+  // Rezept eines Eintrags („nur über den Plan“ oder regulär, dann mit recipeId); Geist → 404
+  recipe: (id) => request(`/meal-plan/${id}/recipe`),
+  nutrition: (id) => request(`/meal-plan/${id}/recipe/nutrition`),
+  translation: (id, lang = 'de') => request(`/meal-plan/${id}/recipe/translation?lang=${encodeURIComponent(lang)}`),
 }

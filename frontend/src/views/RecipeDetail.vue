@@ -1,6 +1,16 @@
 <template>
-  <div class="recipe-detail">
-    <div v-if="store.loading" class="loading">Lädt...</div>
+  <div :class="['recipe-detail', { 'recipe-detail--plan': planMode }]">
+    <div v-if="planMode ? planLoading : store.loading" class="loading">Lädt...</div>
+
+    <!-- Nur über den Plan: Geist oder kein Mitglied (mehr) → wie das Geist-Sheet im Essensplan -->
+    <KitchenMishap
+      v-else-if="notFound && planMode"
+      class="recipe-missing"
+      :title="planText('gone')"
+      :text="planText('goneOpen')"
+    >
+      <router-link :to="MEAL_PLAN_PATH" class="ui-btn ui-btn--primaer">{{ planText('toPlan') }}</router-link>
+    </KitchenMishap>
 
     <KitchenMishap
       v-else-if="notFound"
@@ -11,7 +21,7 @@
       <router-link to="/" class="ui-btn ui-btn--primaer">Zur Startseite</router-link>
     </KitchenMishap>
 
-    <div v-else-if="store.error" class="not-found">
+    <div v-else-if="!planMode && store.error" class="not-found">
       <p class="error">{{ store.error }}</p>
       <router-link to="/" class="btn-cancel">Zurück zur Übersicht</router-link>
     </div>
@@ -70,8 +80,8 @@
               :key="tag"
               type="button"
               class="recipe-tag"
-              :disabled="isGuest"
-              :title="isGuest ? undefined : `Alle Rezepte mit „${tag}“`"
+              :disabled="isGuest || planMode"
+              :title="isGuest || planMode ? undefined : `Alle Rezepte mit „${tag}“`"
               @click="searchTag(tag)"
             >#{{ tag }}</button>
           </div>
@@ -79,6 +89,13 @@
       </header>
 
       <div class="recipe-sheet">
+        <!-- Nur über den Plan (Entwurf media/out/mock_viewonly.html): wer es eingeplant hat, nie Ursprungsfamilie oder
+             Ersteller -->
+        <div v-if="planMode" class="plan-only-note" role="note">
+          <AppIcon name="kalender" :size="17" />
+          <p><b>{{ recipe.sharedBy ? planText('planOnlyBy', { name: recipe.sharedBy }) : planText('planOnlyAnon') }}</b>
+            {{ planText('planOnlyRules') }}</p>
+        </div>
         <TranslationBanner v-if="banner" :banner="banner" @show-original="setLanguage('original')" />
         <p v-if="translationNote" class="translation-note">{{ translationNote }}</p>
 
@@ -124,8 +141,10 @@
         </div>
 
         <div v-if="!isGuest" class="recipe-tools">
-          <button type="button" class="btn-tool" @click="showShareModal = true"><HeroIcon name="teilen" :size="15" />Teilen</button>
-          <button type="button" class="btn-tool" title="Als PDF speichern" aria-label="Als PDF speichern" @click="printRecipe"><HeroIcon name="pdf" :size="15" />PDF</button>
+          <template v-if="!planMode">
+            <button type="button" class="btn-tool" @click="showShareModal = true"><HeroIcon name="teilen" :size="15" />Teilen</button>
+            <button type="button" class="btn-tool" title="Als PDF speichern" aria-label="Als PDF speichern" @click="printRecipe"><HeroIcon name="pdf" :size="15" />PDF</button>
+          </template>
           <KeepScreenOnToggle utility />
         </div>
 
@@ -178,7 +197,9 @@
           </ol>
         </section>
 
-        <section id="bewertungen" ref="ratingsSection" class="recipe-section recipe-ratings" aria-labelledby="ratings-title">
+        <p v-if="planMode" class="plan-only-rate">{{ planText('rateOnlyOrigin') }}</p>
+
+        <section v-else id="bewertungen" ref="ratingsSection" class="recipe-section recipe-ratings" aria-labelledby="ratings-title">
           <h2 id="ratings-title">Bewertungen</h2>
 
           <p v-if="ratingsError" class="ratings-state ratings-state--error">{{ ratingsError }}</p>
@@ -246,7 +267,7 @@
               Bearbeiten
             </router-link>
           </template>
-          <button type="button" class="btn-plan" aria-haspopup="dialog" @click="openPlan($event)">
+          <button v-if="!planMode" type="button" class="btn-plan" aria-haspopup="dialog" @click="openPlan($event)">
             <AppIcon name="planen" :size="17" />{{ planText('planAction') }}
           </button>
         </div>
@@ -257,6 +278,7 @@
         v-if="!isGuest"
         ref="actionBar"
         :can-edit="canEdit"
+        :plan-only="planMode"
         @delete="openDeleteRecipe"
         @edit="router.push(recipeEditPath(recipe.id))"
         @plan="openPlan"
@@ -401,12 +423,20 @@ import {
   RECIPE_TOTAL_CAP_MS,
   SERVINGS_DELAY_MS,
 } from '@/utils/analytics'
-import { recipePath, recipeEditPath } from '@/router/paths.js'
+import { recipePath, recipeEditPath, MEAL_PLAN_PATH } from '@/router/paths.js'
+import { mealPlanService } from '@/services/mealPlanService'
+import { navigateBackTo } from '@/utils/backNavigation'
 import KitchenMishap from '@/components/KitchenMishap.vue'
 import { pickDeleteWord, matchesDeleteWord } from '@/utils/deleteWord.js'
 import InstructionText from '@/components/InstructionText.vue'
 import { useIngredientRefs } from '@/composables/useIngredientRefs'
 import { ingredientRefsVisible } from '@/utils/ingredientRefs'
+
+const props = defineProps({
+  // Rezept „nur über den Essensplan“ (Route /plan/rezept/:entryId): geladen über den Plan-Eintrag, ohne Teilen, PDF,
+  // Bearbeiten, Löschen und Bewerten; wer es regulär sieht, landet auf der normalen Rezeptseite
+  planEntryId: { type: [String, Number], default: null },
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -414,11 +444,13 @@ const store = useRecipeStore()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 
-
-
-const recipe = computed(() => store.currentRecipe)
+const planMode = computed(() => props.planEntryId != null)
+const planRecipe = ref(null)
+const planLoading = ref(false)
+const recipe = computed(() => (planMode.value ? planRecipe.value : store.currentRecipe))
 
 const searchTag = (tag) => {
+  if (planMode.value) return
   track('filter_gesetzt', { filter: 'tag', wert: tag, quelle: 'rezept' })
   store.setSearchTerms([tagSearchTerm(tag)])
   store.setPendingSearchTerm('')
@@ -427,15 +459,15 @@ const searchTag = (tag) => {
 // Gast auf einem öffentlichen Rezept: alles lesbar, nur Bewerten braucht ein Konto
 const isGuest = computed(() => !authStore.isAuthenticated)
 const isOwner = computed(() => recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
-const visibility = computed(() => visibilityLabel(recipe.value))
+const visibility = computed(() => (planMode.value ? null : visibilityLabel(recipe.value)))
 const reportable = computed(() => isGuest.value || (recipe.value?.visibility === VISIBILITY.PUBLIC && !isOwner.value))
 const report = computed(() => recipe.value && {
   recipeId: recipe.value.id,
   title: shown.value?.title ?? recipe.value.title,
   url: `${window.location.origin}${recipePath(recipe.value.id)}`,
 })
-const canEdit = computed(() =>
-  authStore.isAdmin || (recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id)
+const canEdit = computed(() => !planMode.value
+  && (authStore.isAdmin || (recipe.value?.ownerId != null && recipe.value.ownerId === authStore.user?.id))
 )
 const currentServings = ref(1)
 const activeTab = ref('ingredients')
@@ -452,6 +484,7 @@ let titleObserver = null
 let recipeVisit = null
 let unmounted = false
 const servingsChanges = createChangeAggregator(SERVINGS_DELAY_MS, (von, auf) => {
+  if (planMode.value) return
   track('portionen_geaendert', { recipeId: recipe.value?.id, von, auf })
 })
 
@@ -476,7 +509,7 @@ const visibleRatings = computed(() =>
   showAllRatings.value ? ratings.value : ratings.value.slice(0, RATINGS_PREVIEW)
 )
 const createdText = computed(() =>
-  isGuest.value ? '' : createdShort(recipe.value?.createdBy, recipe.value?.createdAt, isOwner.value)
+  isGuest.value || planMode.value ? '' : createdShort(recipe.value?.createdBy, recipe.value?.createdAt, isOwner.value)
 )
 const sourceText = computed(() => sourceLabel(recipe.value))
 const hasSourceLine = computed(() =>
@@ -601,7 +634,9 @@ const loadTranslation = async () => {
   translationLoading.value = true
   translation.value = null
   try {
-    translation.value = await recipeService.getTranslation(recipe.value.id, 'de')
+    translation.value = planMode.value
+      ? await mealPlanService.translation(props.planEntryId, 'de')
+      : await recipeService.getTranslation(recipe.value.id, 'de')
   } catch {
     translation.value = { status: 'unavailable' }
   } finally {
@@ -610,7 +645,7 @@ const loadTranslation = async () => {
 }
 
 const setLanguage = async (value) => {
-  if (value !== languagePref.value) {
+  if (value !== languagePref.value && !planMode.value) {
     track('sprache_gewechselt', { recipeId: recipe.value?.id, richtung: languageDirection(value) })
   }
   languagePref.value = value
@@ -632,7 +667,7 @@ const loadNutrition = async (id) => {
   nutritionError.value = null
   try {
     const [data, info] = await Promise.all([
-      nutritionService.getRecipeNutrition(id),
+      planMode.value ? mealPlanService.nutrition(props.planEntryId) : nutritionService.getRecipeNutrition(id),
       nutritionService.getInfo().catch(() => null),
     ])
     nutrition.value = data
@@ -651,8 +686,55 @@ const kcalChipTitle = computed(() => {
   return n.coverage.complete ? base : `${base} – unvollständig, tatsächlicher Wert liegt höher`
 })
 
+// Nur über den Plan: Rezept über den Eintrag laden; regulär sichtbar → normale Rezeptseite
+async function loadPlanRecipe() {
+  planLoading.value = true
+  try {
+    const data = await mealPlanService.recipe(props.planEntryId)
+    if (data.recipeId != null) {
+      router.replace(recipePath(data.recipeId))
+      return false
+    }
+    planRecipe.value = data
+    return true
+  } catch (error) {
+    notFound.value = true
+    return false
+  } finally {
+    planLoading.value = false
+  }
+}
+
+async function mountPlanRecipe() {
+  if (!(await loadPlanRecipe()) || unmounted) return
+  currentServings.value = recipe.value.baseServings
+  loadNutrition(null)
+  await loadTranslation()
+  await nextTick()
+  observeTitle()
+}
+
+function observeTitle() {
+  if (!titleRef.value) return
+  titleObserver = new IntersectionObserver(
+    ([entry]) => {
+      if (!entry.isIntersecting && shown.value?.title) {
+        uiStore.setNavTitle(shown.value.title)
+      } else {
+        uiStore.clearNavTitle()
+      }
+    },
+    { threshold: 0 }
+  )
+  titleObserver.observe(titleRef.value)
+}
+
 onMounted(async () => {
   activeTab.value = 'ingredients'
+  if (planMode.value) {
+    await mountPlanRecipe()
+    return
+  }
   const herkunft = recipeOrigin(previousRouteName(), store.activeSearchTerms.some((t) => !t.startsWith('#')))
   try {
     await store.fetchRecipeById(route.params.id)
@@ -674,19 +756,7 @@ onMounted(async () => {
     if (wantsRatings(route.hash)) jumpToRatings(loads)
   }
 
-  if (titleRef.value) {
-    titleObserver = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting && shown.value?.title) {
-          uiStore.setNavTitle(shown.value.title)
-        } else {
-          uiStore.clearNavTitle()
-        }
-      },
-      { threshold: 0 }
-    )
-    titleObserver.observe(titleRef.value)
-  }
+  observeTitle()
 })
 
 onUnmounted(() => {
@@ -695,13 +765,13 @@ onUnmounted(() => {
   recipeVisit?.end()
   window.__appBusy?.delete(translationBusy)
   // The list is served from cache, so a leftover error would otherwise show up there
-  store.clearError()
+  if (!planMode.value) store.clearError()
   titleObserver?.disconnect()
   uiStore.clearNavTitle()
 })
 
 // Wie der Zurück-Pfeil der Kopfzeile: immer zur Liste, aus der Liste kommend per router.back()
-const goBack = () => recipeBack(router)
+const goBack = () => (planMode.value ? navigateBackTo(router, MEAL_PLAN_PATH) : recipeBack(router))
 
 const increaseServings = () => {
   servingsChanges.change(currentServings.value, currentServings.value + 1)
@@ -1118,6 +1188,53 @@ const confirmDeleteRecipe = async () => {
   display: flex;
   gap: 9px;
   margin-top: 16px;
+}
+
+/* Nur über den Plan (Entwurf media/out/mock_viewonly.html, 08.11.2026) */
+.plan-only-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  padding: 11px 12px;
+  border: 1px solid rgba(232, 89, 12, .28);
+  border-radius: 14px;
+  background: rgba(232, 89, 12, .09);
+  color: var(--h-acc);
+}
+
+.plan-only-note .icon-slot {
+  margin-top: 1px;
+}
+
+.plan-only-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 550;
+  color: var(--h-ink);
+}
+
+.plan-only-note b {
+  font-weight: 750;
+}
+
+.plan-only-rate {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: var(--h-chip);
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.45;
+  color: var(--h-mut);
+}
+
+/* PDF ist hier aus: auch der Druck über das Browser-Menü bleibt leer */
+@media print {
+  .recipe-detail--plan {
+    display: none !important;
+  }
 }
 
 .btn-tool {

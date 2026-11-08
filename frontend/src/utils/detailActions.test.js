@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { detailActions, replacesTabBar, cycleFocus, formActions } from './detailActions.js'
+import { detailActions, planOnlyActions, replacesTabBar, cycleFocus, formActions } from './detailActions.js'
 import { bottomBarLayout } from './bottomBar.js'
 
 test('detailActions: mit Bearbeitungsrecht Leiste Rezepte + Planen + Bewerten, „Mehr“ mit Bearbeiten und Löschen', () => {
@@ -109,4 +109,13 @@ test('formActions: keine Gefahr-Markierung und kein Aktiv-Zustand', () => {
   for (const a of [...formActions(true), ...formActions(false, true)]) {
     assert.ok(!a.danger && !a.active, a.id)
   }
+})
+
+test('planOnlyActions: nur über den Essensplan allein „Rezepte“ – kein Planen, Bewerten, Bearbeiten, Löschen', () => {
+  const { menu, bar } = planOnlyActions('de')
+  assert.deepEqual(bar.map((a) => a.id), ['home'])
+  assert.equal(bar[0].to, '/')
+  assert.deepEqual(menu, [])
+  assert.equal(planOnlyActions('en').bar[0].label, 'Recipes')
+  assert.equal(replacesTabBar('plan-recipe'), true)
 })

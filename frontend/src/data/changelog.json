@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026-11-08.1",
+    "datum": "08.11.2026",
+    "titel": "Essensplan für mehrere Familien",
+    "punkte": [
+      "Beim Planen wählst du oben, für welche Familie – deine Standard-Familie ist vorausgewählt (★). Festlegen kannst du sie unter Familien → Standard-Familie",
+      "Rezepte lassen sich jetzt auch für eine Familie planen, die sie sonst nicht sieht: Dort ist das Rezept nur über den Essensplan zu öffnen, ohne Teilen und PDF",
+      "Wird ein geplantes Rezept gelöscht, bleibt der Eintrag im Plan als „Nicht mehr verfügbar“ stehen – mit Quelle und Link zum Original"
+    ]
+  },
+  {
     "version": "2026-11-07.2",
     "datum": "07.11.2026",
     "titel": "Rezeptseite: Knopf heißt jetzt Rezepte",

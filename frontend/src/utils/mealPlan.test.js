@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import {
   VIEWS, isoDate, fromIso, addDays, weekStart, weekDays, isoWeek, monthDays, monthGrid, rangeFor, shiftAnchor,
   isCurrentPeriod, weekLabel, weekSubLabel, monthLabel, dayLabel, weekdayShort, groupByDate, entryTitle, entryMeta,
-  planTargets, plannableIn, pickerRecipes, thumbFor, insertEntry, dayPhoto, removedPlanEntriesText,
-  bookedDaysLoader,
+  plannableIn, pickerRecipes, thumbFor, insertEntry, dayPhoto, bookedDaysLoader, ACCESS, isGhost, entryPath,
+  defaultFamilyId, asksToShare, goneSource,
 } from './mealPlan.js'
 
 const d = (iso) => fromIso(iso)
@@ -141,19 +141,22 @@ test('entryMeta: „Zeit · Autor“, ohne Autor die Quelle (Webadresse als Doma
 
 const fam = (id, name) => ({ id, name })
 
-test('planTargets: genau eine geteilte Familie → direkt, mehrere → Auswahl', () => {
-  const families = [fam(1, 'Starter :)'), fam(2, 'Großeltern')]
-  assert.deepEqual(planTargets({ visibility: 'FAMILY', families: [fam(1, 'Starter :)')] }, families, false).plannable.map((f) => f.id), [1])
-  assert.deepEqual(planTargets({ visibility: 'FAMILY', familyIds: [1, 2] }, families, false).plannable.map((f) => f.id), [1, 2])
-  assert.deepEqual(planTargets({ visibility: 'PUBLIC', families: [] }, families, false).plannable.map((f) => f.id), [1, 2])
+test('defaultFamilyId: vom Server markierte Standard-Familie, sonst die erste, ohne Familie null', () => {
+  assert.equal(defaultFamilyId([fam(1, 'Starter :)'), { ...fam(2, 'Hinze'), defaultFamily: true }]), 2)
+  assert.equal(defaultFamilyId([fam(1, 'Starter :)'), fam(2, 'Hinze')]), 1)
+  assert.equal(defaultFamilyId([]), null)
+  assert.equal(defaultFamilyId(undefined), null)
 })
 
-test('planTargets: privates Rezept – Besitzer kann teilen, andere nicht', () => {
-  const families = [fam(1, 'Starter :)')]
+test('asksToShare: nur der Besitzer wird gefragt, und nur wenn die Familie das Rezept nicht sieht', () => {
   const priv = { visibility: 'PRIVATE', families: [] }
-  assert.deepEqual(planTargets(priv, families, true), { plannable: [], shareable: families })
-  assert.deepEqual(planTargets(priv, families, false), { plannable: [], shareable: [] })
-  assert.deepEqual(planTargets(priv, [], true), { plannable: [], shareable: [] })
+  const shared = { visibility: 'FAMILY', families: [fam(1, 'Starter :)')] }
+  assert.equal(asksToShare(priv, 1, true), true)
+  assert.equal(asksToShare(priv, 1, false), false, 'alle anderen planen still nur über den Plan')
+  assert.equal(asksToShare(shared, 1, true), false)
+  assert.equal(asksToShare(shared, 2, true), true)
+  assert.equal(asksToShare({ visibility: 'PUBLIC' }, 2, true), false)
+  assert.equal(asksToShare(priv, null, true), false)
 })
 
 test('plannableIn: öffentlich oder für die Familie freigegeben', () => {
@@ -164,19 +167,36 @@ test('plannableIn: öffentlich oder für die Familie freigegeben', () => {
   assert.equal(plannableIn(null, 1), false)
 })
 
-test('pickerRecipes: nur planbare Rezepte, alle Suchwörter (ohne Akzente), alphabetisch', () => {
+test('pickerRecipes: alle sichtbaren Rezepte (Familien ohne Sicht planen nur über den Plan), alle Suchwörter, alphabetisch', () => {
   const recipes = [
     { id: 1, title: 'Kürbislasagne', visibility: 'FAMILY', families: [fam(1, 'A')], author: 'Anna Jones', tags: [] },
     { id: 2, title: 'Shakshuka', visibility: 'PUBLIC', families: [], author: 'Ottolenghi', tags: ['Eier'] },
     { id: 3, title: 'Geheimrezept', visibility: 'PRIVATE', families: [], tags: [] },
     { id: 4, title: 'Traybake dal', visibility: 'FAMILY', families: [fam(1, 'A')], translatedSearchText: 'Blech-Dal Zitrone', tags: [] },
   ]
-  assert.deepEqual(pickerRecipes(recipes, 1).map((r) => r.id), [1, 2, 4])
-  assert.deepEqual(pickerRecipes(recipes, 2).map((r) => r.id), [2])
-  assert.deepEqual(pickerRecipes(recipes, 1, 'kurbis anna').map((r) => r.id), [1])
-  assert.deepEqual(pickerRecipes(recipes, 1, 'eier').map((r) => r.id), [2])
-  assert.deepEqual(pickerRecipes(recipes, 1, 'zitrone').map((r) => r.id), [4])
-  assert.deepEqual(pickerRecipes(recipes, 1, 'geheim'), [])
+  assert.deepEqual(pickerRecipes(recipes).map((r) => r.id), [3, 1, 2, 4])
+  assert.deepEqual(pickerRecipes(recipes, 'kurbis anna').map((r) => r.id), [1])
+  assert.deepEqual(pickerRecipes(recipes, 'eier').map((r) => r.id), [2])
+  assert.deepEqual(pickerRecipes(recipes, 'zitrone').map((r) => r.id), [4])
+  assert.deepEqual(pickerRecipes(recipes, 'geheim').map((r) => r.id), [3])
+  assert.deepEqual(pickerRecipes(recipes, 'gibtsnicht'), [])
+})
+
+test('entryPath: regulär zur Rezeptseite, nur über den Plan über die Eintrags-ID, Geist und Freitext nirgends', () => {
+  assert.equal(entryPath({ id: 7, access: ACCESS.FULL, recipe: { id: 42 } }), '/rezepte/42')
+  assert.equal(entryPath({ id: 7, access: ACCESS.PLAN, recipe: { id: 42 } }), '/plan/rezept/7')
+  assert.equal(entryPath({ id: 7, access: ACCESS.GONE, recipe: null, gone: { title: 'X' } }), null)
+  assert.equal(entryPath({ id: 7, access: null, recipe: null, freeText: 'Pizza' }), null)
+})
+
+test('Geist: Titel aus dem Snapshot, Untertitel „Nicht mehr verfügbar“, kein Foto', () => {
+  const ghost = { id: 9, date: '2026-11-03', access: ACCESS.GONE, recipe: null, freeText: null,
+    gone: { title: 'Kürbislasagne', author: 'Anna Jones', source: 'zeit.de', sourceUrl: 'https://www.zeit.de/x' } }
+  assert.equal(isGhost(ghost), true)
+  assert.equal(isGhost(entry(1, 'x', pizza)), false)
+  assert.equal(entryTitle(ghost), 'Kürbislasagne')
+  assert.equal(entryMeta(ghost), 'Nicht mehr verfügbar')
+  assert.equal(dayPhoto([ghost]), null)
 })
 
 test('thumbFor: API-Bild als kleine Fassung, andere Adressen unverändert', () => {
@@ -198,14 +218,6 @@ test('dayPhoto: Foto des ersten Eintrags mit Bild', () => {
   assert.equal(dayPhoto([entry(1, 'x', null, 'Oma'), entry(2, 'x', pizza)]), pizza.thumbUrl)
   assert.equal(dayPhoto([entry(1, 'x', dal)]), null)
   assert.equal(dayPhoto(undefined), null)
-})
-
-test('removedPlanEntriesText: Hinweis nur bei entfernten Einträgen, Einzahl/Mehrzahl', () => {
-  assert.equal(removedPlanEntriesText(0, 'de'), '')
-  assert.equal(removedPlanEntriesText(undefined, 'de'), '')
-  assert.match(removedPlanEntriesText(1, 'de'), /^1 Eintrag im Essensplan wurde entfernt/)
-  assert.match(removedPlanEntriesText(3, 'de'), /^3 Einträge im Essensplan wurden entfernt/)
-  assert.match(removedPlanEntriesText(2, 'en'), /^2 meal plan entries were removed/)
 })
 
 test('bookedDaysLoader: lädt den ganzen sichtbaren Monat und liefert die belegten Tage (auch mehrfach belegt)', async () => {
@@ -251,4 +263,15 @@ test('bookedDaysLoader: Fehler → keine Markierung, der nächste Aufruf versuch
   fail = false
   assert.deepEqual(await load(d('2026-11-01')), ['2026-11-09'])
   assert.equal(count, 2)
+})
+
+test('goneSource: Autor + Quelle als Link zur Originalseite, Webadresse als Domain, nur http(s)', () => {
+  assert.deepEqual(goneSource({ author: 'Anna Jones', source: 'zeit.de (Wochenmarkt)', sourceUrl: 'https://www.zeit.de/x' }),
+    { author: 'Anna Jones', label: 'zeit.de (Wochenmarkt)', href: 'https://www.zeit.de/x' })
+  assert.deepEqual(goneSource({ author: '', source: 'https://www.bonappetit.com/recipe/x', sourceUrl: null }),
+    { author: '', label: 'bonappetit.com', href: 'https://www.bonappetit.com/recipe/x' })
+  assert.deepEqual(goneSource({ author: 'Meera Sodha', source: 'Kochbuch', sourceUrl: 'javascript:alert(1)' }),
+    { author: 'Meera Sodha', label: 'Kochbuch', href: null })
+  assert.equal(goneSource({ title: 'X' }), null)
+  assert.equal(goneSource(null), null)
 })

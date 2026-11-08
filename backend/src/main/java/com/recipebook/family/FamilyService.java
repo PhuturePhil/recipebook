@@ -1,6 +1,5 @@
 package com.recipebook.family;
 
-import com.recipebook.mealplan.MealPlanEntryRepository;
 import com.recipebook.model.User;
 import com.recipebook.model.UserNames;
 import com.recipebook.repository.UserRepository;
@@ -25,8 +24,9 @@ import java.util.regex.Pattern;
  * Familien: alle Mitglieder sind gleichberechtigt (umbenennen, einladen, entfernen, austreten). Jede Aktion prüft
  * serverseitig die Mitgliedschaft; wer nicht Mitglied ist, bekommt „nicht gefunden“. Höchstens {@link #MAX_MEMBERS}
  * Mitglieder; verlässt das letzte Mitglied die Familie, wird sie gelöscht. Beim Austreten/Entfernen verschwinden nur
- * die Freigaben der Rezepte dieses Mitglieds in dieser Familie (und damit deren Einträge im Essensplan) – Rezepte
- * gehen nie verloren.
+ * die Freigaben der Rezepte dieses Mitglieds in dieser Familie – Rezepte gehen nie verloren, Einträge im Essensplan
+ * bleiben stehen (ohne Zugriff als „Geist“). Jeder Nutzer wählt für sich eine Standard-Familie (erster Essensplan,
+ * Vorauswahl beim Planen); ohne gültige Wahl gilt die älteste seiner Familien.
  */
 @Service
 public class FamilyService {
@@ -53,7 +53,6 @@ public class FamilyService {
     private final FamilyMemberRepository memberRepository;
     private final RecipeFamilyRepository recipeFamilyRepository;
     private final UserRepository userRepository;
-    private final MealPlanEntryRepository mealPlanRepository;
     private final SecureRandom secureRandom = new SecureRandom();
     private Clock clock = Clock.systemDefaultZone();
 
@@ -61,13 +60,11 @@ public class FamilyService {
     private String appUrl;
 
     public FamilyService(FamilyRepository familyRepository, FamilyMemberRepository memberRepository,
-            RecipeFamilyRepository recipeFamilyRepository, UserRepository userRepository,
-            MealPlanEntryRepository mealPlanRepository) {
+            RecipeFamilyRepository recipeFamilyRepository, UserRepository userRepository) {
         this.familyRepository = familyRepository;
         this.memberRepository = memberRepository;
         this.recipeFamilyRepository = recipeFamilyRepository;
         this.userRepository = userRepository;
-        this.mealPlanRepository = mealPlanRepository;
     }
 
     void setClock(Clock clock) {
@@ -79,7 +76,7 @@ public class FamilyService {
     public record Invite(String code, String url, LocalDateTime expiresAt) {}
 
     public record FamilyView(Long id, String name, int memberCount, int maxMembers, long recipeCount,
-            List<Member> members, Invite invite) {}
+            List<Member> members, Invite invite, boolean defaultFamily) {}
 
     public record InviteInfo(String familyName, String invitedBy, int memberCount, int maxMembers, boolean full,
             boolean member, Long familyId) {}
@@ -88,9 +85,33 @@ public class FamilyService {
     public List<FamilyView> myFamilies(Long userId) {
         List<Family> families = familyRepository.findByMember(userId);
         Map<Long, List<Member>> members = membersOf(families.stream().map(Family::getId).toList(), userId);
+        Long standard = defaultFamilyId(userId, families);
         return families.stream()
-            .map(f -> view(f, members.getOrDefault(f.getId(), List.of()), null))
+            .map(f -> view(f, members.getOrDefault(f.getId(), List.of()), null, f.getId().equals(standard)))
             .toList();
+    }
+
+    /** Standard-Familie wählen (nur für sich selbst, nur eine eigene Familie). */
+    @Transactional
+    public List<FamilyView> setDefault(Long userId, Long familyId) {
+        requireMembership(familyId, userId);
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        user.setDefaultFamilyId(familyId);
+        userRepository.save(user);
+        return myFamilies(userId);
+    }
+
+    /** Die gewählte Standard-Familie, solange der Nutzer Mitglied ist – sonst die älteste seiner Familien. */
+    @Transactional(readOnly = true)
+    public Long defaultFamilyId(Long userId) {
+        return defaultFamilyId(userId, familyRepository.findByMember(userId));
+    }
+
+    private Long defaultFamilyId(Long userId, List<Family> mine) {
+        if (mine.isEmpty()) return null;
+        Long chosen = userRepository.findById(userId).map(User::getDefaultFamilyId).orElse(null);
+        return mine.stream().map(Family::getId).filter(id -> id.equals(chosen)).findFirst().orElse(mine.get(0).getId());
     }
 
     @Transactional(readOnly = true)
@@ -175,8 +196,10 @@ public class FamilyService {
 
     private boolean leave(Family family, Long userId) {
         recipeFamilyRepository.deleteOwnedBy(family.getId(), userId);
-        // Geplante Rezepte des Mitglieds, die die Familie damit nicht mehr sehen darf, verschwinden aus dem Plan
-        mealPlanRepository.pruneFamily(family.getId());
+        userRepository.findById(userId).filter(u -> family.getId().equals(u.getDefaultFamilyId())).ifPresent(u -> {
+            u.setDefaultFamilyId(null);
+            userRepository.save(u);
+        });
         memberRepository.deleteMember(family.getId(), userId);
         memberRepository.flush();
         if (memberRepository.countByFamilyId(family.getId()) == 0) {
@@ -256,12 +279,12 @@ public class FamilyService {
         Invite invite = family.inviteValid(now())
             ? new Invite(family.getInviteCode(), appUrl + "/einladung/" + family.getInviteCode(), family.getInviteExpiresAt())
             : null;
-        return view(family, members, invite);
+        return view(family, members, invite, family.getId().equals(defaultFamilyId(userId)));
     }
 
-    private FamilyView view(Family family, List<Member> members, Invite invite) {
+    private FamilyView view(Family family, List<Member> members, Invite invite, boolean standard) {
         return new FamilyView(family.getId(), family.getName(), members.size(), MAX_MEMBERS,
-            recipeFamilyRepository.countByFamilyId(family.getId()), members, invite);
+            recipeFamilyRepository.countByFamilyId(family.getId()), members, invite, standard);
     }
 
     private Map<Long, List<Member>> membersOf(List<Long> familyIds, Long userId) {

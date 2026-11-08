@@ -20,6 +20,16 @@
       <AppIcon class="fam-card__chev" name="weiter" :size="18" />
     </RouterLink>
 
+    <!-- Ab zwei Familien: Standard-Familie wählen (erster Essensplan, Vorauswahl beim Planen) -->
+    <RouterLink v-if="familyStore.families.length > 1" :to="MY_FAMILIES_PATH" class="ui-karte fam-card fam-default-link">
+      <AppIcon name="stern" :size="20" class="fam-default-link__icon" />
+      <span class="fam-card__body">
+        <span class="fam-card__name">{{ planText('defaultFamily') }}</span>
+        <span class="fam-card__meta">{{ familyStore.defaultFamily?.name }}</span>
+      </span>
+      <AppIcon class="fam-card__chev" name="weiter" :size="18" />
+    </RouterLink>
+
     <button type="button" class="ui-btn ui-btn--primaer fam-found" @click="openCreate">
       <AppIcon name="plus" :size="18" />Familie gründen
     </button>
@@ -49,6 +59,8 @@ import { ownRecipeCount } from '@/utils/families'
 import { familyService } from '@/services/familyService'
 import { usePageVisit } from '@/composables/usePageVisit'
 import { track } from '@/utils/analytics'
+import { planText } from '@/utils/planTexts'
+import { MY_FAMILIES_PATH } from '@/router/paths.js'
 
 usePageVisit('familien')
 
@@ -101,4 +113,5 @@ onMounted(() => {
 <style scoped>
 .fam-card__name, .fam-card__meta { display: block; }
 .fam-found { width: 100%; margin-top: 10px; }
+.fam-default-link__icon { color: var(--akzent-text); }
 </style>

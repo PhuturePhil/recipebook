@@ -1,5 +1,6 @@
 <template>
-  <!-- Picker „Gericht planen“: Suche über die für die Familie planbaren Rezepte (Mini-Foto) + freier Eintrag -->
+  <!-- Picker „Gericht planen“: Suche über alle Rezepte, die ich sehe (Mini-Foto) + freier Eintrag. Rezepte, die die
+       Familie nicht sieht, stehen danach nur über den Plan drin (der Besitzer wird vorher gefragt). -->
   <div class="plan-search">
     <AppIcon name="suche" :size="18" />
     <input
@@ -20,7 +21,7 @@
       class="plan-pick"
       role="listitem"
       :disabled="busy"
-      @click="emit('pick', { recipeId: r.id })"
+      @click="emit('pick', { recipeId: r.id, recipe: r })"
     >
       <PlanPhoto :url="thumbFor(r.imageUrl)" />
       <div class="plan-mt">
@@ -56,8 +57,7 @@ import { useRecipeStore } from '@/stores/recipeStore'
 import { entryMeta, pickerRecipes, thumbFor } from '@/utils/mealPlan'
 import { planText as t } from '@/utils/planTexts'
 
-const props = defineProps({
-  familyId: { type: Number, required: true },
+defineProps({
   busy: { type: Boolean, default: false },
 })
 const emit = defineEmits(['pick'])
@@ -66,7 +66,7 @@ const query = ref('')
 const freeText = ref('')
 const freeId = `plan-free-${useId()}`
 const loading = computed(() => store.loading)
-const shown = computed(() => pickerRecipes(store.recipes, props.familyId, query.value))
+const shown = computed(() => pickerRecipes(store.recipes, query.value))
 const metaOf = (r) => entryMeta({ recipe: r })
 
 function submitFree() {

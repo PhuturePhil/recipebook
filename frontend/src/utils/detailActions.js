@@ -24,8 +24,13 @@ export function detailActions(canEdit, lang = planLanguage()) {
   }
 }
 
+// Rezept nur über den Essensplan: kein Planen, Bewerten, Bearbeiten oder Löschen – nur „Rezepte“
+export function planOnlyActions(lang = planLanguage()) {
+  return { menu: [], bar: detailActions(false, lang).bar.filter((a) => a.id === 'home') }
+}
+
 // Routen, auf denen mobil (<1024 px) eine eigene Leiste die Tab-Leiste ersetzt; die Seitenleiste ab 1024 px bleibt
-const TAB_BAR_REPLACED = ['recipe-new', 'recipe-edit', 'recipe-detail']
+const TAB_BAR_REPLACED = ['recipe-new', 'recipe-edit', 'recipe-detail', 'plan-recipe']
 
 export function replacesTabBar(routeName) {
   return TAB_BAR_REPLACED.includes(routeName)

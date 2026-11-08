@@ -44,7 +44,6 @@ import RecipeForm from '@/components/RecipeForm.vue'
 import FormActionBar from '@/components/shell/FormActionBar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { track } from '@/utils/analytics'
-import { removedPlanEntriesText } from '@/utils/mealPlan'
 
 const route = useRoute()
 const router = useRouter()
@@ -132,9 +131,6 @@ const handleSubmit = async (recipeData) => {
   // Formular verschwindet aus dem Verlauf: „Zurück“ auf der Rezeptseite führt danach nicht wieder hierher
   const savedId = isEdit.value ? route.params.id : result.id
   track(isEdit.value ? 'rezept_bearbeitet' : 'rezept_angelegt', { recipeId: Number(savedId) })
-  // Freigabe entzogen: betroffene Essensplan-Einträge hat der Server entfernt – kurz Bescheid geben
-  const removedNote = removedPlanEntriesText(result?.removedPlanEntries)
-  if (removedNote) uiStore.showToast(removedNote)
   navigateBackTo(router, formExitTarget({ isEdit: isEdit.value, recipeId: route.params.id, savedId }))
 }
 

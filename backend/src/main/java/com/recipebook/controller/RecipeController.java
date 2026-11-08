@@ -14,14 +14,11 @@ import com.recipebook.service.RecipeTranslationService;
 import com.recipebook.translation.RecipeLanguage;
 import com.recipebook.translation.TranslatedRecipe;
 import com.recipebook.service.RecipeValidator;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import java.time.Duration;
 import java.util.List;
 
 @RestController
@@ -98,19 +95,8 @@ public class RecipeController {
             @RequestParam(name = "size", required = false) String size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         recipeAccess.requireVisible(id, RecipeAccess.viewerId(userDetails));
-        CacheControl cache = version != null
-                ? CacheControl.maxAge(Duration.ofDays(365)).cachePrivate().immutable()
-                : CacheControl.noCache().cachePrivate();
-        String imageUrl = recipeService.findImageUrl(id).orElse(null);
-        // size=thumb: kleines Vorschaubild (Essensplan); lässt es sich nicht erzeugen, kommt das Original
-        if ("thumb".equals(size)) {
-            byte[] thumb = thumbnails.of(id, imageUrl).orElse(null);
-            if (thumb != null) {
-                return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
-                        .header("X-Content-Type-Options", "nosniff").cacheControl(cache).body(thumb);
-            }
-        }
-        return ImageResponses.of(imageUrl, cache);
+        // size=thumb: kleines Vorschaubild (Essensplan)
+        return ImageResponses.recipeImage(id, recipeService.findImageUrl(id).orElse(null), version, size, thumbnails);
     }
 
     @PostMapping

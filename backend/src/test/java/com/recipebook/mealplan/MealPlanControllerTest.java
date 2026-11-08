@@ -7,6 +7,9 @@ import com.recipebook.model.Role;
 import com.recipebook.model.User;
 import com.recipebook.service.CustomUserDetailsService;
 import com.recipebook.service.JwtService;
+import com.recipebook.service.RecipeService;
+import com.recipebook.service.RecipeThumbnails;
+import com.recipebook.service.RecipeTranslationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -39,6 +42,15 @@ class MealPlanControllerTest {
     private MealPlanService mealPlanService;
 
     @MockitoBean
+    private RecipeService recipeService;
+
+    @MockitoBean
+    private RecipeTranslationService translationService;
+
+    @MockitoBean
+    private RecipeThumbnails thumbnails;
+
+    @MockitoBean
     private JwtService jwtService;
 
     @MockitoBean
@@ -56,7 +68,7 @@ class MealPlanControllerTest {
     private static MealPlanService.EntryView entry(long id, String date) {
         return new MealPlanService.EntryView(id, 1L, LocalDate.parse(date), null,
             new MealPlanService.RecipeInfo(211L, "Pizza Beans", null, "de", 50, "Deb Perelman", "Smitten Kitchen",
-                "/api/recipes/211/image?v=abc&size=thumb"));
+                "/api/recipes/211/image?v=abc&size=thumb"), MealPlanService.FULL, null);
     }
 
     @Test
@@ -69,6 +81,10 @@ class MealPlanControllerTest {
         mockMvc.perform(patch("/api/meal-plan/3").contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2026-10-27\"}"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(delete("/api/meal-plan/3")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/meal-plan/3/recipe")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/meal-plan/3/recipe/nutrition")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/meal-plan/3/recipe/translation")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/meal-plan/3/image")).andExpect(status().isForbidden());
         verifyNoInteractions(mealPlanService);
     }
 
@@ -109,14 +125,50 @@ class MealPlanControllerTest {
     }
 
     @Test
-    void create_notSharedRecipe_is400() throws Exception {
+    void create_sharingSomeoneElsesRecipe_is400() throws Exception {
         when(mealPlanService.create(eq(5L), any()))
-                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, MealPlanService.NOT_SHARED));
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, MealPlanService.ONLY_OWNER_SHARES));
 
         mockMvc.perform(post("/api/meal-plan").with(user(principal(5))).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"familyId\":1,\"date\":\"2026-10-27\",\"recipeId\":12}"))
+                        .content("{\"familyId\":1,\"date\":\"2026-10-27\",\"recipeId\":12,\"shareWithFamily\":true}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(MealPlanService.NOT_SHARED));
+                .andExpect(jsonPath("$.message").value(MealPlanService.ONLY_OWNER_SHARES));
+    }
+
+    @Test
+    void planRecipe_returnsTheRecipeWithoutOwnerData() throws Exception {
+        when(mealPlanService.recipeView(5L, 3L)).thenReturn(new MealPlanService.PlanRecipeView(3L, 1L,
+            LocalDate.parse("2026-11-08"), MealPlanService.PLAN, null, "Silvia", "Kürbislasagne", "Schnell",
+            List.of("Ofen an"), List.of(), List.of("Ofengericht"), 4, null, null, null, "Anna Jones", "zeit.de", null,
+            "https://www.zeit.de/x", 50, "de"));
+
+        mockMvc.perform(get("/api/meal-plan/3/recipe").with(user(principal(5))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.access").value("plan"))
+                .andExpect(jsonPath("$.sharedBy").value("Silvia"))
+                .andExpect(jsonPath("$.author").value("Anna Jones"))
+                .andExpect(jsonPath("$.recipeId").doesNotExist())
+                .andExpect(jsonPath("$.ownerId").doesNotExist())
+                .andExpect(jsonPath("$.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.families").doesNotExist());
+    }
+
+    @Test
+    void planRecipe_ghostOrForeign_passesTheServiceStatus() throws Exception {
+        when(mealPlanService.recipeView(5L, 4L))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, MealPlanService.NOT_AVAILABLE));
+        when(mealPlanService.open(5L, 4L))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, MealPlanService.NOT_AVAILABLE));
+        when(mealPlanService.recipeView(6L, 3L))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, MealPlanService.NOT_A_MEMBER));
+
+        mockMvc.perform(get("/api/meal-plan/4/recipe").with(user(principal(5))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value(MealPlanService.NOT_AVAILABLE));
+        mockMvc.perform(get("/api/meal-plan/4/image").with(user(principal(5)))).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/meal-plan/4/recipe/nutrition").with(user(principal(5)))).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/meal-plan/3/recipe").with(user(principal(6)))).andExpect(status().isForbidden());
+        verifyNoInteractions(recipeService, translationService, thumbnails);
     }
 
     @Test

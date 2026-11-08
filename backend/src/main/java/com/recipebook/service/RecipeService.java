@@ -195,10 +195,6 @@ public class RecipeService {
             saved = recipeRepository.save(managed);
         }
         recipeAccess.writeLinks(saved.getId(), access.familyIds());
-        if (exists) {
-            int removed = recipeAccess.prunePlans(saved.getId());
-            if (removed > 0) saved.setRemovedPlanEntries(removed);
-        }
         return saved;
     }
 
@@ -297,7 +293,7 @@ public class RecipeService {
 
     @Transactional
     public void deleteById(Long id) {
-        recipeAccess.removeFromPlans(id);
+        recipeAccess.detachFromPlans(id);
         recipeRepository.deleteById(id);
     }
     

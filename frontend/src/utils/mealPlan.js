@@ -1,13 +1,17 @@
 import { formatPrepTime } from './recipeHero.js'
-import { sourceDomain } from './sourceUrl.js'
+import { cleanSourceUrl, sourceDomain } from './sourceUrl.js'
 import { wantsTranslation } from './recipeLanguage.js'
 import { planLanguage, planText } from './planTexts.js'
 import { normalizeText } from './recipeSearch.js'
+import { planRecipePath, recipePath } from '../router/paths.js'
 
 // Essensplan: Datumslogik immer in lokaler Zeit (nie toISOString – das verschiebt nachts um einen Tag).
 // Wochen beginnen am Montag; Datumswerte zum Server als yyyy-MM-dd.
 
 export const VIEWS = ['woche', 'monat', 'liste']
+
+// Familie, die der Umschalter im Essensplan für die laufende Sitzung gewählt hat (sonst gilt die Standard-Familie)
+export const PLAN_FAMILY_KEY = 'mealPlan:familie'
 
 const pad = (n) => String(n).padStart(2, '0')
 const locale = (lang) => (lang === 'en' ? 'en-GB' : 'de-DE')
@@ -121,15 +125,28 @@ export function groupByDate(entries) {
   return map
 }
 
-// Titel in Anzeigesprache: englische Rezepte mit gespeicherter Übersetzung deutsch, wenn das Gerät „Deutsch“ will
+// Zugriff je Eintrag (Server): regulär, nur über den Plan, oder Geist (Rezept gelöscht / niemand hat mehr Zugriff)
+export const ACCESS = { FULL: 'full', PLAN: 'plan', GONE: 'gone' }
+export const isGhost = (entry) => entry?.access === ACCESS.GONE
+
+// Wohin Tippen auf einen Eintrag führt: reguläre Rezeptseite, Nur-Plan-Seite über die Eintrags-ID, sonst nirgends
+export function entryPath(entry) {
+  if (!entry?.recipe) return null
+  if (entry.access === ACCESS.PLAN) return planRecipePath(entry.id)
+  return recipePath(entry.recipe.id)
+}
+
+// Titel in Anzeigesprache: englische Rezepte mit gespeicherter Übersetzung deutsch, wenn das Gerät „Deutsch“ will;
+// Geist: Titel aus dem Snapshot des Eintrags
 export function entryTitle(entry, languagePreference) {
-  if (!entry?.recipe) return entry?.freeText ?? ''
+  if (!entry?.recipe) return entry?.gone?.title ?? entry?.freeText ?? ''
   const r = entry.recipe
   return wantsTranslation(r, languagePreference) && r.translatedTitle ? r.translatedTitle : r.title
 }
 
 // „50 Min. · Anna Jones“ – Autor, sonst die Quelle (Webadresse nur als Domain)
 export function entryMeta(entry) {
+  if (isGhost(entry)) return planText('gone')
   const r = entry?.recipe
   if (!r) return ''
   const author = String(r.author ?? '').trim()
@@ -138,28 +155,32 @@ export function entryMeta(entry) {
   return [formatPrepTime(r.prepTimeMinutes), who].filter(Boolean).join(' · ')
 }
 
-/**
- * „Planen“ auf der Rezeptseite: In welchen Familien darf das Rezept stehen (für sie freigegeben oder öffentlich)?
- * Ohne solche Familie kann nur der Besitzer es beim Planen für eine seiner Familien freigeben.
- */
-export function planTargets(recipe, families, isOwner) {
-  const mine = families ?? []
-  const plannable = mine.filter((f) => plannableIn(recipe, f.id))
-  const shareable = plannable.length === 0 && isOwner ? mine : []
-  return { plannable, shareable }
+// Geist-Sheet „Quelle: Autor · Quelle-Link“ aus dem Snapshot des Eintrags: Link nur auf gültige http(s)-Adressen,
+// Linktext ist die Quelle (eine Webadresse als Domain); ohne Autor und Quelle null
+export function goneSource(gone) {
+  const author = String(gone?.author ?? '').trim()
+  const source = String(gone?.source ?? '').trim()
+  const url = cleanSourceUrl(gone?.sourceUrl)
+  const href = sourceDomain(url) ? url : (sourceDomain(source) ? source : null)
+  const label = source && !sourceDomain(source) ? source : (href ? sourceDomain(href) : '')
+  if (!author && !label) return null
+  return { author, label, href }
 }
+
+// Standard-Familie (vom Server markiert), sonst die erste
+export function defaultFamilyId(families) {
+  const list = families ?? []
+  return (list.find((f) => f.defaultFamily) ?? list[0])?.id ?? null
+}
+
+// Planen in eine Familie, die das Rezept nicht sieht: nur der Besitzer wird gefragt (teilen oder nur über den Plan),
+// alle anderen planen still „nur über den Plan“
+export const asksToShare = (recipe, familyId, isOwner) => !!isOwner && familyId != null && !plannableIn(recipe, familyId)
 
 // Neuer Eintrag landet sortiert im geladenen Zeitraum (gleicher Tag: hinten)
 export function insertEntry(entries, entry) {
   const list = [...(entries ?? []), entry]
   return list.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? -1 : 1))
-}
-
-// Hinweis nach dem Speichern, wenn der Server wegen entzogener Freigabe Planeinträge entfernt hat
-export function removedPlanEntriesText(count, lang = planLanguage()) {
-  const n = Number(count) || 0
-  if (n <= 0) return ''
-  return n === 1 ? planText('removedAfterSaveOne', {}, lang) : planText('removedAfterSave', { n }, lang)
 }
 
 // Kleine Fassung des Rezeptfotos (192 px, Server-Endpunkt size=thumb) statt des Originals je Zeile
@@ -169,7 +190,7 @@ export function thumbFor(imageUrl) {
   return `${url}${url.includes('?') ? '&' : '?'}size=thumb`
 }
 
-// Darf das Rezept in den Plan dieser Familie? (öffentlich oder für sie freigegeben – wie der Server prüft)
+// Sieht die ganze Familie das Rezept regulär? (öffentlich oder für sie freigegeben) – sonst nur über den Plan
 export function plannableIn(recipe, familyId) {
   if (!recipe || familyId == null) return false
   if (recipe.visibility === 'PUBLIC') return true
@@ -177,13 +198,13 @@ export function plannableIn(recipe, familyId) {
   return (recipe.families ?? []).some((f) => f.id === id) || (recipe.familyIds ?? []).includes(id)
 }
 
-// Picker: planbare Rezepte der Familie, alle Suchwörter müssen vorkommen (Titel, Übersetzung, Autor, Quelle, Tags)
-export function pickerRecipes(recipes, familyId, query = '') {
+// Picker: alle Rezepte, die ich sehe (auch für Familien ohne Sicht – dann nur über den Plan); alle Suchwörter müssen
+// vorkommen (Titel, Übersetzung, Autor, Quelle, Tags)
+export function pickerRecipes(recipes, query = '') {
   const words = normalizeText(query).split(' ').filter(Boolean)
   const hay = (r) => normalizeText([r.title, r.translatedSearchText, r.author, r.source, ...(r.tags ?? [])]
     .filter(Boolean).join(' | '))
   return (recipes ?? [])
-    .filter((r) => plannableIn(r, familyId))
     .filter((r) => words.every((w) => hay(r).includes(w)))
     .sort((a, b) => String(a.title ?? '').localeCompare(String(b.title ?? ''), 'de'))
 }

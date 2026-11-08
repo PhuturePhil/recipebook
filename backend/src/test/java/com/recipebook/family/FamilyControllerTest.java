@@ -51,7 +51,7 @@ class FamilyControllerTest {
 
     private static FamilyService.FamilyView view(long id) {
         return new FamilyService.FamilyView(id, "Kochclub", 1, 10, 0,
-            List.of(new FamilyService.Member(5L, "Paco Pastoors", "PP", true)), null);
+            List.of(new FamilyService.Member(5L, "Paco Pastoors", "PP", true)), null, id == 3);
     }
 
     @Test
@@ -61,6 +61,8 @@ class FamilyControllerTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/families/3")).andExpect(status().isForbidden());
         mockMvc.perform(delete("/api/families/3/members/5")).andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/families/default").contentType(MediaType.APPLICATION_JSON).content("{\"familyId\":3}"))
+                .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/family-invites/abcdefghijklmnopqrstuvwx/join")).andExpect(status().isForbidden());
         verifyNoInteractions(familyService);
     }
@@ -135,5 +137,27 @@ class FamilyControllerTest {
         mockMvc.perform(post("/api/family-invites/abcdefghijklmnopqrstuvwx/join").with(user(principal(5))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value(FamilyService.FAMILY_FULL));
+    }
+
+    @Test
+    void setDefault_returnsMyFamiliesWithTheStandardFlag() throws Exception {
+        when(familyService.setDefault(5L, 3L)).thenReturn(List.of(view(3), view(4)));
+
+        mockMvc.perform(put("/api/families/default").with(user(principal(5)))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"familyId\":3}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].defaultFamily").value(true))
+                .andExpect(jsonPath("$[1].defaultFamily").value(false));
+        verify(familyService).setDefault(5L, 3L);
+    }
+
+    @Test
+    void setDefault_foreignFamily_is404() throws Exception {
+        when(familyService.setDefault(5L, 9L))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Die Familie wurde nicht gefunden."));
+
+        mockMvc.perform(put("/api/families/default").with(user(principal(5)))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"familyId\":9}"))
+                .andExpect(status().isNotFound());
     }
 }

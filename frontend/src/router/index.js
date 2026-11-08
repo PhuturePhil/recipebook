@@ -1,7 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { useAuthStore } from '@/stores/authStore'
-import { LEGACY_REDIRECTS, NEW_RECIPE_PATH, INGREDIENTS_PATH, MEAL_PLAN_PATH, RECIPE_DETAIL_ROUTE, RECIPE_EDIT_ROUTE } from './paths.js'
+import {
+  LEGACY_REDIRECTS, NEW_RECIPE_PATH, INGREDIENTS_PATH, MEAL_PLAN_PATH, RECIPE_DETAIL_ROUTE, RECIPE_EDIT_ROUTE, PLAN_RECIPE_ROUTE,
+  MY_FAMILIES_PATH,
+} from './paths.js'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -73,6 +76,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: PLAN_RECIPE_ROUTE,
+      name: 'plan-recipe',
+      component: () => import('@/views/PlanRecipeView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: INGREDIENTS_PATH,
       name: 'ingredients',
       component: () => import('@/views/IngredientsView.vue'),
@@ -126,6 +135,12 @@ const router = createRouter({
       path: '/familien',
       name: 'families',
       component: () => import('@/views/FamiliesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: MY_FAMILIES_PATH,
+      name: 'my-families',
+      component: () => import('@/views/MyFamiliesView.vue'),
       meta: { requiresAuth: true }
     },
     {

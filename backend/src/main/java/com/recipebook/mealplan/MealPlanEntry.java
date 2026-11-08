@@ -1,10 +1,15 @@
 package com.recipebook.mealplan;
 
+import com.recipebook.model.Recipe;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/** Ein Eintrag im Essensplan einer Familie: entweder ein Rezept oder ein Freitext („Essen bei Oma“). */
+/**
+ * Ein Eintrag im Essensplan einer Familie: entweder ein Rezept oder ein Freitext („Essen bei Oma“). Rezept-Einträge
+ * halten Titel, Quelle, Autor und Link fest – so bleibt der Eintrag als „Geist“ lesbar, wenn das Rezept gelöscht
+ * wird (recipe_id dann leer) oder niemand in der Familie mehr Zugriff hat.
+ */
 @Entity
 @Table(name = "meal_plan_entries")
 public class MealPlanEntry {
@@ -27,6 +32,18 @@ public class MealPlanEntry {
 
     @Column(name = "created_by")
     private Long createdBy;
+
+    @Column(name = "snapshot_title")
+    private String snapshotTitle;
+
+    @Column(name = "snapshot_source")
+    private String snapshotSource;
+
+    @Column(name = "snapshot_author")
+    private String snapshotAuthor;
+
+    @Column(name = "snapshot_source_url", length = Recipe.MAX_SOURCE_URL)
+    private String snapshotSourceUrl;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -76,5 +93,28 @@ public class MealPlanEntry {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getSnapshotTitle() {
+        return snapshotTitle;
+    }
+
+    public String getSnapshotSource() {
+        return snapshotSource;
+    }
+
+    public String getSnapshotAuthor() {
+        return snapshotAuthor;
+    }
+
+    public String getSnapshotSourceUrl() {
+        return snapshotSourceUrl;
+    }
+
+    public void setSnapshot(String title, String source, String author, String sourceUrl) {
+        this.snapshotTitle = title;
+        this.snapshotSource = source;
+        this.snapshotAuthor = author;
+        this.snapshotSourceUrl = sourceUrl;
     }
 }

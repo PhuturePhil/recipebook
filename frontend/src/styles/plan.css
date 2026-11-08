@@ -569,6 +569,10 @@ button.plan-r {
   padding: 5px 14px;
 }
 
+.plan-r--ghost h3 {
+  color: var(--h-mut);
+}
+
 .plan-r.leer .d {
   opacity: .55;
 }
@@ -905,6 +909,133 @@ button.plan-r {
 .plan-btn:disabled {
   opacity: .45;
   cursor: not-allowed;
+}
+
+/* Planen vom Rezept: „Planen für“ mit Familien-Chips (Entwurf mock_family_plan.html, 08.11.2026) */
+.plan-for {
+  flex: none;
+  margin-bottom: 6px;
+}
+
+.plan-for__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--h-mut);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 7px;
+}
+
+.plan-for__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-for__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  background: var(--h-chip);
+  color: var(--h-ink);
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.plan-for__chip.on {
+  background: rgba(232, 89, 12, .1);
+  border-color: var(--h-acc);
+  color: var(--plan-acc-text);
+}
+
+.plan-for__star {
+  color: var(--h-acc);
+}
+
+.plan-for__note {
+  flex: none;
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--h-mut);
+  font-weight: 550;
+  line-height: 1.45;
+}
+
+/* Geist-Eintrag (Rezept gelöscht / niemand hat mehr Zugriff, Entwurf mock_ghost.html): Verlauf mit Topf statt Foto */
+.plan-ghost-img {
+  width: 62px;
+  height: 62px;
+  border-radius: 12px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #d8894f, #a85a28);
+  color: rgba(255, 255, 255, .85);
+}
+
+.plan-meal--ghost .plan-mt h3 {
+  color: var(--h-mut);
+}
+
+.plan-meal__link--ghost {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-gone__text {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--h-ink);
+}
+
+.plan-gone__src {
+  margin-top: 12px;
+  background: var(--h-chip);
+  border-radius: 13px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.plan-gone__src a {
+  color: var(--plan-acc-text);
+  text-decoration: none;
+  font-weight: 650;
+}
+
+.plan-gone__btns {
+  display: flex;
+  gap: 9px;
+  margin-top: 16px;
+  flex: none;
+}
+
+.plan-gone__btns button {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--h-chip);
+  color: var(--h-ink);
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plan-gone__btns .danger {
+  color: var(--h-red);
 }
 
 /* Datumswahl: Heute/Morgen + Mini-Kalender */

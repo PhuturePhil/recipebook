@@ -14,6 +14,8 @@ export const useFamilyStore = defineStore('family', {
 
   getters: {
     byId: (state) => (id) => state.families.find((f) => f.id === Number(id)) ?? null,
+    // Vom Server bestimmt (eigene Wahl, sonst die älteste Familie)
+    defaultFamily: (state) => state.families.find((f) => f.defaultFamily) ?? state.families[0] ?? null,
   },
 
   actions: {
@@ -43,6 +45,10 @@ export const useFamilyStore = defineStore('family', {
       const index = this.families.findIndex((f) => f.id === family.id)
       if (index === -1) this.families.push(family)
       else this.families[index] = family
+    },
+
+    async setDefault(id) {
+      this.families = await familyService.setDefault(id)
     },
 
     remove(id) {

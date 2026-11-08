@@ -7,7 +7,12 @@ export const MEAL_PLAN_PATH = '/plan'
 export const RECIPE_DETAIL_ROUTE = '/rezepte/:id(\\d+)'
 export const RECIPE_EDIT_ROUTE = '/rezepte/:id(\\d+)/bearbeiten'
 
+// Rezept „nur über den Essensplan“: über die Eintrags-ID, nie über die Rezept-ID
+export const PLAN_RECIPE_ROUTE = '/plan/rezept/:entryId(\\d+)'
+export const MY_FAMILIES_PATH = '/familien/standard'
+
 export const recipePath = (id) => `/rezepte/${id}`
+export const planRecipePath = (entryId) => `/plan/rezept/${entryId}`
 export const recipeEditPath = (id) => `/rezepte/${id}/bearbeiten`
 
 const keep = (path) => (to) => ({ path: typeof path === 'function' ? path(to.params) : path, query: to.query, hash: to.hash })

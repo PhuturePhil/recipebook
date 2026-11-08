@@ -42,6 +42,10 @@ public class User {
     // Adresse per Mail-Link bestätigt (oder von einem Admin bzw. pastoors.cloud angelegt); Voraussetzung fürs SSO-Verknüpfen
     @Column(nullable = false)
     private boolean emailVerified = false;
+
+    // Standard-Familie (nur für den Nutzer selbst): erster Essensplan und Vorauswahl beim Planen
+    @Column(name = "default_family_id")
+    private Long defaultFamilyId;
     
     public User() {}
     
@@ -144,5 +148,13 @@ public class User {
 
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
+    }
+
+    public Long getDefaultFamilyId() {
+        return defaultFamilyId;
+    }
+
+    public void setDefaultFamilyId(Long defaultFamilyId) {
+        this.defaultFamilyId = defaultFamilyId;
     }
 }

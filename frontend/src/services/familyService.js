@@ -36,6 +36,8 @@ export const familyService = {
   create: (name, { shareOwnRecipes = false } = {}) =>
     request('/families', { method: 'POST', body: { name, shareOwnRecipes } }),
   rename: (id, name) => request(`/families/${id}`, { method: 'PUT', body: { name } }),
+  // Standard-Familie (nur für mich): erster Essensplan und Vorauswahl beim Planen; liefert die Liste neu
+  setDefault: (familyId) => request('/families/default', { method: 'PUT', body: { familyId } }),
   renewInvite: (id) => request(`/families/${id}/invite`, { method: 'POST' }),
   // Eigene ID = austreten; { deleted: true }, wenn man das letzte Mitglied war
   removeMember: (id, userId) => request(`/families/${id}/members/${userId}`, { method: 'DELETE' }),

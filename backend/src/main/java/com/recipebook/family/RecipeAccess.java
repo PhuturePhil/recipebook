@@ -170,18 +170,13 @@ public class RecipeAccess {
     }
 
     /**
-     * Essensplan nach einer Freigabe-Änderung: Einträge des Rezepts in Familien, die es nicht mehr sehen dürfen
-     * (weder freigegeben noch öffentlich), fallen weg – vergangene wie zukünftige. Liefert die Anzahl.
+     * Vor dem Löschen eines Rezepts: seine Essensplan-Einträge bleiben als Geist stehen, mit dem letzten Stand von
+     * Titel, Quelle, Autor und Link (Freigabe-Änderungen lassen die Einträge dagegen unberührt).
      */
     @Transactional
-    public int prunePlans(Long recipeId) {
-        recipeFamilyRepository.flush();
-        return mealPlanRepository.pruneRecipe(recipeId);
-    }
-
-    @Transactional
-    public void removeFromPlans(Long recipeId) {
-        mealPlanRepository.deleteByRecipe(recipeId);
+    public void detachFromPlans(Long recipeId) {
+        recipeRepository.findById(recipeId).ifPresent(r -> mealPlanRepository.detachRecipe(recipeId, r.getTitle(),
+            r.getSource(), r.getAuthor(), r.getSourceUrl()));
     }
 
     private Map<Long, String> familyNames(Collection<Long> ids) {

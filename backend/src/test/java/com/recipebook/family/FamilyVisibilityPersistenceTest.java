@@ -509,4 +509,43 @@ class FamilyVisibilityPersistenceTest {
         assertEquals(Set.of(fremd.getId()), access.fullNameVisibleUserIds(fremd.getId()));
         assertEquals(Set.of(), access.fullNameVisibleUserIds(RecipeAccess.GUEST));
     }
+
+    private List<Long> defaults(User u) {
+        return families.myFamilies(u.getId()).stream().filter(FamilyService.FamilyView::defaultFamily)
+            .map(FamilyService.FamilyView::id).toList();
+    }
+
+    @Test
+    void defaultFamily_isTheOldestUntilChosen_andOnlyForTheChooser() {
+        Long first = familyOf(anna, paco);
+        Long second = familyOf(anna, paco);
+
+        assertEquals(List.of(first), defaults(anna), "ohne Wahl die älteste");
+        assertEquals(first, families.defaultFamilyId(anna.getId()));
+
+        families.setDefault(anna.getId(), second);
+        flush();
+
+        assertEquals(List.of(second), defaults(anna));
+        assertEquals(List.of(first), defaults(paco), "jeder legt das nur für sich fest");
+        assertNull(families.defaultFamilyId(fremd.getId()), "ohne Familie keine Standard-Familie");
+    }
+
+    @Test
+    void defaultFamily_foreignFamilyIs404_leavingFallsBackToTheOldest() {
+        Long first = familyOf(anna, paco);
+        Long second = familyOf(anna, paco);
+        Long foreign = familyOf(fremd);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> families.setDefault(anna.getId(), foreign));
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+
+        families.setDefault(anna.getId(), second);
+        families.removeMember(second, anna.getId(), anna.getId());
+        flush();
+
+        assertEquals(List.of(first), defaults(anna));
+        assertNull(userRepository.findById(anna.getId()).orElseThrow().getDefaultFamilyId());
+    }
 }

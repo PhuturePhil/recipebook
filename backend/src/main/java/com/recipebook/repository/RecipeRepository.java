@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +28,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
   @Query("SELECT r.id FROM Recipe r WHERE " + VISIBLE_TO_USER)
   List<Long> findIdsVisibleTo(@Param("userId") Long userId);
+
+  @Query("SELECT r.id FROM Recipe r WHERE r.id IN :ids AND " + VISIBLE_TO_USER)
+  List<Long> findVisibleAmong(@Param("ids") Collection<Long> ids, @Param("userId") Long userId);
 
   @Query("SELECT r.publicVisible FROM Recipe r WHERE r.id = :recipeId")
   Optional<Boolean> findPublicVisible(@Param("recipeId") Long recipeId);

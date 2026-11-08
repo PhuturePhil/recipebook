@@ -70,6 +70,7 @@
               :entry="entry"
               :language-pref="languagePref"
               @manage="onManage"
+              @gone="onGone"
             />
             <button
               v-if="!entriesOn(day).length"
@@ -128,6 +129,7 @@
               :entry="entry"
               :language-pref="languagePref"
               @manage="onManage"
+              @gone="onGone"
             />
             <button
               v-if="!entriesOn(selectedDay).length"
@@ -159,8 +161,8 @@
           <template v-else>
           <template v-for="(entry, n) in entriesOn(day)" :key="entry.id">
             <RouterLink
-              v-if="entry.recipe"
-              :to="recipePath(entry.recipe.id)"
+              v-if="entryPath(entry)"
+              :to="entryPath(entry)"
               :class="['plan-r', { we: isWeekend(day), today: sameDay(day, today) }]"
             >
               <span class="d" :aria-label="dayLabel(day)"><template v-if="n === 0">{{ weekdayShort(day) }} <b>{{ day.getDate() }}</b></template></span>
@@ -168,6 +170,17 @@
               <span v-if="n === 0 && sameDay(day, today)" class="plan-hb">{{ t('today') }}</span>
               <span class="plan-r__chev" aria-hidden="true"><AppIcon name="weiter" :size="14" /></span>
             </RouterLink>
+            <button
+              v-else-if="isGhost(entry)"
+              type="button"
+              :class="['plan-r', 'plan-r--ghost', { we: isWeekend(day), today: sameDay(day, today) }]"
+              aria-haspopup="dialog"
+              @click="onGone(entry, $event.currentTarget)"
+            >
+              <span class="d" :aria-label="dayLabel(day)"><template v-if="n === 0">{{ weekdayShort(day) }} <b>{{ day.getDate() }}</b></template></span>
+              <h3>{{ entryTitle(entry, languagePref) }}</h3>
+              <span v-if="n === 0 && sameDay(day, today)" class="plan-hb">{{ t('today') }}</span>
+            </button>
             <div v-else :class="['plan-r', { we: isWeekend(day), today: sameDay(day, today) }]">
               <span class="d" :aria-label="dayLabel(day)"><template v-if="n === 0">{{ weekdayShort(day) }} <b>{{ day.getDate() }}</b></template></span>
               <h3>{{ entry.freeText }}</h3>
@@ -188,7 +201,50 @@
       initial-focus=".plan-picker__search"
       @close="closeSheet"
     >
-      <PlanPicker :family-id="familyId" :busy="busy" @pick="addEntry" />
+      <PlanPicker :busy="busy" @pick="pickEntry" />
+    </PlanSheet>
+
+    <!-- Rezept, das die Familie nicht sieht: nur der Besitzer wählt zwischen Teilen und „nur über den Plan“ -->
+    <PlanSheet
+      v-else-if="sheet?.type === 'share'"
+      :title="t('shareOrPlanTitle')"
+      :subtitle="`${sheet.recipe.title} · ${family?.name ?? ''}`"
+      :return-focus="sheet.returnFocus"
+      @close="closeSheet"
+    >
+      <div class="plan-sheet__body">
+        <button type="button" class="plan-mi" :disabled="busy" @click="addEntry({ recipeId: sheet.recipe.id, share: true })">
+          <AppIcon name="familie" :size="21" />{{ t('shareWith', { name: family?.name ?? '' }) }}
+        </button>
+        <button type="button" class="plan-mi" :disabled="busy" @click="addEntry({ recipeId: sheet.recipe.id })">
+          <AppIcon name="planen" :size="21" />{{ t('planOnly') }}
+        </button>
+      </div>
+    </PlanSheet>
+
+    <!-- Geist: Rezept gelöscht oder niemand in der Familie hat mehr Zugriff (Entwurf mock_ghost.html) -->
+    <PlanSheet
+      v-else-if="sheet?.type === 'gone'"
+      :title="t('gone')"
+      :subtitle="`${entryTitle(sheet.entry, languagePref)} · ${dayLabel(fromIso(sheet.entry.date))}`"
+      :return-focus="sheet.returnFocus"
+      @close="closeSheet"
+    >
+      <div class="plan-sheet__body">
+        <p class="plan-gone__text">{{ t('goneText') }}</p>
+        <div v-if="goneSrc" class="plan-gone__src">
+          {{ t('goneSource') }} {{ goneSrc.author }}<template v-if="goneSrc.author && goneSrc.label"> · </template>
+          <a v-if="goneSrc.href" :href="goneSrc.href" target="_blank" rel="noopener noreferrer">{{ goneSrc.label }}</a>
+          <template v-else>{{ goneSrc.label }}</template>
+          <template v-if="goneSrc.label"><br>{{ t('goneOriginal') }}</template>
+        </div>
+      </div>
+      <div class="plan-gone__btns">
+        <button type="button" @click="closeSheet">{{ t('close') }}</button>
+        <button type="button" class="danger" @click="openSheet({ type: 'removeGone', entry: sheet.entry }, sheet.returnFocus)">
+          {{ t('removeEntry') }}
+        </button>
+      </div>
     </PlanSheet>
 
     <!-- Eintrag verwalten: Weiteres Gericht, Verschieben, Entfernen (nur hier) -->
@@ -227,6 +283,17 @@
       />
     </PlanSheet>
 
+    <ConfirmDialog
+      v-else-if="sheet?.type === 'removeGone'"
+      :title="t('removeEntryTitle')"
+      :text="t('removeEntryText', { title: entryTitle(sheet.entry, languagePref) })"
+      :confirm-label="t('remove')"
+      :cancel-label="t('cancel')"
+      destructive
+      @confirm="removeEntry(sheet.entry)"
+      @cancel="closeSheet"
+    />
+
     <PlanSheet
       v-else-if="sheet?.type === 'family'"
       :title="t('chooseFamily')"
@@ -259,25 +326,28 @@ import PlanPhoto from '@/components/plan/PlanPhoto.vue'
 import PlanSheet from '@/components/plan/PlanSheet.vue'
 import PlanPicker from '@/components/plan/PlanPicker.vue'
 import PlanDatePicker from '@/components/plan/PlanDatePicker.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useFamilyStore, shortFamilyName } from '@/stores/familyStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useRecipeStore } from '@/stores/recipeStore'
 import { mealPlanService } from '@/services/mealPlanService'
 import { readLanguagePreference } from '@/utils/recipeLanguage'
-import { recipePath } from '@/router/paths.js'
 import { planText as t } from '@/utils/planTexts'
 import {
   VIEWS, isoDate, fromIso, dayOnly, sameDay, sameMonth, monthStart, isWeekend, weekDays, monthDays, monthGrid,
   rangeFor, shiftAnchor, isCurrentPeriod, weekLabel, weekSubLabel, monthLabel, dayLabel, weekdayShort,
-  groupByDate, entryTitle, insertEntry, dayPhoto,
+  groupByDate, entryTitle, insertEntry, dayPhoto, entryPath, isGhost, goneSource, defaultFamilyId, asksToShare, PLAN_FAMILY_KEY,
 } from '@/utils/mealPlan'
 
 const VIEW_LABELS = { woche: 'week', monat: 'month', liste: 'list' }
-const FAMILY_KEY = 'mealPlan:familie'
 
 const route = useRoute()
 const router = useRouter()
 const familyStore = useFamilyStore()
 const uiStore = useUiStore()
+const authStore = useAuthStore()
+const recipeStore = useRecipeStore()
 
 const today = ref(dayOnly(new Date()))
 const languagePref = ref(readLanguagePreference())
@@ -301,14 +371,15 @@ const shift = (step) => {
 }
 const goToday = () => setQuery({ datum: undefined })
 
-// Familie: gemerkt je Gerät, sonst die erste; Umschalter nur bei mehr als einer
+// Familie: zuerst die Standard-Familie (pro Nutzer auf dem Server); ein Wechsel über den Umschalter gilt für die
+// laufende Sitzung. Umschalter nur bei mehr als einer Familie.
 const families = computed(() => familyStore.families)
-const storedFamily = Number(localStorage.getItem(FAMILY_KEY)) || null
+const storedFamily = Number(sessionStorage.getItem(PLAN_FAMILY_KEY)) || null
 const familyId = ref(null)
 watch(families, (list) => {
   if (!list.length) familyId.value = null
   else if (!list.some((f) => f.id === familyId.value)) {
-    familyId.value = list.find((f) => f.id === storedFamily)?.id ?? list[0].id
+    familyId.value = list.find((f) => f.id === storedFamily)?.id ?? defaultFamilyId(list)
   }
 }, { immediate: true })
 const family = computed(() => families.value.find((f) => f.id === familyId.value) ?? null)
@@ -316,7 +387,7 @@ const noFamily = computed(() => familyStore.loaded && families.value.length === 
 
 function chooseFamily(id) {
   familyId.value = id
-  localStorage.setItem(FAMILY_KEY, String(id))
+  sessionStorage.setItem(PLAN_FAMILY_KEY, String(id))
   closeSheet()
 }
 
@@ -373,14 +444,29 @@ const openSheet = (state, returnFocus = null) => { sheet.value = { ...state, ret
 const closeSheet = () => { sheet.value = null }
 const openPicker = (date, returnFocus) => openSheet({ type: 'picker', date }, returnFocus)
 const onManage = (entry, el) => openSheet({ type: 'manage', entry }, el)
+const onGone = (entry, el) => openSheet({ type: 'gone', entry }, el)
+const goneSrc = computed(() => (sheet.value?.type === 'gone' ? goneSource(sheet.value.entry.gone) : null))
 
-async function addEntry({ recipeId = null, freeText = null }) {
+// Picker: sieht die Familie das Rezept nicht, fragt nur der Besitzer nach (teilen oder nur über den Plan)
+function pickEntry({ recipeId = null, recipe = null, freeText = null }) {
+  if (recipe && asksToShare(recipe, familyId.value, recipe.ownerId != null && recipe.ownerId === authStore.user?.id)) {
+    openSheet({ type: 'share', date: sheet.value.date, recipe }, sheet.value.returnFocus)
+  } else {
+    addEntry({ recipeId, freeText })
+  }
+}
+
+async function addEntry({ recipeId = null, freeText = null, share = false }) {
   if (busy.value || !sheet.value?.date) return
   const date = sheet.value.date
   busy.value = true
   try {
-    const entry = await mealPlanService.add({ familyId: familyId.value, date: isoDate(date), recipeId, freeText })
+    const entry = await mealPlanService.add({
+      familyId: familyId.value, date: isoDate(date), recipeId, freeText, shareWithFamily: share,
+    })
     if (inRange(entry.date)) entries.value = insertEntry(entries.value, entry)
+    // Freigabe geändert: Rezeptliste (Freigabe-Chips, Picker) frisch laden
+    if (share) recipeStore.invalidateRecipes()
     closeSheet()
     uiStore.showToast(t('planned', { day: dayLabel(date) }))
   } catch (e) {

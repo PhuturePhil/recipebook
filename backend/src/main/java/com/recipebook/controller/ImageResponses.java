@@ -7,16 +7,37 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.recipebook.service.RecipeImageTypes;
+import com.recipebook.service.RecipeThumbnails;
 
+import java.time.Duration;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class ImageResponses {
+public final class ImageResponses {
 
     private static final Pattern DATA_URL = Pattern.compile("^data:(image/[a-zA-Z0-9.+-]+);base64,(.*)$", Pattern.DOTALL);
 
     private ImageResponses() {
+    }
+
+    /**
+     * Rezeptbild nach erfolgter Zugriffsprüfung (Rezeptseite bzw. Essensplan): mit Versionsangabe ein Jahr cachebar;
+     * size=thumb liefert das kleine Vorschaubild, lässt es sich nicht erzeugen, kommt das Original.
+     */
+    public static ResponseEntity<byte[]> recipeImage(Long recipeId, String imageUrl, String version, String size,
+            RecipeThumbnails thumbnails) {
+        CacheControl cache = version != null
+                ? CacheControl.maxAge(Duration.ofDays(365)).cachePrivate().immutable()
+                : CacheControl.noCache().cachePrivate();
+        if ("thumb".equals(size)) {
+            byte[] thumb = thumbnails.of(recipeId, imageUrl).orElse(null);
+            if (thumb != null) {
+                return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+                        .header("X-Content-Type-Options", "nosniff").cacheControl(cache).body(thumb);
+            }
+        }
+        return of(imageUrl, cache);
     }
 
     static ResponseEntity<byte[]> of(String imageUrl, CacheControl cache) {

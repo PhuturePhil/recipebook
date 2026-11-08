@@ -35,6 +35,15 @@ public class FamilyController {
             familyService.create(user.getId(), body.name(), Boolean.TRUE.equals(body.shareOwnRecipes())));
     }
 
+    public record DefaultRequest(Long familyId) {}
+
+    // Standard-Familie (nur für sich selbst): Antwort ist die aktualisierte Liste der eigenen Familien
+    @PutMapping("/default")
+    public List<FamilyService.FamilyView> setDefault(@RequestBody DefaultRequest body,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return familyService.setDefault(user.getId(), body == null ? null : body.familyId());
+    }
+
     @GetMapping("/{id}")
     public FamilyService.FamilyView get(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails user) {
         return familyService.get(id, user.getId());
